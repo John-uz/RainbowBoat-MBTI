@@ -1,0 +1,237 @@
+
+import React, { useState, useRef } from 'react';
+import { X, Save, RotateCcw, Cpu, Key, MessageSquare, AlertTriangle, PlayCircle, Download, Upload } from 'lucide-react';
+import { getAIConfig, updateAIConfig, AIConfig } from '../services/geminiService';
+
+interface Props {
+  onClose: () => void;
+}
+
+const AIConfigModal: React.FC<Props> = ({ onClose }) => {
+  const [activeTab, setActiveTab] = useState<'keys' | 'prompts'>('keys');
+  const [config, setConfig] = useState<AIConfig>(getAIConfig());
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleSave = () => {
+    updateAIConfig(config);
+    onClose();
+    alert("AI 配置链已更新！\n调用顺序: Groq -> OpenRouter -> Gemini -> Pollinations");
+  };
+
+  const handleReset = () => {
+    if (confirm("确定重置所有 prompt 为默认值吗？")) {
+       localStorage.removeItem('PSYCHEPOLY_AI_CONFIG_V2');
+       // Reload from service to get the hardcoded defaults
+       window.location.reload(); 
+    }
+  };
+
+  const handleExport = () => {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(config, null, 2));
+      const downloadAnchorNode = document.createElement('a');
+      downloadAnchorNode.setAttribute("href", dataStr);
+      downloadAnchorNode.setAttribute("download", "psychepoly_ai_config.json");
+      document.body.appendChild(downloadAnchorNode);
+      downloadAnchorNode.click();
+      downloadAnchorNode.remove();
+  };
+
+  const handleImportClick = () => {
+      fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+          try {
+              const text = event.target?.result as string;
+              const importedConfig = JSON.parse(text);
+              // Basic validation
+              if (importedConfig.geminiModel || importedConfig.systemPersona) {
+                  setConfig({ ...config, ...importedConfig });
+                  alert("配置导入成功！请点击“保存”以生效。");
+              } else {
+                  alert("无效的配置文件格式。");
+              }
+          } catch (err) {
+              alert("JSON 解析失败，请检查文件。");
+          }
+      };
+      reader.readAsText(file);
+      // Reset input so same file can be selected again if needed
+      if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+      <div className="w-full max-w-2xl bg-slate-900 rounded-2xl border border-slate-700 shadow-2xl flex flex-col max-h-[90vh]">
+        
+        {/* Header */}
+        <div className="flex justify-between items-center p-5 border-b border-slate-800">
+          <div className="flex items-center gap-3">
+             <div className="p-2 bg-teal-500/20 rounded-lg text-teal-400"><Cpu size={24}/></div>
+             <div>
+                 <h2 className="text-lg font-bold text-white">AI 神经中枢</h2>
+                 <p className="text-[10px] text-slate-400">灾备调用顺序: 小G &gt; 小O &gt; Mini &gt; 小P</p>
+             </div>
+          </div>
+          <button onClick={onClose} className="text-slate-500 hover:text-white transition"><X size={24} /></button>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex border-b border-slate-800">
+            <button 
+                onClick={() => setActiveTab('keys')}
+                className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 border-b-2 transition ${activeTab === 'keys' ? 'border-teal-500 text-teal-400 bg-slate-800/50' : 'border-transparent text-slate-500 hover:text-white'}`}
+            >
+                <Key size={16}/> API 密钥 & 模型
+            </button>
+            <button 
+                onClick={() => setActiveTab('prompts')}
+                className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 border-b-2 transition ${activeTab === 'prompts' ? 'border-teal-500 text-teal-400 bg-slate-800/50' : 'border-transparent text-slate-500 hover:text-white'}`}
+            >
+                <MessageSquare size={16}/> Prompt 设定
+            </button>
+        </div>
+        
+        {/* Content */}
+        <div className="p-6 space-y-6 overflow-y-auto flex-1 custom-scrollbar">
+          
+          {activeTab === 'keys' && (
+              <div className="space-y-6">
+                  {/* GROQ */}
+                  <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                      <div className="flex justify-between items-center mb-2">
+                          <label className="text-xs font-bold text-orange-400 flex items-center gap-1">1. Groq (小G) - 极速推荐</label>
+                          <input type="text" value={config.groqModel} onChange={e => setConfig({...config, groqModel: e.target.value})} className="bg-slate-900 border border-slate-700 rounded px-2 py-0.5 text-[10px] text-slate-400 w-32 text-right" placeholder="Model ID"/>
+                      </div>
+                      <input 
+                        type="password" 
+                        value={config.groqKey} 
+                        onChange={(e) => setConfig({...config, groqKey: e.target.value})}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-orange-500 outline-none font-mono"
+                        placeholder="gsk_..."
+                      />
+                  </div>
+
+                  {/* OpenRouter */}
+                  <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                      <div className="flex justify-between items-center mb-2">
+                          <label className="text-xs font-bold text-blue-400 flex items-center gap-1">2. OpenRouter (小O) - 聚合兼容</label>
+                          <input type="text" value={config.openRouterModel} onChange={e => setConfig({...config, openRouterModel: e.target.value})} className="bg-slate-900 border border-slate-700 rounded px-2 py-0.5 text-[10px] text-slate-400 w-32 text-right"/>
+                      </div>
+                      <input 
+                        type="password" 
+                        value={config.openRouterKey} 
+                        onChange={(e) => setConfig({...config, openRouterKey: e.target.value})}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500 outline-none font-mono"
+                        placeholder="sk-or-..."
+                      />
+                  </div>
+
+                  {/* Gemini */}
+                  <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                      <div className="flex justify-between items-center mb-2">
+                          <label className="text-xs font-bold text-teal-400 flex items-center gap-1">3. Gemini (Mini) - 免费稳定</label>
+                          <input type="text" value={config.geminiModel} onChange={e => setConfig({...config, geminiModel: e.target.value})} className="bg-slate-900 border border-slate-700 rounded px-2 py-0.5 text-[10px] text-slate-400 w-32 text-right"/>
+                      </div>
+                      <input 
+                        type="password" 
+                        value={config.geminiKey} 
+                        onChange={(e) => setConfig({...config, geminiKey: e.target.value})}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-teal-500 outline-none font-mono"
+                        placeholder="AIza..."
+                      />
+                  </div>
+
+                  <div className="bg-slate-800/50 p-3 rounded-lg flex items-center gap-3 text-xs text-slate-400">
+                      <PlayCircle size={16} />
+                      <span>如果上述 Key 均未配置或调用失败，系统将尝试免费的 <strong>Pollinations.ai (小P)</strong>，最后回退到本地题库。</span>
+                  </div>
+              </div>
+          )}
+
+          {activeTab === 'prompts' && (
+              <div className="space-y-6">
+                  {/* Persona */}
+                  <div className="space-y-2">
+                      <label className="text-xs font-bold text-purple-400 uppercase tracking-wider flex items-center gap-1">
+                          System Persona (核心人设)
+                      </label>
+                      <textarea 
+                        value={config.systemPersona} 
+                        onChange={(e) => setConfig({...config, systemPersona: e.target.value})}
+                        className="w-full h-32 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-300 focus:border-purple-500 outline-none resize-none font-mono leading-relaxed"
+                        placeholder="[角色设定]... [语气]..."
+                      />
+                      <p className="text-[10px] text-slate-500">建议定义 AI 的语气、风格及核心目标。</p>
+                  </div>
+
+                  {/* Task Gen */}
+                  <div className="space-y-2">
+                      <label className="text-xs font-bold text-green-400 uppercase tracking-wider flex items-center gap-1">
+                          Task Generation Instruction (任务生成指令)
+                      </label>
+                      <textarea 
+                        value={config.taskPromptTemplate} 
+                        onChange={(e) => setConfig({...config, taskPromptTemplate: e.target.value})}
+                        className="w-full h-40 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-300 focus:border-green-500 outline-none resize-none font-mono"
+                      />
+                      <p className="text-[10px] text-slate-500">必须包含 JSON 输出格式要求 (keys: standard, truth, dare, deep)，否则游戏无法解析。</p>
+                  </div>
+
+                  {/* Report Gen */}
+                  <div className="space-y-2">
+                      <label className="text-xs font-bold text-yellow-400 uppercase tracking-wider flex items-center gap-1">
+                          Report & Analysis Instruction (结算与深度分析)
+                      </label>
+                      <textarea 
+                        value={config.reportPromptTemplate} 
+                        onChange={(e) => setConfig({...config, reportPromptTemplate: e.target.value})}
+                        className="w-full h-40 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-300 focus:border-yellow-500 outline-none resize-none font-mono"
+                      />
+                      <p className="text-[10px] text-slate-500">建议结合荣格八维（Te, Ti, Fe等）和原型（英雄、阴影）进行深度分析。</p>
+                  </div>
+              </div>
+          )}
+
+        </div>
+
+        {/* Footer */}
+        <div className="p-5 border-t border-slate-800 flex flex-wrap gap-3 bg-slate-900/50 rounded-b-2xl">
+          {/* File Input for Import */}
+          <input 
+              type="file" 
+              ref={fileInputRef} 
+              className="hidden" 
+              accept=".json" 
+              onChange={handleFileChange}
+          />
+          
+          <div className="flex gap-2">
+              <button onClick={handleImportClick} className="px-3 py-2 bg-slate-800 text-slate-400 rounded-lg text-xs font-bold hover:bg-slate-700 hover:text-white flex items-center gap-1 transition" title="导入配置">
+                  <Upload size={14} /> 导入
+              </button>
+              <button onClick={handleExport} className="px-3 py-2 bg-slate-800 text-slate-400 rounded-lg text-xs font-bold hover:bg-slate-700 hover:text-white flex items-center gap-1 transition" title="备份配置">
+                  <Download size={14} /> 备份
+              </button>
+          </div>
+
+          <div className="flex-1" />
+
+          <button onClick={handleReset} className="px-4 py-2 bg-slate-800 text-slate-400 rounded-lg text-sm font-bold hover:text-white flex items-center gap-2 transition">
+            <RotateCcw size={16} /> 恢复默认
+          </button>
+          <button onClick={handleSave} className="px-6 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2 shadow-lg transition">
+            <Save size={16} /> 保存
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default AIConfigModal;
