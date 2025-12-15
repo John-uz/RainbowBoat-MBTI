@@ -22,7 +22,6 @@ jobs:
           node-version: 20
           cache: 'npm'
 
-      # 使用 npm install 而不是 npm ci，这样即使你没有上传 package-lock.json 也能通过
       - name: Install Dependencies
         run: npm install
 

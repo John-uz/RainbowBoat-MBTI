@@ -8,9 +8,5 @@ export default defineConfig({
   base: './', // Ensures assets are loaded correctly on GitHub Pages
   build: {
     outDir: 'dist',
-  },
-  define: {
-    // Polyfill process.env for the geminiService check
-    'process.env': {}
   }
 });
