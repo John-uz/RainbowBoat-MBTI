@@ -211,8 +211,18 @@ const DEFAULT_REPORT_PROMPT = `
 }
 `.trim();
 
+// Safe Env Getter for Vite
+const getEnvVar = (key: string) => {
+  // @ts-ignore
+  if (typeof import.meta !== 'undefined' && import.meta.env) {
+    // @ts-ignore
+    return import.meta.env[key] || '';
+  }
+  return '';
+};
+
 const DEFAULT_CONFIG: AIConfig = {
-    geminiKey: typeof process !== 'undefined' && process.env ? process.env.API_KEY || '' : '',
+    geminiKey: getEnvVar('VITE_API_KEY') || '',
     openRouterKey: '',
     groqKey: '',
     
