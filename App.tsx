@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { GameMode, GameState, Player, JUNG_FUNCTIONS, MBTI_TYPES, MBTI_STACKS, BoardTile, getHexNeighbors, getGridNeighbors, BOT_NAMES, TASK_CATEGORIES_CONFIG, ScoreModifier, SpecialAbility, MBTI_GROUPS, MBTI_CHARACTERS } from './types';
 import Onboarding from './components/Onboarding';
@@ -315,6 +314,80 @@ function App() {
   }, [isDarkMode]);
 
   const toggleTheme = () => setIsDarkMode(!isDarkMode);
+
+  // --- BOT AUTOMATION LOGIC ---
+  useEffect(() => {
+    if (gameState.phase !== 'PLAYING') return;
+    
+    const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+    if (!currentPlayer || !currentPlayer.isBot) return;
+
+    let timeoutId: NodeJS.Timeout;
+
+    // 1. Start Turn (Roll Dice)
+    if (gameState.subPhase === 'IDLE' && gameState.movementState === 'IDLE' && gameState.remainingSteps === 0) {
+        timeoutId = setTimeout(() => handleStartTurn(), 1500);
+    }
+
+    // 2. Move Selection (After Roll)
+    if (gameState.movementState === 'IDLE' && gameState.remainingSteps > 0 && validMoves.length > 0) {
+        timeoutId = setTimeout(() => {
+            const randomMove = validMoves[Math.floor(Math.random() * validMoves.length)];
+            handleTileClick(randomMove);
+        }, 1500);
+    }
+
+    // 3. Select Task Category
+    if (gameState.subPhase === 'SELECTING_CARD') {
+        timeoutId = setTimeout(() => {
+            const categories: ('standard' | 'truth' | 'dare' | 'deep')[] = ['standard', 'truth', 'dare', 'deep'];
+            const randomCat = categories[Math.floor(Math.random() * categories.length)];
+            handleSelectCategory(randomCat);
+        }, 2000);
+    }
+
+    // 4. Perform Task (Wait and Finish)
+    if (gameState.subPhase === 'VIEWING_TASK') {
+        timeoutId = setTimeout(() => {
+             // Bots start task (without audio)
+             handleStartTask();
+             // Simulate performing task
+             setTimeout(() => {
+                 handleTaskDone();
+             }, 3000);
+        }, 2000);
+    }
+
+    // 5. Special Ability / Selection (Simple Random)
+    if (['SELECTING_SCORE_TARGET', 'SELECTING_SUBSTITUTE', 'SELECTING_COMPANION', 'CHOOSING_HELPER'].includes(gameState.subPhase)) {
+         timeoutId = setTimeout(() => {
+             const others = gameState.players.filter(p => p.id !== currentPlayer.id);
+             const randomTarget = others[Math.floor(Math.random() * others.length)];
+             if (randomTarget) {
+                 if (gameState.subPhase === 'SELECTING_SCORE_TARGET') handleScoreTargetSelect(randomTarget.id);
+                 else if (gameState.subPhase === 'SELECTING_SUBSTITUTE') handleSubstituteSelect(randomTarget.id);
+                 else if (gameState.subPhase === 'SELECTING_COMPANION') handleCompanionSelect(randomTarget.id);
+                 else if (gameState.subPhase === 'CHOOSING_HELPER') handleChooseHelper(randomTarget.id);
+             }
+         }, 2000);
+    }
+    
+    return () => clearTimeout(timeoutId);
+  }, [gameState.phase, gameState.subPhase, gameState.movementState, gameState.remainingSteps, gameState.currentPlayerIndex, validMoves]);
+
+  // Bot Reviewer Automation
+  useEffect(() => {
+      if (gameState.subPhase === 'PEER_REVIEW' && gameState.currentReviewerId) {
+          const reviewer = gameState.players.find(p => p.id === gameState.currentReviewerId);
+          if (reviewer && reviewer.isBot) {
+              const timer = setTimeout(() => {
+                  // Bot gives generous scores
+                  handlePeerScoreSubmit(Math.random() > 0.3 ? 5 : 4);
+              }, 1500);
+              return () => clearTimeout(timer);
+          }
+      }
+  }, [gameState.subPhase, gameState.currentReviewerId]);
 
   // --- LOGIC: NEXT STEP FINDER ---
   const calculateValidNextSteps = (player: Player, currentBoard: BoardTile[]): number[] => {
@@ -675,9 +748,11 @@ function App() {
   const handleStartTask = () => {
       if (!gameState.selectedTask) return;
       
-      // Start STT
+      const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+
+      // Start STT only if Human
       setCurrentSpeechText("");
-      if (isSpeechRecognitionSupported()) {
+      if (!currentPlayer.isBot && isSpeechRecognitionSupported()) {
           startSpeechRecognition(
               (text) => setCurrentSpeechText(prev => prev + " " + text),
               () => setIsListening(false)
@@ -702,7 +777,8 @@ function App() {
       const player = gameState.players[gameState.currentPlayerIndex];
       // Log task + speech
       const taskSummary = `任务: ${gameState.selectedTask?.title || '未知任务'}`;
-      const speechDetail = currentSpeechText.trim() ? `玩家发言: "${currentSpeechText.trim()}"` : "（玩家未检测到发言）";
+      const speechDetail = currentSpeechText.trim() ? `玩家发言: "${currentSpeechText.trim()}"` : (player.isBot ? "（Bot 操作）" : "（玩家未检测到发言）");
+      
       addLog(`${player.name} 完成了挑战。`, 'action', player.name, `${taskSummary}。${speechDetail}`);
       snapshotLog(`${player.name}完成[${gameState.selectedTask?.category}]挑战。${speechDetail}`);
 
@@ -1160,7 +1236,13 @@ function App() {
                                 ) : (
                                     <div className="flex flex-col items-center gap-4">
                                         <div className="flex items-center gap-2 text-teal-600 dark:text-teal-400">
-                                            {isListening && <span className="animate-pulse flex items-center gap-1 text-xs"><Mic size={14}/> 正在聆听你的精彩发言...</span>}
+                                            {isListening ? (
+                                                <span className="animate-pulse flex items-center gap-1 text-xs"><Mic size={14}/> 正在聆听你的精彩发言...</span>
+                                            ) : (
+                                                <span className="text-xs text-slate-400 flex items-center gap-1">
+                                                    {currentPlayer.isBot ? "🤖 Bot 正在执行任务..." : "等待操作..."}
+                                                </span>
+                                            )}
                                         </div>
                                         <div className="text-4xl font-mono font-bold text-teal-600 dark:text-teal-400">{taskTimer}s</div>
                                         <button onClick={handleTaskDone} className="w-full py-3 bg-green-600 hover:bg-green-500 rounded-xl font-bold text-white flex items-center justify-center gap-2"><CheckCircle size={18}/> 完成</button>
