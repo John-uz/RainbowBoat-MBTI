@@ -1,5 +1,5 @@
 
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { Player, TaskOption, GameMode, TASK_CATEGORIES_CONFIG, LogEntry, MBTI_CHARACTERS } from "../types";
 
 // --- AI CONFIGURATION INTERFACES ---
@@ -303,16 +303,19 @@ const callOpenRouter = async (system: string, user: string, jsonMode: boolean): 
 // 3. Gemini (Mini)
 const callGemini = async (system: string, user: string, jsonMode: boolean): Promise<string> => {
     if (!currentConfig.geminiKey) throw new Error("No Key");
-    const client = new GoogleGenAI({ apiKey: currentConfig.geminiKey });
-    const response = await client.models.generateContent({
+    const genAI = new GoogleGenerativeAI(currentConfig.geminiKey);
+    const model = genAI.getGenerativeModel({
         model: currentConfig.geminiModel,
-        contents: user,
-        config: {
-            systemInstruction: system,
+        systemInstruction: system
+    });
+
+    const result = await model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: user }] }],
+        generationConfig: {
             responseMimeType: jsonMode ? "application/json" : "text/plain"
         }
     });
-    return response.text || "{}";
+    return result.response.text() || "{}";
 };
 
 // 4. Pollinations (Little P) - Free, No Key
