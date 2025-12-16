@@ -9,7 +9,7 @@ export interface AIConfig {
     geminiKey: string;
     openRouterKey: string;
     groqKey: string;
-    
+
     // Model overrides (optional)
     geminiModel: string;
     openRouterModel: string;
@@ -29,12 +29,10 @@ export interface MBTIAnalysisResult {
 
 // --- SYSTEM ENVIRONMENT VARIABLES (Cloudflare/Vite Injection) ---
 const getEnvVar = (key: string) => {
-  // @ts-ignore
-  if (typeof import.meta !== 'undefined' && import.meta.env) {
-    // @ts-ignore
-    return import.meta.env[key] || '';
-  }
-  return '';
+    if (import.meta.env) {
+        return (import.meta.env[key] as string) || '';
+    }
+    return '';
 };
 
 // System Keys Injection
@@ -232,10 +230,10 @@ const DEFAULT_REPORT_PROMPT = `
 const DEFAULT_CONFIG: AIConfig = {
     // IMPORTANT: Default to empty string in state, so we don't save the system key to LocalStorage.
     // We will fallback to SYSTEM_GEMINI_KEY at runtime if this is empty.
-    geminiKey: '', 
+    geminiKey: '',
     openRouterKey: '',
     groqKey: '',
-    
+
     geminiModel: 'gemini-2.5-flash',
     openRouterModel: 'anthropic/claude-3-haiku',
     groqModel: 'llama3-70b-8192',
@@ -275,9 +273,9 @@ export const updateAIConfig = (newConfig: Partial<AIConfig>) => {
 const callGroq = async (system: string, user: string, jsonMode: boolean): Promise<string> => {
     // Check User Config FIRST, then System Env
     const effectiveKey = currentConfig.groqKey || SYSTEM_KEYS.groq;
-    
+
     if (!effectiveKey) throw new Error("Skipped: No Groq Key");
-    
+
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${effectiveKey}`, 'Content-Type': 'application/json' },
@@ -296,15 +294,15 @@ const callGroq = async (system: string, user: string, jsonMode: boolean): Promis
 const callOpenRouter = async (system: string, user: string, jsonMode: boolean): Promise<string> => {
     // Check User Config FIRST, then System Env
     const effectiveKey = currentConfig.openRouterKey || SYSTEM_KEYS.openRouter;
-    
+
     if (!effectiveKey) throw new Error("Skipped: No OpenRouter Key");
 
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
-        headers: { 
-            'Authorization': `Bearer ${effectiveKey}`, 
+        headers: {
+            'Authorization': `Bearer ${effectiveKey}`,
             'Content-Type': 'application/json',
-            'HTTP-Referer': window.location.href, 
+            'HTTP-Referer': window.location.href,
             'X-Title': 'PsychePoly'
         },
         body: JSON.stringify({
@@ -322,9 +320,9 @@ const callOpenRouter = async (system: string, user: string, jsonMode: boolean): 
 const callGemini = async (system: string, user: string, jsonMode: boolean): Promise<string> => {
     // RUNTIME FALLBACK: Use User's key, or fallback to System Env Key
     const effectiveKey = currentConfig.geminiKey || SYSTEM_KEYS.gemini;
-    
+
     if (!effectiveKey) throw new Error("Skipped: No Gemini Key");
-    
+
     const client = new GoogleGenAI({ apiKey: effectiveKey });
     const response = await client.models.generateContent({
         model: currentConfig.geminiModel,
@@ -393,7 +391,7 @@ const unifiedAICall = async (userPrompt: string, systemPromptOverride?: string):
 // --- HELPERS ---
 
 const buildGameContext = (players: Player[], historyLogs: LogEntry[]) => {
-    const playerContext = players.map(p => 
+    const playerContext = players.map(p =>
         `- ${p.name} (${p.mbti}): 信任(Trust)=${p.trustScore}, 觉察(Insight)=${p.insightScore}, 表现(Expr)=${p.expressionScore}`
     ).join('\n');
 
@@ -408,9 +406,9 @@ const buildGameContext = (players: Player[], historyLogs: LogEntry[]) => {
                 // If the details contain speech, we format it to stand out
                 // Example format from App.tsx: "任务: [Title]。玩家发言: [Text]"
                 if (l.taskDetails.includes('玩家发言')) {
-                     entry += `\n   └── 现场原声/任务背景: ${l.taskDetails}`;
+                    entry += `\n   └── 现场原声/任务背景: ${l.taskDetails}`;
                 } else {
-                     entry += ` (补充细节: ${l.taskDetails})`;
+                    entry += ` (补充细节: ${l.taskDetails})`;
                 }
             }
             return entry;
@@ -423,7 +421,7 @@ const buildGameContext = (players: Player[], historyLogs: LogEntry[]) => {
 // --- EXPORTED FEATURES ---
 
 export const analyzePersonality = async (answers: { q: string, val: number }[]): Promise<MBTIAnalysisResult[]> => {
-  const system = `
+    const system = `
     你是一位资深的 MBTI 人格分析师。
     任务：根据用户在 4 个场景中的倾向（0代表左边选项，100代表右边选项），推断最可能的 3 种 MBTI 类型。
     
@@ -442,43 +440,43 @@ export const analyzePersonality = async (answers: { q: string, val: number }[]):
       { "type": "ISTJ", "percentage": 40, "reason": "你在细节关注上也很突出。" }
     ]
   `.trim();
-  
-  const user = answers.map(a => `${a.q}: ${a.val}`).join('\n');
-  
-  try {
-      const res = await unifiedAICall(user, system);
-      const parsed = JSON.parse(res);
-      // Fallback validation
-      if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].type) {
-          return parsed;
-      }
-      throw new Error("Invalid format");
-  } catch (e) {
-      console.warn("Analysis fallback", e);
-      return [
-          { type: "ISFP", percentage: 70, reason: "系统连接不稳定，感受到你内心住着一个自由的艺术家。" },
-          { type: "INFP", percentage: 50, reason: "或者是一个治愈系的哲学家？" },
-          { type: "ESFP", percentage: 30, reason: "偶尔也想成为舞台焦点。" }
-      ];
-  }
+
+    const user = answers.map(a => `${a.q}: ${a.val}`).join('\n');
+
+    try {
+        const res = await unifiedAICall(user, system);
+        const parsed = JSON.parse(res);
+        // Fallback validation
+        if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].type) {
+            return parsed;
+        }
+        throw new Error("Invalid format");
+    } catch (e) {
+        console.warn("Analysis fallback", e);
+        return [
+            { type: "ISFP", percentage: 70, reason: "系统连接不稳定，感受到你内心住着一个自由的艺术家。" },
+            { type: "INFP", percentage: 50, reason: "或者是一个治愈系的哲学家？" },
+            { type: "ESFP", percentage: 30, reason: "偶尔也想成为舞台焦点。" }
+        ];
+    }
 };
 
 export const generateAllTaskOptions = async (
-    functionId: string, 
-    players: Player[], 
+    functionId: string,
+    players: Player[],
     currentPlayer: Player,
     historyLogs: LogEntry[] = []
 ): Promise<Record<string, TaskOption>> => {
     const context = buildGameContext(players, historyLogs);
-    
+
     // Inject Specific MBTI Profile Data for the Current Player
-    const playerProfile = MBTI_PROFILE_DATA[currentPlayer.mbti] 
+    const playerProfile = MBTI_PROFILE_DATA[currentPlayer.mbti]
         ? `\n[当前行动玩家 ${currentPlayer.mbti} 的深度画像 (参考此资料定制任务)]\n${MBTI_PROFILE_DATA[currentPlayer.mbti]}\n`
         : "";
 
     // Customize logic for MBTI 16 Characters
     let tileContext = `所处功能格: "${functionId}" (请结合荣格八维功能设计相关任务).`;
-    
+
     // Check if it's an MBTI Type
     const mbtiCharacter = MBTI_CHARACTERS[functionId];
     if (mbtiCharacter) {
@@ -513,7 +511,7 @@ export const generateAllTaskOptions = async (
         const text = await unifiedAICall(userPrompt); // Use default Persona
         const raw = JSON.parse(text);
         const result: Record<string, TaskOption> = {};
-        
+
         const categories = ['standard', 'truth', 'dare', 'deep'] as const;
         categories.forEach(cat => {
             const item = raw[cat] || {};
@@ -534,30 +532,30 @@ export const generateAllTaskOptions = async (
         // Fallback Logic
         const fallback: Record<string, TaskOption> = {};
         ['standard', 'truth', 'dare', 'deep'].forEach(cat => {
-             // @ts-ignore
-             const config = TASK_CATEGORIES_CONFIG[cat];
-             fallback[cat] = {
-                 // @ts-ignore
-                 category: cat,
-                 title: "静默模式",
-                 description: "暂无 AI 可被调用，请玩家自行决定一个挑战。",
-                 scoreType: "expression",
-                 durationSeconds: 60,
-                 multiplier: config.multiplier
-             };
+            // @ts-ignore
+            const config = TASK_CATEGORIES_CONFIG[cat];
+            fallback[cat] = {
+                // @ts-ignore
+                category: cat,
+                title: "静默模式",
+                description: "暂无 AI 可被调用，请玩家自行决定一个挑战。",
+                scoreType: "expression",
+                durationSeconds: 60,
+                multiplier: config.multiplier
+            };
         });
         return fallback;
     }
 };
 
 export const generateProfessionalReport = async (
-    players: Player[], 
+    players: Player[],
     snapshots: string[]
 ): Promise<{ groupAnalysis: string, playerAnalysis: Record<string, string> }> => {
-    
+
     const storyLog = snapshots.join('\n');
     const playersStr = players.map(p => `${p.name}(${p.mbti})`).join(', ');
-    
+
     // Inject Knowledge Base for ALL players present
     let profilesContext = "\n[玩家 MBTI 深度资料库]\n";
     players.forEach(p => {
@@ -568,7 +566,7 @@ export const generateProfessionalReport = async (
 
     // Support {placeholders} in config, fallback to append if not present
     let userPrompt = currentConfig.reportPromptTemplate;
-    
+
     const inputData = `
         [数据]
         玩家: ${playersStr}
