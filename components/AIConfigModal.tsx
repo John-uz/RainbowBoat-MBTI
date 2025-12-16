@@ -1,7 +1,7 @@
 
 import React, { useState, useRef } from 'react';
-import { X, Save, RotateCcw, Cpu, Key, MessageSquare, AlertTriangle, PlayCircle, Download, Upload } from 'lucide-react';
-import { getAIConfig, updateAIConfig, AIConfig } from '../services/geminiService';
+import { X, Save, RotateCcw, Cpu, Key, MessageSquare, AlertTriangle, PlayCircle, Download, Upload, ShieldCheck } from 'lucide-react';
+import { getAIConfig, updateAIConfig, AIConfig, SYSTEM_KEYS } from '../services/geminiService';
 
 interface Props {
   onClose: () => void;
@@ -15,7 +15,7 @@ const AIConfigModal: React.FC<Props> = ({ onClose }) => {
   const handleSave = () => {
     updateAIConfig(config);
     onClose();
-    alert("AI 配置链已更新！\n调用顺序: Groq -> OpenRouter -> Gemini -> Pollinations");
+    alert("AI 配置链已更新！\n优先顺序: Groq -> OpenRouter -> Gemini -> Pollinations");
   };
 
   const handleReset = () => {
@@ -65,6 +65,38 @@ const AIConfigModal: React.FC<Props> = ({ onClose }) => {
       if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  const renderKeyInput = (
+    label: string, 
+    colorClass: string, 
+    value: string, 
+    onChange: (val: string) => void, 
+    systemKeyAvailable: boolean,
+    modelValue: string,
+    onModelChange: (val: string) => void,
+    placeholderKey: string
+  ) => (
+      <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
+          <div className="flex justify-between items-center mb-2">
+              <label className={`text-xs font-bold ${colorClass} flex items-center gap-1`}>{label}</label>
+              <input type="text" value={modelValue} onChange={e => onModelChange(e.target.value)} className="bg-slate-900 border border-slate-700 rounded px-2 py-0.5 text-[10px] text-slate-400 w-32 text-right" placeholder="Model ID"/>
+          </div>
+          <div className="relative">
+            <input 
+              type="password" 
+              value={value} 
+              onChange={(e) => onChange(e.target.value)}
+              className={`w-full bg-slate-900 border rounded-lg px-3 py-2 text-sm text-white outline-none font-mono ${value ? 'border-slate-700' : (systemKeyAvailable ? 'border-teal-500/50' : 'border-slate-800')}`}
+              placeholder={systemKeyAvailable ? "已预装默认 Key (可直接使用，或输入覆盖)" : placeholderKey}
+            />
+            {!value && systemKeyAvailable && (
+                <div className="absolute right-3 top-2.5 flex items-center gap-1 text-[10px] text-teal-500 pointer-events-none">
+                    <ShieldCheck size={12}/> 系统托管
+                </div>
+            )}
+          </div>
+      </div>
+  );
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
       <div className="w-full max-w-2xl bg-slate-900 rounded-2xl border border-slate-700 shadow-2xl flex flex-col max-h-[90vh]">
@@ -103,49 +135,40 @@ const AIConfigModal: React.FC<Props> = ({ onClose }) => {
           {activeTab === 'keys' && (
               <div className="space-y-6">
                   {/* GROQ */}
-                  <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
-                      <div className="flex justify-between items-center mb-2">
-                          <label className="text-xs font-bold text-orange-400 flex items-center gap-1">1. Groq (小G) - 极速推荐</label>
-                          <input type="text" value={config.groqModel} onChange={e => setConfig({...config, groqModel: e.target.value})} className="bg-slate-900 border border-slate-700 rounded px-2 py-0.5 text-[10px] text-slate-400 w-32 text-right" placeholder="Model ID"/>
-                      </div>
-                      <input 
-                        type="password" 
-                        value={config.groqKey} 
-                        onChange={(e) => setConfig({...config, groqKey: e.target.value})}
-                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-orange-500 outline-none font-mono"
-                        placeholder="gsk_..."
-                      />
-                  </div>
+                  {renderKeyInput(
+                      "1. Groq (小G) - 极速推荐", 
+                      "text-orange-400", 
+                      config.groqKey, 
+                      (v) => setConfig({...config, groqKey: v}), 
+                      !!SYSTEM_KEYS.groq,
+                      config.groqModel,
+                      (v) => setConfig({...config, groqModel: v}),
+                      "gsk_..."
+                  )}
 
                   {/* OpenRouter */}
-                  <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
-                      <div className="flex justify-between items-center mb-2">
-                          <label className="text-xs font-bold text-blue-400 flex items-center gap-1">2. OpenRouter (小O) - 聚合兼容</label>
-                          <input type="text" value={config.openRouterModel} onChange={e => setConfig({...config, openRouterModel: e.target.value})} className="bg-slate-900 border border-slate-700 rounded px-2 py-0.5 text-[10px] text-slate-400 w-32 text-right"/>
-                      </div>
-                      <input 
-                        type="password" 
-                        value={config.openRouterKey} 
-                        onChange={(e) => setConfig({...config, openRouterKey: e.target.value})}
-                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500 outline-none font-mono"
-                        placeholder="sk-or-..."
-                      />
-                  </div>
+                  {renderKeyInput(
+                      "2. OpenRouter (小O) - 聚合兼容", 
+                      "text-blue-400", 
+                      config.openRouterKey, 
+                      (v) => setConfig({...config, openRouterKey: v}), 
+                      !!SYSTEM_KEYS.openRouter,
+                      config.openRouterModel,
+                      (v) => setConfig({...config, openRouterModel: v}),
+                      "sk-or-..."
+                  )}
 
                   {/* Gemini */}
-                  <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
-                      <div className="flex justify-between items-center mb-2">
-                          <label className="text-xs font-bold text-teal-400 flex items-center gap-1">3. Gemini (Mini) - 免费稳定</label>
-                          <input type="text" value={config.geminiModel} onChange={e => setConfig({...config, geminiModel: e.target.value})} className="bg-slate-900 border border-slate-700 rounded px-2 py-0.5 text-[10px] text-slate-400 w-32 text-right"/>
-                      </div>
-                      <input 
-                        type="password" 
-                        value={config.geminiKey} 
-                        onChange={(e) => setConfig({...config, geminiKey: e.target.value})}
-                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-teal-500 outline-none font-mono"
-                        placeholder="AIza..."
-                      />
-                  </div>
+                  {renderKeyInput(
+                      "3. Gemini (Mini) - 免费稳定", 
+                      "text-teal-400", 
+                      config.geminiKey, 
+                      (v) => setConfig({...config, geminiKey: v}), 
+                      !!SYSTEM_KEYS.gemini,
+                      config.geminiModel,
+                      (v) => setConfig({...config, geminiModel: v}),
+                      "AIza..."
+                  )}
 
                   <div className="bg-slate-800/50 p-3 rounded-lg flex items-center gap-3 text-xs text-slate-400">
                       <PlayCircle size={16} />

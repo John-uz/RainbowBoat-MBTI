@@ -5,7 +5,7 @@
 let recognition: any = null;
 
 export const isSpeechRecognitionSupported = () => {
-  return 'webkitSpeechRecognition' in (window as any) || 'SpeechRecognition' in (window as any);
+  return 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
 };
 
 export const startSpeechRecognition = (
@@ -14,7 +14,6 @@ export const startSpeechRecognition = (
 ) => {
   if (!isSpeechRecognitionSupported()) return null;
 
-  // Explicitly cast window to any to avoid TS build errors if types aren't fully shimmed
   const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
   recognition = new SpeechRecognition();
 

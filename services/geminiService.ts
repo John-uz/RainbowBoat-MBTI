@@ -27,6 +27,24 @@ export interface MBTIAnalysisResult {
     reason: string;
 }
 
+// --- SYSTEM ENVIRONMENT VARIABLES (Cloudflare/Vite Injection) ---
+const getEnvVar = (key: string) => {
+  // @ts-ignore
+  if (typeof import.meta !== 'undefined' && import.meta.env) {
+    // @ts-ignore
+    return import.meta.env[key] || '';
+  }
+  return '';
+};
+
+// System Keys Injection
+export const SYSTEM_KEYS = {
+    // Allow specific VITE_GEMINI_KEY, fallback to generic VITE_API_KEY
+    gemini: getEnvVar('VITE_GEMINI_KEY') || getEnvVar('VITE_API_KEY'),
+    groq: getEnvVar('VITE_GROQ_KEY'),
+    openRouter: getEnvVar('VITE_OPENROUTER_KEY')
+};
+
 // --- MBTI DEEP KNOWLEDGE BASE (Source: PDF) ---
 // extracted from provided documentation for deep context
 const MBTI_PROFILE_DATA: Record<string, string> = {
@@ -211,18 +229,10 @@ const DEFAULT_REPORT_PROMPT = `
 }
 `.trim();
 
-// Safe Env Getter for Vite
-const getEnvVar = (key: string) => {
-  // @ts-ignore
-  if (typeof import.meta !== 'undefined' && import.meta.env) {
-    // @ts-ignore
-    return import.meta.env[key] || '';
-  }
-  return '';
-};
-
 const DEFAULT_CONFIG: AIConfig = {
-    geminiKey: getEnvVar('VITE_API_KEY') || '',
+    // IMPORTANT: Default to empty string in state, so we don't save the system key to LocalStorage.
+    // We will fallback to SYSTEM_GEMINI_KEY at runtime if this is empty.
+    geminiKey: '', 
     openRouterKey: '',
     groqKey: '',
     
@@ -263,10 +273,14 @@ export const updateAIConfig = (newConfig: Partial<AIConfig>) => {
 
 // 1. Groq (Little G)
 const callGroq = async (system: string, user: string, jsonMode: boolean): Promise<string> => {
-    if (!currentConfig.groqKey) throw new Error("No Key");
+    // Check User Config FIRST, then System Env
+    const effectiveKey = currentConfig.groqKey || SYSTEM_KEYS.groq;
+    
+    if (!effectiveKey) throw new Error("Skipped: No Groq Key");
+    
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${currentConfig.groqKey}`, 'Content-Type': 'application/json' },
+        headers: { 'Authorization': `Bearer ${effectiveKey}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
             model: currentConfig.groqModel,
             messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
@@ -280,11 +294,15 @@ const callGroq = async (system: string, user: string, jsonMode: boolean): Promis
 
 // 2. OpenRouter (Little O)
 const callOpenRouter = async (system: string, user: string, jsonMode: boolean): Promise<string> => {
-    if (!currentConfig.openRouterKey) throw new Error("No Key");
+    // Check User Config FIRST, then System Env
+    const effectiveKey = currentConfig.openRouterKey || SYSTEM_KEYS.openRouter;
+    
+    if (!effectiveKey) throw new Error("Skipped: No OpenRouter Key");
+
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: { 
-            'Authorization': `Bearer ${currentConfig.openRouterKey}`, 
+            'Authorization': `Bearer ${effectiveKey}`, 
             'Content-Type': 'application/json',
             'HTTP-Referer': window.location.href, 
             'X-Title': 'PsychePoly'
@@ -302,8 +320,12 @@ const callOpenRouter = async (system: string, user: string, jsonMode: boolean): 
 
 // 3. Gemini (Mini)
 const callGemini = async (system: string, user: string, jsonMode: boolean): Promise<string> => {
-    if (!currentConfig.geminiKey) throw new Error("No Key");
-    const client = new GoogleGenAI({ apiKey: currentConfig.geminiKey });
+    // RUNTIME FALLBACK: Use User's key, or fallback to System Env Key
+    const effectiveKey = currentConfig.geminiKey || SYSTEM_KEYS.gemini;
+    
+    if (!effectiveKey) throw new Error("Skipped: No Gemini Key");
+    
+    const client = new GoogleGenAI({ apiKey: effectiveKey });
     const response = await client.models.generateContent({
         model: currentConfig.geminiModel,
         contents: user,
