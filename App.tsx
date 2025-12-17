@@ -46,53 +46,76 @@ const Dice3D: React.FC<{ value: number | null, rolling: boolean }> = ({ value, r
 };
 
 // Peer Scoring Modal
-// Mic Check Component
+// Mic Check Component - Concept: Ocean Wave Line
 const MicCheck: React.FC = () => {
     const [volume, setVolume] = useState(0);
     const [enabled, setEnabled] = useState(false);
 
     useEffect(() => {
-        let timer: NodeJS.Timeout;
         const start = () => {
             setEnabled(true);
-            // Re-use the existing utility but for testing loop
             startAudioMonitoring((vol) => setVolume(vol));
         };
         start();
-
         return () => {
             stopAudioMonitoring();
             setEnabled(false);
         };
     }, []);
 
-    const bars = 20;
+    // Generate path for wave
+    // We'll make a simple sine wave that amplifies with volume
+    // points: 0 to 100
+    const points = [];
+    for (let i = 0; i <= 100; i++) {
+        const x = i;
+        // Base wave + volume reaction
+        // If volume is high, amplitude is high.
+        // We add a time-based shift for animation if we had a rAF loop, but here we rely on React renders from volume updates mostly?
+        // Actually volume updates frequent enough to animate.
+        // Let's rely on CSS animation for the flow, and JS for amplitude.
+        // Since we can't easily sync JS loop with React render for smooth wave without canvas, 
+        // let's do a CSS-based wave that scales Y based on volume variable.
+    }
+
+    // New Approach: CSS Wave with dynamic scale-y
+    // We will place this BEHIND or AROUND the Title.
+    // The user asked for "Line traversing the page above Rainbow Boat title".
 
     return (
-        <div className="flex flex-col items-center gap-2 mt-4 p-4 bg-black/20 rounded-xl border border-white/5 backdrop-blur-sm">
-            <div className="text-sm text-slate-300 flex items-center gap-2 uppercase tracking-widest">
-                <Mic size={14} className={volume > 0.05 ? "text-green-400" : "text-slate-500"} />
-                {volume > 0.05 ? <span className="text-green-400 font-bold">麦克风正常</span> : "声音检测中..."}
-            </div>
-            <div className="flex items-end gap-[2px] h-8">
-                {Array.from({ length: bars }).map((_, i) => {
-                    // Logic to light up bars based on volume (0 to 1)
-                    // If volume is 0.5, then 50% of bars should be lit
-                    const threshold = i / bars; // 0, 0.05, 0.1 ...
-                    const isActive = volume > threshold;
-                    // Make middle bars taller
-                    const height = 10 + Math.sin((i / bars) * Math.PI) * 20;
+        <div className="absolute top-10 left-0 right-0 h-24 pointer-events-none flex items-center justify-center overflow-hidden opacity-50 z-0">
+            {/* Dynamic Wave Container */}
+            {/* We use multiple lines for a "Sound Wave" aesthetic */}
+            <div className="relative w-full max-w-2xl h-full flex items-center justify-center gap-1">
+                {Array.from({ length: 64 }).map((_, i) => {
+                    // Calculate a "natural" wave shape (sine window) so edges are small, center is big
+                    const x = i / 64; // 0 to 1
+                    const window = Math.sin(x * Math.PI); // 0 -> 1 -> 0
+
+                    // Reaction to volume:
+                    // The volume controls the overall height multiplier.
+                    // To make it look "alive" even when silence, we add a base height.
+                    // But user wants it to represent Sound Size.
+
+                    // To simulate "Wave" motion without complex JS, we can use CSS animation delays.
 
                     return (
                         <div
                             key={i}
-                            className={`w-1 rounded-t-sm transition-all duration-75 ${isActive ? 'bg-green-400 shadow-[0_0_5px_#4ade80]' : 'bg-slate-700/50'}`}
-                            style={{ height: `${height}px` }}
+                            className={`w-1 rounded-full transition-all duration-75 ${volume > 0.05 ? 'bg-teal-400 shadow-[0_0_10px_#2dd4bf]' : 'bg-slate-600/30'}`}
+                            style={{
+                                height: `${Math.max(4, (volume * 200 * window) + (Math.random() * 10 * window))}px`,
+                                // If we want it to look like a line, we might connect them, but bars are a safe style specifically for "Voice"
+                                // User asked for "Wave Line". Let's try to make it look like a connected thread?
+                                // Actually, thin bars very close together look like a digital wave.
+                            }}
                         />
-                    );
+                    )
                 })}
             </div>
-            <div className="text-[10px] text-slate-500">试着说句话、或是鼓个掌！</div>
+
+            {/* Status Indicator: Only show if NO signal for a long time? Or simpler: If signal, it glows. */}
+            {/* User said: "Don't need text saying Mic working". */}
         </div>
     );
 };
@@ -1109,22 +1132,12 @@ function App() {
                         “驶向海洋之心，领略生命之多彩”
                     </motion.p>
 
-                    <div className="w-full h-4 bg-slate-700 rounded-full overflow-hidden mb-12 shadow-inner border border-slate-600">
+                    {/* Mic Check Section - Now Integrated as Ambient Wave */}
+                    <MicCheck />
+
+                    <div className="w-full h-4 bg-slate-700 rounded-full overflow-hidden mb-12 shadow-inner border border-slate-600 relative z-20">
                         <motion.div className="h-full bg-gradient-to-r from-teal-400 to-blue-500 shadow-[0_0_15px_rgba(45,212,191,0.5)]" initial={{ width: 0 }} animate={{ width: `${loadingProgress}%` }} />
                     </div>
-
-                    {/* Tutorial Carousel */}
-                    <div className="h-24 flex items-center justify-center mb-8">
-                        <AnimatePresence mode='wait'>
-                            {loadingProgress < 30 && <motion.p key="1" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="text-3xl text-slate-100 font-medium">1. 登船：点击右下角按钮，激活罗盘</motion.p>}
-                            {loadingProgress >= 30 && loadingProgress < 60 && <motion.p key="2" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="text-3xl text-slate-100 font-medium">2. 航行：寻找你的“色彩坐标”，或者神秘的“？”</motion.p>}
-                            {loadingProgress >= 60 && loadingProgress < 90 && <motion.p key="3" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="text-3xl text-slate-100 font-medium">3. 共鸣：完成挑战，看见彩虹，获取能量</motion.p>}
-                            {loadingProgress >= 90 && <motion.p key="4" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="text-4xl text-teal-300 font-bold drop-shadow-md">航线已确认，准备启航</motion.p>}
-                        </AnimatePresence>
-                    </div>
-
-                    {/* Mic Check Section */}
-                    <MicCheck />
 
                     {showStartBtn && (
                         <motion.button
