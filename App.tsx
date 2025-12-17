@@ -1050,7 +1050,7 @@ function App() {
 
     const handleGameOver = async (finalPlayers: Player[]) => {
         setGameState(prev => ({ ...prev, players: finalPlayers, phase: 'ANALYSIS' }));
-        const report = await generateProfessionalReport(finalPlayers, gameState.snapshots);
+        const report = await generateProfessionalReport(finalPlayers, gameState.snapshots, gameState.logs);
         setReportData(report);
         if (audioRef.current) {
             audioRef.current.pause();

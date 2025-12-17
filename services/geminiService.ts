@@ -350,10 +350,34 @@ const callPollinations = async (system: string, user: string, jsonMode: boolean)
     return text;
 };
 
+/**
+ * 鲁棒的 JSON 提取器
+ * 即使 AI 在回复中包含了 Markdown 标签或废话，也能精准定位并提取 JSON 块
+ */
+const extractJSON = (text: string): string => {
+    try {
+        const firstBracket = text.indexOf('{');
+        const lastBracket = text.lastIndexOf('}');
+        if (firstBracket !== -1 && lastBracket !== -1 && lastBracket > firstBracket) {
+            return text.substring(firstBracket, lastBracket + 1);
+        }
+    } catch (e) {
+        console.warn("JSON extraction lookup failed", e);
+    }
+    return text.trim();
+};
+
 // --- MAIN FALLBACK CONTROLLER ---
 
 const unifiedAICall = async (userPrompt: string, systemPromptOverride?: string): Promise<string> => {
-    const system = systemPromptOverride || currentConfig.systemPersona;
+    let system = systemPromptOverride || currentConfig.systemPersona;
+
+    // 协议层优化：如果使用了 JSON 模式，但指令中没写 JSON，强制追加。
+    // 这能解决 Groq/OpenRouter 因 Prompt 不含 "json" 关键词而报 400 的致命问题。
+    if (!system.toLowerCase().includes("json")) {
+        system += "\n\nIMPORTANT: You MUST respond strictly in valid raw JSON format.";
+    }
+
     const errors: string[] = [];
 
     // Priority 1: Groq (小G)
@@ -394,32 +418,72 @@ const unifiedAICall = async (userPrompt: string, systemPromptOverride?: string):
 
 // --- HELPERS ---
 
-const buildGameContext = (players: Player[], historyLogs: LogEntry[]) => {
-    const playerContext = players.map(p =>
-        `- ${p.name} (${p.mbti}): 信任(Trust)=${p.trustScore}, 觉察(Insight)=${p.insightScore}, 表现(Expr)=${p.expressionScore}`
-    ).join('\n');
+// --- HELPERS (Blue Water Protocol Core) ---
 
-    // Enhanced log processing to better include task details and speech
-    // This allows the AI to "hear" what players said during tasks
-    const recentLogs = historyLogs
-        .filter(l => l.type !== 'system') // Filter out purely mechanic system logs to save tokens
-        .slice(-20) // Use last 20 significant actions
-        .map(l => {
-            let entry = `[${l.author || 'System'}]: ${l.text}`;
-            if (l.taskDetails) {
-                // If the details contain speech, we format it to stand out
-                // Example format from App.tsx: "任务: [Title]。玩家发言: [Text]"
-                if (l.taskDetails.includes('玩家发言')) {
-                    entry += `\n   └── 现场原声/任务背景: ${l.taskDetails}`;
-                } else {
-                    entry += ` (补充细节: ${l.taskDetails})`;
-                }
-            }
-            return entry;
-        })
+/**
+ * [矩阵编码] 将玩家数组转化为紧凑的 ID|Name|MBTI|T|I|E 格式
+ * 极大节省 Token 并提高 AI 的数值特征识别度
+ */
+const serializePlayers = (players: Player[]): string => {
+    return players.map(p =>
+        `${p.id}|${p.name}|${p.mbti}|${p.trustScore}|${p.insightScore}|${p.expressionScore}`
+    ).join('\n');
+};
+
+/**
+ * [知识去重注入] 仅提取当前场上存在的 MBTI 类型定义
+ */
+const getRelevantKnowledge = (players: Player[]): string => {
+    const uniqueTypes = Array.from(new Set(players.map(p => p.mbti)));
+    let context = "\n[核心人格动力学参考]\n";
+    uniqueTypes.forEach(type => {
+        if (MBTI_PROFILE_DATA[type]) {
+            // 仅提取关键特征，过滤冗余描述
+            context += `--- ${type} ---\n${MBTI_PROFILE_DATA[type].trim()}\n`;
+        }
+    });
+    return context;
+};
+
+/**
+ * [证据链聚合] 从原始日志中捞出 P0 级发言，并按玩家归类
+ */
+const aggregateEvidence = (players: Player[], historyLogs: LogEntry[]): string => {
+    const evidenceMap: Record<string, string[]> = {};
+    players.forEach(p => evidenceMap[p.id] = []);
+
+    // 筛选具有灵魂层证据意义的数据 (P0 层级)
+    // 逻辑已在下方健壮实现，此处仅作为协议占位
+
+    // 重新实现更健壮的归类逻辑
+    for (const log of historyLogs) {
+        if (!log.taskDetails || !log.taskDetails.includes("玩家发言:")) continue;
+
+        // 尝试匹配作者
+        const player = players.find(p => p.name === log.author);
+        if (player) {
+            const speech = log.taskDetails.split("玩家发言:")[1]?.trim();
+            if (speech) evidenceMap[player.id].push(speech);
+        }
+    }
+
+    return players.map(p => {
+        const quotes = evidenceMap[p.id].slice(-5); // 每个玩家取最近5次高光发言
+        return `[玩家 ${p.name}(${p.id}) 的言论证据]: ${quotes.length > 0 ? quotes.join('; ') : "暂无深度发言"}`;
+    }).join('\n');
+};
+
+const buildGameContext = (players: Player[], historyLogs: LogEntry[]) => {
+    const playerMatrix = serializePlayers(players);
+
+    // 生成任务时只看最近 15 条灵魂日志 (P0)
+    const soulLogs = historyLogs
+        .filter(l => l.taskDetails && l.taskDetails.includes("玩家发言:"))
+        .slice(-15)
+        .map(l => `[${l.author}]: ${l.taskDetails?.split("玩家发言:")[1]}`)
         .join('\n');
 
-    return `[当前玩家状态]\n${playerContext}\n\n[最近游戏记录(含玩家语音转录)]\n${recentLogs}`;
+    return `[玩家矩阵(ID|Name|MBTI|T|I|E)]\n${playerMatrix}\n\n[最近高光发言流水线]\n${soulLogs || "航行刚刚开始..."}`;
 };
 
 // --- EXPORTED FEATURES ---
@@ -449,7 +513,7 @@ export const analyzePersonality = async (answers: { q: string, val: number }[]):
 
     try {
         const res = await unifiedAICall(user, system);
-        const parsed = JSON.parse(res);
+        const parsed = JSON.parse(extractJSON(res));
         // Fallback validation
         if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].type) {
             return parsed;
@@ -507,13 +571,14 @@ export const generateAllTaskOptions = async (
         ${playerProfile}
         
         ${context}
+        ${getRelevantKnowledge([currentPlayer])}
 
         ${currentConfig.taskPromptTemplate}
     `;
 
     try {
         const text = await unifiedAICall(userPrompt); // Use default Persona
-        const raw = JSON.parse(text);
+        const raw = JSON.parse(extractJSON(text));
         const result: Record<string, TaskOption> = {};
 
         const categories = ['standard', 'truth', 'dare', 'deep'] as const;
@@ -554,74 +619,63 @@ export const generateAllTaskOptions = async (
 
 export const generateProfessionalReport = async (
     players: Player[],
-    snapshots: string[]
+    snapshots: string[],
+    historyLogs: LogEntry[] = [] // 注入原始日志以供聚合
 ): Promise<{ groupAnalysis: string, playerAnalysis: Record<string, string> }> => {
 
-    const storyLog = snapshots.join('\n');
-    // FIX: Include ID in the player string so AI knows what key to use
-    const playersStr = players.map(p => `Name:${p.name}, MBTI:${p.mbti}, ID:${p.id}`).join('; ');
+    const playerMatrix = serializePlayers(players);
+    const evidenceChain = aggregateEvidence(players, historyLogs);
+    const knowledgeBase = getRelevantKnowledge(players);
 
-    // Inject Knowledge Base for ALL players present
-    let profilesContext = "\n[玩家 MBTI 深度资料库]\n";
-    players.forEach(p => {
-        if (MBTI_PROFILE_DATA[p.mbti]) {
-            profilesContext += `--- ${p.name} (${p.mbti}) ---\n${MBTI_PROFILE_DATA[p.mbti]}\n`;
-        }
-    });
-
-    // Support {placeholders} in config, fallback to append if not present
     let userPrompt = currentConfig.reportPromptTemplate;
 
     const inputData = `
-        [数据]
-        玩家列表(包含ID): ${playersStr}
-        游戏高光日志: ${storyLog}
-        ${profilesContext}
+        [数据源: 蓝海协议矩阵]
+        玩家矩阵(ID|Name|MBTI|T|I|E):
+        ${playerMatrix}
+
+        [玩家言论证据链聚合]:
+        ${evidenceChain}
+
+        ${knowledgeBase}
     `;
 
+    // 组装最终提示词
     if (userPrompt.includes('{players_placeholder}')) {
         userPrompt = userPrompt
-            .replace('{players_placeholder}', playersStr)
-            .replace('{logs_placeholder}', storyLog + profilesContext); // Hack to inject profiles if template has placeholders
+            .replace('{players_placeholder}', playerMatrix)
+            .replace('{logs_placeholder}', evidenceChain + knowledgeBase);
     } else {
-        // Fallback for old templates
-        userPrompt = `
-            ${inputData}
-            ${userPrompt}
-        `;
+        userPrompt = `${inputData}\n\n[任务要求]\n${userPrompt}`;
     }
 
     try {
         const text = await unifiedAICall(userPrompt);
-        const parsed = JSON.parse(text);
+        const parsed = JSON.parse(extractJSON(text));
 
-        // Validation: Ensure all players have an analysis entry
         const finalPlayerAnalysis: Record<string, string> = {};
 
         players.forEach(p => {
-            // Check if key exists (case-sensitive or exact match)
             let analysis = parsed.playerAnalysis?.[p.id];
 
-            // If missing, try fallback logic (sometimes AI uses Name instead of ID)
             if (!analysis && parsed.playerAnalysis) {
-                // Try finding by name key just in case
                 const nameKey = Object.keys(parsed.playerAnalysis).find(k => k.includes(p.name));
                 if (nameKey) analysis = parsed.playerAnalysis[nameKey];
             }
 
-            // Final fallback if truly missing
-            finalPlayerAnalysis[p.id] = analysis || `（${p.name} 的数据信号似乎被时空乱流干扰了，AI 没能生成具体的报告... 但你的存在本身就是彩虹的一部分！）`;
+            finalPlayerAnalysis[p.id] = analysis || `（${p.name} 的数据信号在时空乱流中失焦了... 但请记住，你的每一次表达都是对自我的重新发现。）`;
         });
 
         return {
-            groupAnalysis: parsed.groupAnalysis || "彩虹船的航行虽然短暂，但此刻的连接是永恒的。",
+            groupAnalysis: parsed.groupAnalysis || "彩虹船的航行是一次心灵的交汇，愿此行照亮你的前路。",
             playerAnalysis: finalPlayerAnalysis
         };
 
     } catch (e) {
+        console.error("Report Generation Fail", e);
         return {
-            groupAnalysis: "游戏结束。由于网络原因，无法生成 AI 深度报告，但大家的表现依然精彩！",
-            playerAnalysis: Object.fromEntries(players.map(p => [p.id, "表现不错！"]))
+            groupAnalysis: "由于网络时空乱流，AI 深度报告生成中断。虽然文字暂时缺席，但你们在航行中建立的连接是真实且可贵的。",
+            playerAnalysis: Object.fromEntries(players.map(p => [p.id, "在这次旅程中表现出了独特的人格韧性！"]))
         };
     }
 };
