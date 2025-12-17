@@ -83,13 +83,13 @@ const MicCheck: React.FC = () => {
     // The user asked for "Line traversing the page above Rainbow Boat title".
 
     return (
-        <div className="absolute top-10 left-0 right-0 h-24 pointer-events-none flex items-center justify-center overflow-hidden opacity-50 z-0">
+        <div className="absolute top-0 left-0 right-0 h-40 pointer-events-none flex items-center justify-center overflow-hidden opacity-40 z-0">
             {/* Dynamic Wave Container */}
             {/* We use multiple lines for a "Sound Wave" aesthetic */}
-            <div className="relative w-full max-w-2xl h-full flex items-center justify-center gap-1">
-                {Array.from({ length: 64 }).map((_, i) => {
+            <div className="relative w-full h-full flex items-center justify-center gap-1.5 px-4">
+                {Array.from({ length: 96 }).map((_, i) => {
                     // Calculate a "natural" wave shape (sine window) so edges are small, center is big
-                    const x = i / 64; // 0 to 1
+                    const x = i / 96; // 0 to 1
                     const window = Math.sin(x * Math.PI); // 0 -> 1 -> 0
 
                     // Reaction to volume:
@@ -102,7 +102,7 @@ const MicCheck: React.FC = () => {
                     return (
                         <div
                             key={i}
-                            className={`w-1 rounded-full transition-all duration-75 ${volume > 0.05 ? 'bg-teal-400 shadow-[0_0_10px_#2dd4bf]' : 'bg-slate-600/30'}`}
+                            className={`w-1 rounded-full transition-all duration-75 ${volume > 0.05 ? 'bg-teal-400 shadow-[0_0_10px_#2dd4bf]' : 'bg-slate-500/20'}`}
                             style={{
                                 height: `${Math.max(4, (volume * 200 * window) + (Math.random() * 10 * window))}px`,
                                 // If we want it to look like a line, we might connect them, but bars are a safe style specifically for "Voice"
@@ -113,9 +113,6 @@ const MicCheck: React.FC = () => {
                     )
                 })}
             </div>
-
-            {/* Status Indicator: Only show if NO signal for a long time? Or simpler: If signal, it glows. */}
-            {/* User said: "Don't need text saying Mic working". */}
         </div>
     );
 };
@@ -439,8 +436,8 @@ function App() {
 
         // 1. Start Turn (Roll Dice)
         if (gameState.subPhase === 'IDLE' && gameState.movementState === 'IDLE' && gameState.remainingSteps === 0) {
-            // Bots should always roll automatically, human players only if manual mode is off
-            if (currentPlayer.isBot || !isManualMode) {
+            // Bots should always roll automatically. Humans must click, unless testing mode (removed for prod).
+            if (currentPlayer.isBot) {
                 timeoutId = setTimeout(() => handleStartTurn(), 1500);
             }
         }
@@ -675,7 +672,7 @@ function App() {
         setTimeout(() => {
             // Dice 1-6 for MBTI mode maybe better? Let's keep 1-8 but 33 tiles is small. 1-4?
             // Keeping 1-8 for now for fun chaos.
-            const roll = manualValue ? manualValue : (Math.floor(Math.random() * 6) + 1); // 1-6 for grid
+            const roll = manualValue ? manualValue : (Math.floor(Math.random() * 8) + 1); // 1-8 standard
 
             // Randomize sight range (1 or 2)
             const newSightRange = Math.random() > 0.5 ? 2 : 1;
@@ -1317,7 +1314,7 @@ function App() {
                                     <div className="mb-6 p-4 bg-slate-800/80 rounded-2xl border border-amber-500/30 backdrop-blur">
                                         <h3 className="text-amber-400 font-bold mb-3 text-sm uppercase tracking-wider">主持人控点</h3>
                                         <div className="flex gap-2 justify-center">
-                                            {[1, 2, 3, 4, 5, 6].map(n => (
+                                            {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
                                                 <button
                                                     key={n}
                                                     onClick={() => handleStartTurn(n)}

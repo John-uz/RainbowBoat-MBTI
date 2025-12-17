@@ -347,7 +347,7 @@ const GameReport: React.FC<Props> = ({ players, report, onReturnHome, startTime,
 
                 <div className="flex justify-center pt-8 gap-4">
                     <button onClick={downloadCyberArchive} className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 text-white px-6 py-3 rounded-full font-bold transition shadow-lg border border-slate-600">
-                        <Download size={20} /> 保存HTML
+                        <Download size={20} /> 赛博珍藏
                     </button>
                     <button onClick={() => setShowQR(true)} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-6 py-3 rounded-full font-bold transition shadow-lg border border-purple-400">
                         <QrCode size={20} /> 手机带走
