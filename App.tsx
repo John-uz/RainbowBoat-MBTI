@@ -542,16 +542,16 @@ function App() {
             return forwardNeighbors.map(t => t.index);
         }
 
-        // JUNG 8 Mode: Cognitive Stack Logic
+        // JUNG 8 Mode: Cognitive Stack Logic (Polling Mechanism)
         const stack = MBTI_STACKS[player.mbti] || [];
         let targetFunctionId = '?';
         let lookAheadIndex = player.stackIndex + 1;
 
+        // [顺延轮询机制]: 按照认知功能栈顺序，从下一个功能开始轮询周围是否有匹配的功能格
         for (let i = 0; i < stack.length; i++) {
             const checkIndex = (lookAheadIndex + i) % stack.length;
             const funcToCheck = stack[checkIndex];
-            const hasNeighbor = forwardNeighbors.some(t => t.functionId === funcToCheck);
-            if (hasNeighbor) {
+            if (forwardNeighbors.some(t => t.functionId === funcToCheck)) {
                 targetFunctionId = funcToCheck;
                 break;
             }
@@ -1480,9 +1480,24 @@ function App() {
                                                     </div>
                                                 ) : (
                                                     <>
-                                                        <div className="flex-1 w-full bg-slate-50 dark:bg-black/20 rounded-xl p-4 mb-4 border border-slate-200 dark:border-white/10 overflow-y-auto relative">
+                                                        <div className="flex-1 w-full bg-slate-50 dark:bg-black/20 rounded-xl p-4 mb-4 border border-slate-200 dark:border-white/10 overflow-y-auto relative min-h-[120px]">
+                                                            {/* Optimized Mini Camera Preview (Floating inside Textarea area) */}
+                                                            {isCameraActive && (
+                                                                <div className="absolute bottom-2 right-2 w-28 h-20 rounded-lg overflow-hidden border-2 border-teal-500 shadow-lg z-30 group">
+                                                                    <video
+                                                                        ref={videoRef}
+                                                                        autoPlay
+                                                                        playsInline
+                                                                        muted
+                                                                        className="w-full h-full object-cover"
+                                                                    />
+                                                                    <div className="absolute inset-0 bg-teal-500/10 pointer-events-none"></div>
+                                                                    <div className="absolute top-1 left-1 px-1 bg-teal-500 rounded text-[6px] text-white font-bold">LIVE</div>
+                                                                </div>
+                                                            )}
+
                                                             {isListening && (
-                                                                <div className="absolute top-4 right-4 flex items-center gap-2 text-red-500 animate-pulse font-bold text-sm">
+                                                                <div className="absolute top-4 right-4 flex items-center gap-2 text-red-500 animate-pulse font-bold text-sm z-20">
                                                                     <Mic size={16} /> 录音中...
                                                                 </div>
                                                             )}
@@ -1495,26 +1510,18 @@ function App() {
                                                             />
                                                         </div>
                                                         <div className="flex gap-4">
-                                                            <div className="flex-1 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center overflow-hidden relative border-2 border-teal-500/30">
-                                                                {/* Video Preview with better visibility */}
-                                                                <video
-                                                                    ref={videoRef}
-                                                                    autoPlay
-                                                                    playsInline
-                                                                    muted
-                                                                    className={`absolute inset-0 w-full h-full object-cover opacity-60 transition-opacity duration-700 ${isCameraActive ? 'block' : 'hidden'}`}
-                                                                />
+                                                            <div className="flex-1 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center overflow-hidden relative border-2 border-slate-200 dark:border-slate-700">
+                                                                {/* Hidden Backup Canvas */}
                                                                 <canvas ref={canvasRef} className="hidden" />
 
-                                                                {/* AI Sensing Badge */}
+                                                                {/* AI Sensing Badge (Simplified) */}
                                                                 {isCameraActive && (
-                                                                    <div className="absolute top-2 left-2 flex items-center gap-1.5 px-2 py-1 bg-teal-500/80 backdrop-blur-sm rounded-md text-[8px] text-white font-bold animate-pulse z-20">
-                                                                        <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
-                                                                        AI 智能观测中
+                                                                    <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 bg-teal-500/20 backdrop-blur-sm rounded text-[8px] text-teal-600 dark:text-teal-400 font-bold z-20">
+                                                                        AI 视觉已同步
                                                                     </div>
                                                                 )}
 
-                                                                <span className="text-4xl font-mono font-bold text-slate-800 dark:text-white relative z-10 drop-shadow-[0_2px_4px_rgba(255,255,255,0.8)] dark:drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">{taskTimer}s</span>
+                                                                <span className="text-4xl font-mono font-bold text-slate-800 dark:text-white relative z-10">{taskTimer}s</span>
                                                             </div>
                                                             <button
                                                                 onClick={() => handleTaskDone()} // Manual finish
