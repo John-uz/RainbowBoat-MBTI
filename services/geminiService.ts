@@ -220,12 +220,15 @@ const DEFAULT_REPORT_PROMPT = `
 [输出要求 - 关键!]
 返回纯 JSON 对象：
 {
-  "groupAnalysis": "150字左右的团体动力学分析。谁是那个‘粘合剂’(Fe)？谁是‘破局者’(Te/Ne)？大家整体氛围如何？",
+  "groupAnalysis": "150-200字的团体动力学分析。请使用\\n进行分段。包含：\\n- 整体氛围\\n- 互动亮点\\n- 谁是团宠/主导者",
   "playerAnalysis": {
-     "在此填入玩家ID": "针对该玩家的深度点评。结构：\n1. **高光时刻**：你在何时展现了[称号]的风采？\n2. **盲点觉察**：我注意到你在某时刻似乎陷入了[压力状态]...\n3. **彩虹寄语**：一句结合其 MBTI 类型的诗意或哲理建议。"
+     "在此填入玩家ID": "针对该玩家的深度点评。请务必包含以下段落（使用\\n换行）：\\n1. 🌟 **高光时刻**：[内容]\\n2. 💡 **盲点觉察**：[内容]\\n3. 🌈 **彩虹寄语**：[内容]"
   }
 }
-注意：playerAnalysis 的 Key 必须是输入数据中提供的 "ID" (例如 "user-0", "bot-1")，绝对不要使用名字。
+注意：
+1. **必须包含所有玩家 ID**作为 key，绝对不要遗漏任何一人 (包括 Bot)。
+2. 请在文本中使用 emoji 和 换行符(\\n) 来排版，使其在手机上阅读舒适。
+3. playerAnalysis 的 Key 必须严格匹配输入数据中的 "ID" (例如 "user-0", "bot-1")。
 `.trim();
 
 const DEFAULT_CONFIG: AIConfig = {
@@ -590,7 +593,31 @@ export const generateProfessionalReport = async (
 
     try {
         const text = await unifiedAICall(userPrompt);
-        return JSON.parse(text);
+        const parsed = JSON.parse(text);
+
+        // Validation: Ensure all players have an analysis entry
+        const finalPlayerAnalysis: Record<string, string> = {};
+
+        players.forEach(p => {
+            // Check if key exists (case-sensitive or exact match)
+            let analysis = parsed.playerAnalysis?.[p.id];
+
+            // If missing, try fallback logic (sometimes AI uses Name instead of ID)
+            if (!analysis && parsed.playerAnalysis) {
+                // Try finding by name key just in case
+                const nameKey = Object.keys(parsed.playerAnalysis).find(k => k.includes(p.name));
+                if (nameKey) analysis = parsed.playerAnalysis[nameKey];
+            }
+
+            // Final fallback if truly missing
+            finalPlayerAnalysis[p.id] = analysis || `（${p.name} 的数据信号似乎被时空乱流干扰了，AI 没能生成具体的报告... 但你的存在本身就是彩虹的一部分！）`;
+        });
+
+        return {
+            groupAnalysis: parsed.groupAnalysis || "彩虹船的航行虽然短暂，但此刻的连接是永恒的。",
+            playerAnalysis: finalPlayerAnalysis
+        };
+
     } catch (e) {
         return {
             groupAnalysis: "游戏结束。由于网络原因，无法生成 AI 深度报告，但大家的表现依然精彩！",

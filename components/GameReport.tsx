@@ -1,20 +1,22 @@
 
 import React, { useState } from 'react';
 import { Player, GameMode } from '../types';
-import { Trophy, Star, TrendingUp, User, Activity, Download, Home, Music, Heart, Lock, Unlock, ChevronDown, Award, HeartHandshake, Lightbulb, Sparkles, Brain, Zap } from 'lucide-react';
+import { Trophy, Star, TrendingUp, User, Activity, Download, Home, Music, Heart, Lock, Unlock, ChevronDown, Award, HeartHandshake, Lightbulb, Sparkles, Brain, Zap, QrCode } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { QRCodeCanvas } from 'qrcode.react';
+import LZString from 'lz-string';
 
 interface Props {
-  players: Player[];
-  report: { groupAnalysis: string, playerAnalysis: Record<string, string> };
-  onReturnHome: () => void;
-  startTime: number;
-  gameMode: GameMode;
+    players: Player[];
+    report: { groupAnalysis: string, playerAnalysis: Record<string, string> };
+    onReturnHome: () => void;
+    startTime: number;
+    gameMode: GameMode;
 }
 
 // Reusable Static Card Component for Awards
 // Optimized: Shorter height, Larger Avatar, Top-Left Icon, Larger Title
-const AwardCard: React.FC<{ 
+const AwardCard: React.FC<{
     title: string;
     icon: React.ReactNode;
     player: Player;
@@ -43,11 +45,11 @@ const AwardCard: React.FC<{
                     <div className="relative mb-3">
                         {/* Avatar Halo */}
                         <div className="absolute inset-0 bg-white/20 rounded-full blur-md transform scale-110 group-hover:scale-125 transition duration-700"></div>
-                        
+
                         {/* Larger Avatar */}
                         <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white/90 relative z-10 shadow-2xl bg-slate-200 dark:bg-slate-700">
                             {player.avatar.startsWith('data:') ? (
-                                <img src={player.avatar} className="w-full h-full object-cover"/> 
+                                <img src={player.avatar} className="w-full h-full object-cover" />
                             ) : (
                                 <div className="w-full h-full flex items-center justify-center font-bold text-4xl text-slate-500">{player.name[0]}</div>
                             )}
@@ -57,7 +59,7 @@ const AwardCard: React.FC<{
                             {player.mbti}
                         </div>
                     </div>
-                    
+
                     <div className="text-3xl font-bold text-white drop-shadow-md mt-2">{player.name}</div>
                 </div>
 
@@ -73,36 +75,41 @@ const AwardCard: React.FC<{
 };
 
 const GameReport: React.FC<Props> = ({ players, report, onReturnHome, startTime, gameMode }) => {
-  const [revealedSections, setRevealedSections] = useState<Record<string, boolean>>({
-      'awards': true, 
-      'group': false,
-      'winner': false
-  });
-  const [revealedPlayers, setRevealedPlayers] = useState<Record<string, boolean>>({});
+    const [revealedSections, setRevealedSections] = useState<Record<string, boolean>>({
+        'awards': true,
+        'group': false,
+        'winner': false
+    });
+    const [revealedPlayers, setRevealedPlayers] = useState<Record<string, boolean>>({});
+    const [showQR, setShowQR] = useState(false);
 
-  const sortedPlayers = [...players].sort((a, b) => 
-    (b.trustScore + b.insightScore + b.expressionScore) - (a.trustScore + a.insightScore + a.expressionScore)
-  );
+    const shareUrl = `${window.location.origin}${window.location.pathname}?share_data=${LZString.compressToEncodedURIComponent(
+        JSON.stringify({ players, report, startTime, gameMode })
+    )}`;
 
-  const winner = sortedPlayers[0];
-  const getWinner = (key: 'trustScore' | 'insightScore' | 'expressionScore') => 
-    [...players].sort((a, b) => b[key] - a[key])[0];
-  
-  const niceGuy = [...players].sort((a, b) => b.totalRatingGiven - a.totalRatingGiven)[0];
+    const sortedPlayers = [...players].sort((a, b) =>
+        (b.trustScore + b.insightScore + b.expressionScore) - (a.trustScore + a.insightScore + a.expressionScore)
+    );
 
-  const toggleSection = (key: string) => {
-      setRevealedSections(prev => ({ ...prev, [key]: !prev[key] }));
-  };
+    const winner = sortedPlayers[0];
+    const getWinner = (key: 'trustScore' | 'insightScore' | 'expressionScore') =>
+        [...players].sort((a, b) => b[key] - a[key])[0];
 
-  const togglePlayer = (id: string) => {
-      setRevealedPlayers(prev => ({ ...prev, [id]: !prev[id] }));
-  };
+    const niceGuy = [...players].sort((a, b) => b.totalRatingGiven - a.totalRatingGiven)[0];
 
-  const downloadCyberArchive = () => {
-      const dateStr = new Date(startTime).toLocaleString('zh-CN');
-      const duration = Math.floor((Date.now() - startTime) / 60000);
-      
-      const content = `
+    const toggleSection = (key: string) => {
+        setRevealedSections(prev => ({ ...prev, [key]: !prev[key] }));
+    };
+
+    const togglePlayer = (id: string) => {
+        setRevealedPlayers(prev => ({ ...prev, [id]: !prev[id] }));
+    };
+
+    const downloadCyberArchive = () => {
+        const dateStr = new Date(startTime).toLocaleString('zh-CN');
+        const duration = Math.floor((Date.now() - startTime) / 60000);
+
+        const content = `
         <!DOCTYPE html>
         <html lang="zh-CN">
         <head>
@@ -160,195 +167,213 @@ const GameReport: React.FC<Props> = ({ players, report, onReturnHome, startTime,
         </body>
         </html>
       `;
-      
-      const blob = new Blob([content], { type: 'text/html' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `彩虹船_航行档案_${new Date().toISOString().slice(0,10)}.html`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-  };
 
-  return (
-    <div className="h-full w-full overflow-y-auto p-8 bg-slate-50/80 dark:bg-slate-900/80 text-slate-800 dark:text-white custom-scrollbar transition-colors duration-300 backdrop-blur-sm">
-      <div className="max-w-6xl mx-auto space-y-8 pb-20">
-        
-        {/* Header */}
-        <div className="text-center space-y-2">
-          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="inline-block p-4 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full shadow-lg mb-4">
-            <Trophy size={48} className="text-white" />
-          </motion.div>
-          <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-[linear-gradient(to_right,#ef4444,#f97316,#eab308,#22c55e,#3b82f6,#a855f7)]">彩虹归港 · 顺利抵达</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-lg font-light tracking-wide">彩虹船 · 航行日志</p>
-        </div>
+        const blob = new Blob([content], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `彩虹船_航行档案_${new Date().toISOString().slice(0, 10)}.html`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
 
-        {/* Section: Awards Grid */}
-        <div className="space-y-6">
-            <div className="flex items-center gap-2 px-2">
-                <Award className="text-teal-600 dark:text-teal-400" />
-                <h2 className="text-2xl font-bold text-slate-800 dark:text-white">荣誉殿堂</h2>
-            </div>
-            
-            <AnimatePresence>
-            {revealedSections['awards'] && (
-                <motion.div initial={{opacity: 0}} animate={{opacity: 1}} exit={{opacity: 0}} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <AwardCard 
-                        title="最佳盟友奖" 
-                        icon={<HeartHandshake size={32} />} 
-                        player={getWinner('trustScore')}
-                        gradientClass="bg-gradient-to-br from-blue-400 to-blue-600"
-                        borderColorClass="border-blue-300"
-                        glowColor="#60a5fa"
-                        desc={`信任分: ${getWinner('trustScore').trustScore} - 能够让人卸下防备的温暖港湾。`}
-                    />
-                    <AwardCard 
-                        title="人间清醒奖" 
-                        icon={<Lightbulb size={32} />} 
-                        player={getWinner('insightScore')}
-                        gradientClass="bg-gradient-to-br from-purple-400 to-purple-600"
-                        borderColorClass="border-purple-300"
-                        glowColor="#a855f7"
-                        desc={`觉察分: ${getWinner('insightScore').insightScore} - 拥有穿透迷雾的深刻洞察力。`}
-                    />
-                    <AwardCard 
-                        title="戏精本精奖" 
-                        icon={<Sparkles size={32} />} 
-                        player={getWinner('expressionScore')}
-                        gradientClass="bg-gradient-to-br from-orange-400 to-red-500"
-                        borderColorClass="border-orange-300"
-                        glowColor="#f97316"
-                        desc={`表现分: ${getWinner('expressionScore').expressionScore} - 舞台光芒无法被掩盖的灵魂。`}
-                    />
-                    <AwardCard 
-                        title="温暖守护奖" 
-                        icon={<Heart size={32} />} 
-                        player={niceGuy}
-                        gradientClass="bg-gradient-to-br from-pink-400 to-rose-600"
-                        borderColorClass="border-pink-300"
-                        glowColor="#ec4899"
-                        desc={`慷慨给予: ${niceGuy.totalRatingGiven}星 - 总是对他人的闪光点不吝赞美。`}
-                    />
-                </motion.div>
-            )}
-            </AnimatePresence>
+    return (
+        <div className="h-full w-full overflow-y-auto p-8 bg-slate-50/80 dark:bg-slate-900/80 text-slate-800 dark:text-white custom-scrollbar transition-colors duration-300 backdrop-blur-sm">
+            <div className="max-w-6xl mx-auto space-y-8 pb-20">
 
-            {/* Grand Winner - Full Width Card */}
-            <div className="mt-12 flex justify-center">
-                <button onClick={() => toggleSection('winner')} className="relative group w-full max-w-3xl">
-                        <div className={`w-full p-1 rounded-3xl transition-all duration-500 transform hover:scale-[1.02] ${revealedSections['winner'] ? 'bg-gradient-to-r from-yellow-300 via-amber-400 to-yellow-300 animate-pulse' : 'bg-slate-200 dark:bg-slate-700'}`}>
-                            <div className={`w-full h-full p-8 rounded-[22px] border-2 flex flex-col items-center shadow-2xl relative overflow-hidden ${revealedSections['winner'] ? 'bg-slate-50 dark:bg-slate-900 border-transparent' : 'bg-slate-100 dark:bg-slate-800 border-dashed border-slate-300 dark:border-slate-600'}`}>
-                            
-                            {!revealedSections['winner'] ? (
-                                <div className="py-8 flex flex-col items-center text-slate-500 dark:text-slate-400">
-                                    <Lock size={48} className="mb-4 text-slate-400 dark:text-slate-500"/>
-                                    <span className="font-bold text-xl">点击揭晓：天选之子</span>
-                                </div>
-                            ) : (
-                                <motion.div initial={{scale: 0.9, opacity: 0}} animate={{scale: 1, opacity: 1}} className="relative z-10 flex flex-col md:flex-row items-center gap-10 w-full justify-center">
-                                    {/* Winner Glow */}
-                                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-yellow-500/20 rounded-full blur-3xl -z-10"></div>
-                                    
-                                    <div className="relative">
-                                        <div className="w-40 h-40 rounded-full overflow-hidden border-[6px] border-yellow-400 shadow-[0_0_30px_rgba(251,191,36,0.6)]">
-                                            {winner.avatar.startsWith('data:') ? <img src={winner.avatar} className="w-full h-full object-cover"/> : <div className="bg-slate-200 dark:bg-slate-700 w-full h-full flex items-center justify-center font-bold text-5xl">{winner.name[0]}</div>}
-                                        </div>
-                                        <div className="absolute -top-6 -right-6 text-7xl drop-shadow-lg filter animate-bounce">👑</div>
-                                    </div>
-                                    <div className="text-center md:text-left">
-                                        <div className="text-amber-500 dark:text-amber-400 font-black text-2xl mb-2 uppercase tracking-[0.2em]">天选之子</div>
-                                        <div className="text-5xl font-black text-slate-900 dark:text-white mb-4 drop-shadow-sm">{winner.name}</div>
-                                        
-                                        <div className="flex flex-wrap gap-4 justify-center md:justify-start">
-                                            <div className="bg-slate-100 dark:bg-slate-800 px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700">
-                                                <span className="text-lg font-bold text-slate-800 dark:text-white">{winner.mbti}</span>
-                                            </div>
-                                            <div className="bg-yellow-50 dark:bg-yellow-900/20 px-4 py-2 rounded-lg border border-yellow-200 dark:border-yellow-700">
-                                                <span className="text-sm text-yellow-600 dark:text-yellow-500 mr-2">总能量</span>
-                                                <span className="text-2xl font-black text-yellow-600 dark:text-yellow-400">{winner.trustScore + winner.insightScore + winner.expressionScore}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </motion.div>
-                            )}
-                            </div>
-                        </div>
-                </button>
-            </div>
-        </div>
-
-        {/* Section: Group Analysis */}
-        <div className="space-y-4 pt-8 border-t border-slate-200 dark:border-slate-700/50">
-             <button onClick={() => toggleSection('group')} className="w-full flex items-center justify-between p-6 bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 hover:border-teal-500 transition group">
-                <span className="font-bold text-xl flex items-center gap-3 text-teal-600 dark:text-teal-400 group-hover:scale-105 transition-transform"><Activity /> 群体画像</span>
-                {revealedSections['group'] ? <ChevronDown /> : <Lock size={18} className="text-slate-400"/>}
-            </button>
-            <AnimatePresence>
-                {revealedSections['group'] && (
-                    <motion.div initial={{opacity:0, height:0}} animate={{opacity:1, height:'auto'}} exit={{opacity:0, height:0}} className="overflow-hidden">
-                        <div className="text-slate-700 dark:text-slate-200 leading-relaxed text-lg bg-slate-50 dark:bg-slate-900/80 p-8 rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-inner">
-                            {report.groupAnalysis || "AI 正在疯狂计算你们的友谊..."}
-                        </div>
+                {/* Header */}
+                <div className="text-center space-y-2">
+                    <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="inline-block p-4 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full shadow-lg mb-4">
+                        <Trophy size={48} className="text-white" />
                     </motion.div>
+                    <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-[linear-gradient(to_right,#ef4444,#f97316,#eab308,#22c55e,#3b82f6,#a855f7)]">彩虹归港 · 顺利抵达</h1>
+                    <p className="text-slate-500 dark:text-slate-400 text-lg font-light tracking-wide">彩虹船 · 航行日志</p>
+                </div>
+
+                {/* Section: Awards Grid */}
+                <div className="space-y-6">
+                    <div className="flex items-center gap-2 px-2">
+                        <Award className="text-teal-600 dark:text-teal-400" />
+                        <h2 className="text-2xl font-bold text-slate-800 dark:text-white">荣誉殿堂</h2>
+                    </div>
+
+                    <AnimatePresence>
+                        {revealedSections['awards'] && (
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                                <AwardCard
+                                    title="最佳盟友奖"
+                                    icon={<HeartHandshake size={32} />}
+                                    player={getWinner('trustScore')}
+                                    gradientClass="bg-gradient-to-br from-blue-400 to-blue-600"
+                                    borderColorClass="border-blue-300"
+                                    glowColor="#60a5fa"
+                                    desc={`信任分: ${getWinner('trustScore').trustScore} - 能够让人卸下防备的温暖港湾。`}
+                                />
+                                <AwardCard
+                                    title="人间清醒奖"
+                                    icon={<Lightbulb size={32} />}
+                                    player={getWinner('insightScore')}
+                                    gradientClass="bg-gradient-to-br from-purple-400 to-purple-600"
+                                    borderColorClass="border-purple-300"
+                                    glowColor="#a855f7"
+                                    desc={`觉察分: ${getWinner('insightScore').insightScore} - 拥有穿透迷雾的深刻洞察力。`}
+                                />
+                                <AwardCard
+                                    title="戏精本精奖"
+                                    icon={<Sparkles size={32} />}
+                                    player={getWinner('expressionScore')}
+                                    gradientClass="bg-gradient-to-br from-orange-400 to-red-500"
+                                    borderColorClass="border-orange-300"
+                                    glowColor="#f97316"
+                                    desc={`表现分: ${getWinner('expressionScore').expressionScore} - 舞台光芒无法被掩盖的灵魂。`}
+                                />
+                                <AwardCard
+                                    title="温暖守护奖"
+                                    icon={<Heart size={32} />}
+                                    player={niceGuy}
+                                    gradientClass="bg-gradient-to-br from-pink-400 to-rose-600"
+                                    borderColorClass="border-pink-300"
+                                    glowColor="#ec4899"
+                                    desc={`慷慨给予: ${niceGuy.totalRatingGiven}星 - 总是对他人的闪光点不吝赞美。`}
+                                />
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    {/* Grand Winner - Full Width Card */}
+                    <div className="mt-12 flex justify-center">
+                        <button onClick={() => toggleSection('winner')} className="relative group w-full max-w-3xl">
+                            <div className={`w-full p-1 rounded-3xl transition-all duration-500 transform hover:scale-[1.02] ${revealedSections['winner'] ? 'bg-gradient-to-r from-yellow-300 via-amber-400 to-yellow-300 animate-pulse' : 'bg-slate-200 dark:bg-slate-700'}`}>
+                                <div className={`w-full h-full p-8 rounded-[22px] border-2 flex flex-col items-center shadow-2xl relative overflow-hidden ${revealedSections['winner'] ? 'bg-slate-50 dark:bg-slate-900 border-transparent' : 'bg-slate-100 dark:bg-slate-800 border-dashed border-slate-300 dark:border-slate-600'}`}>
+
+                                    {!revealedSections['winner'] ? (
+                                        <div className="py-8 flex flex-col items-center text-slate-500 dark:text-slate-400">
+                                            <Lock size={48} className="mb-4 text-slate-400 dark:text-slate-500" />
+                                            <span className="font-bold text-xl">点击揭晓：天选之子</span>
+                                        </div>
+                                    ) : (
+                                        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="relative z-10 flex flex-col md:flex-row items-center gap-10 w-full justify-center">
+                                            {/* Winner Glow */}
+                                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-yellow-500/20 rounded-full blur-3xl -z-10"></div>
+
+                                            <div className="relative">
+                                                <div className="w-40 h-40 rounded-full overflow-hidden border-[6px] border-yellow-400 shadow-[0_0_30px_rgba(251,191,36,0.6)]">
+                                                    {winner.avatar.startsWith('data:') ? <img src={winner.avatar} className="w-full h-full object-cover" /> : <div className="bg-slate-200 dark:bg-slate-700 w-full h-full flex items-center justify-center font-bold text-5xl">{winner.name[0]}</div>}
+                                                </div>
+                                                <div className="absolute -top-6 -right-6 text-7xl drop-shadow-lg filter animate-bounce">👑</div>
+                                            </div>
+                                            <div className="text-center md:text-left">
+                                                <div className="text-amber-500 dark:text-amber-400 font-black text-2xl mb-2 uppercase tracking-[0.2em]">天选之子</div>
+                                                <div className="text-5xl font-black text-slate-900 dark:text-white mb-4 drop-shadow-sm">{winner.name}</div>
+
+                                                <div className="flex flex-wrap gap-4 justify-center md:justify-start">
+                                                    <div className="bg-slate-100 dark:bg-slate-800 px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700">
+                                                        <span className="text-lg font-bold text-slate-800 dark:text-white">{winner.mbti}</span>
+                                                    </div>
+                                                    <div className="bg-yellow-50 dark:bg-yellow-900/20 px-4 py-2 rounded-lg border border-yellow-200 dark:border-yellow-700">
+                                                        <span className="text-sm text-yellow-600 dark:text-yellow-500 mr-2">总能量</span>
+                                                        <span className="text-2xl font-black text-yellow-600 dark:text-yellow-400">{winner.trustScore + winner.insightScore + winner.expressionScore}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                {/* Section: Group Analysis */}
+                <div className="space-y-4 pt-8 border-t border-slate-200 dark:border-slate-700/50">
+                    <button onClick={() => toggleSection('group')} className="w-full flex items-center justify-between p-6 bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 hover:border-teal-500 transition group">
+                        <span className="font-bold text-xl flex items-center gap-3 text-teal-600 dark:text-teal-400 group-hover:scale-105 transition-transform"><Activity /> 群体画像</span>
+                        {revealedSections['group'] ? <ChevronDown /> : <Lock size={18} className="text-slate-400" />}
+                    </button>
+                    <AnimatePresence>
+                        {revealedSections['group'] && (
+                            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                                <div className="text-slate-700 dark:text-slate-200 leading-relaxed text-lg bg-slate-50 dark:bg-slate-900/80 p-8 rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-inner whitespace-pre-wrap">
+                                    {report.groupAnalysis || "AI 正在疯狂计算你们的友谊..."}
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
+
+                {/* Section: Player Analysis */}
+                <div className="space-y-4 pt-4">
+                    <h2 className="text-xl font-bold flex items-center gap-2 text-blue-600 dark:text-blue-400 px-2"><User /> 船员深度档案 (点击查看)</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {sortedPlayers.map((p, i) => (
+                            <motion.div key={p.id} className={`bg-white dark:bg-slate-800/60 backdrop-blur rounded-xl border transition-all duration-300 ${revealedPlayers[p.id] ? 'border-teal-500 shadow-lg ring-1 ring-teal-500/20' : 'border-slate-200 dark:border-slate-700 hover:border-slate-400'}`}>
+                                <button onClick={() => togglePlayer(p.id)} className="w-full p-4 flex items-center gap-4 text-left">
+                                    <div className="w-14 h-14 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 shrink-0 shadow-sm">
+                                        {p.avatar.startsWith('data:') ? <img src={p.avatar} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center font-bold text-xl">{p.name[0]}</div>}
+                                    </div>
+                                    <div className="flex-1">
+                                        <div className="flex justify-between items-center mb-1">
+                                            <span className="font-bold text-lg text-slate-800 dark:text-white">{p.name}</span>
+                                            <span className="text-xs bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 px-2 py-1 rounded-full font-mono border border-slate-200 dark:border-slate-700">{p.mbti}</span>
+                                        </div>
+                                        <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                                            {!revealedPlayers[p.id] ? <><Lock size={12} /> 点击揭晓深度分析...</> : <><Unlock size={12} className="text-teal-500" /> 档案已解密</>}
+                                        </div>
+                                    </div>
+                                </button>
+
+                                <AnimatePresence>
+                                    {revealedPlayers[p.id] && (
+                                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden px-4 pb-4 border-t border-slate-100 dark:border-slate-700/50">
+                                            <div className="pt-4">
+                                                <p className="text-sm text-slate-700 dark:text-slate-300 italic mb-4 bg-slate-50 dark:bg-slate-900/30 p-4 rounded-lg border-l-4 border-teal-500 whitespace-pre-wrap leading-relaxed">
+                                                    "{report.playerAnalysis[p.id] || "AI 觉得你深不可测..."}"
+                                                </p>
+                                                <div className="flex gap-2 text-xs font-mono opacity-90">
+                                                    <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded">信任: {p.trustScore}</span>
+                                                    <span className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-2 py-1 rounded">觉察: {p.insightScore}</span>
+                                                    <span className="bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 px-2 py-1 rounded">表现: {p.expressionScore}</span>
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </motion.div>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="flex justify-center pt-8 gap-4">
+                    <button onClick={downloadCyberArchive} className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 text-white px-6 py-3 rounded-full font-bold transition shadow-lg border border-slate-600">
+                        <Download size={20} /> 保存HTML
+                    </button>
+                    <button onClick={() => setShowQR(true)} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-6 py-3 rounded-full font-bold transition shadow-lg border border-purple-400">
+                        <QrCode size={20} /> 手机带走
+                    </button>
+                    <button onClick={onReturnHome} className="flex items-center gap-2 bg-gradient-to-r from-teal-600 to-blue-600 hover:from-teal-500 hover:to-blue-500 text-white px-8 py-3 rounded-full font-bold transition shadow-lg transform hover:scale-105">
+                        <Home size={20} /> 返回主页
+                    </button>
+                </div>
+                {showQR && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setShowQR(false)}>
+                        <div className="bg-white p-6 rounded-2xl max-w-sm w-full text-center shadow-2xl animate-in fade-in zoom-in duration-300" onClick={e => e.stopPropagation()}>
+                            <h3 className="text-xl font-bold mb-4 text-slate-800 flex items-center justify-center gap-2"><QrCode className="text-purple-600" /> 赛博珍藏 · 扫码带走</h3>
+                            <div className="flex justify-center mb-4 p-4 bg-white rounded-xl border border-slate-200 shadow-inner">
+                                <QRCodeCanvas value={shareUrl} size={250} level={"L"} includeMargin={true} />
+                            </div>
+                            <p className="text-slate-500 text-sm mb-6 leading-relaxed">
+                                扫描二维码，在手机上永久保存这份独家记忆。<br />
+                                <span className="text-xs text-slate-400">(无需联网，数据就在码里)</span>
+                            </p>
+                            <button onClick={() => setShowQR(false)} className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition">关闭</button>
+                        </div>
+                    </div>
                 )}
-            </AnimatePresence>
+            </div>
         </div>
-
-        {/* Section: Player Analysis */}
-        <div className="space-y-4 pt-4">
-           <h2 className="text-xl font-bold flex items-center gap-2 text-blue-600 dark:text-blue-400 px-2"><User /> 船员深度档案 (点击查看)</h2>
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-               {sortedPlayers.map((p, i) => (
-                   <motion.div key={p.id} className={`bg-white dark:bg-slate-800/60 backdrop-blur rounded-xl border transition-all duration-300 ${revealedPlayers[p.id] ? 'border-teal-500 shadow-lg ring-1 ring-teal-500/20' : 'border-slate-200 dark:border-slate-700 hover:border-slate-400'}`}>
-                       <button onClick={() => togglePlayer(p.id)} className="w-full p-4 flex items-center gap-4 text-left">
-                           <div className="w-14 h-14 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 shrink-0 shadow-sm">
-                                {p.avatar.startsWith('data:') ? <img src={p.avatar} className="w-full h-full object-cover"/> : <div className="w-full h-full flex items-center justify-center font-bold text-xl">{p.name[0]}</div>}
-                            </div>
-                            <div className="flex-1">
-                                <div className="flex justify-between items-center mb-1">
-                                    <span className="font-bold text-lg text-slate-800 dark:text-white">{p.name}</span>
-                                    <span className="text-xs bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 px-2 py-1 rounded-full font-mono border border-slate-200 dark:border-slate-700">{p.mbti}</span>
-                                </div>
-                                <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                                    {!revealedPlayers[p.id] ? <><Lock size={12}/> 点击揭晓深度分析...</> : <><Unlock size={12} className="text-teal-500"/> 档案已解密</>}
-                                </div>
-                            </div>
-                       </button>
-                       
-                       <AnimatePresence>
-                           {revealedPlayers[p.id] && (
-                               <motion.div initial={{height: 0, opacity: 0}} animate={{height: 'auto', opacity: 1}} exit={{height: 0, opacity: 0}} className="overflow-hidden px-4 pb-4 border-t border-slate-100 dark:border-slate-700/50">
-                                   <div className="pt-4">
-                                       <p className="text-sm text-slate-700 dark:text-slate-300 italic mb-4 bg-slate-50 dark:bg-slate-900/30 p-4 rounded-lg border-l-4 border-teal-500">
-                                           "{report.playerAnalysis[p.id] || "AI 觉得你深不可测..."}"
-                                       </p>
-                                       <div className="flex gap-2 text-xs font-mono opacity-90">
-                                           <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded">信任: {p.trustScore}</span>
-                                           <span className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-2 py-1 rounded">觉察: {p.insightScore}</span>
-                                           <span className="bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 px-2 py-1 rounded">表现: {p.expressionScore}</span>
-                                       </div>
-                                   </div>
-                               </motion.div>
-                           )}
-                       </AnimatePresence>
-                   </motion.div>
-               ))}
-           </div>
-        </div>
-
-        <div className="flex justify-center pt-8 gap-4">
-            <button onClick={downloadCyberArchive} className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 text-white px-6 py-3 rounded-full font-bold transition shadow-lg border border-slate-600">
-                <Download size={20} /> 赛博珍藏
-            </button>
-            <button onClick={onReturnHome} className="flex items-center gap-2 bg-gradient-to-r from-teal-600 to-blue-600 hover:from-teal-500 hover:to-blue-500 text-white px-8 py-3 rounded-full font-bold transition shadow-lg transform hover:scale-105">
-                <Home size={20} /> 返回主页
-            </button>
-        </div>
-      </div>
-    </div>
-  );
+    );
 };
 
 export default GameReport;

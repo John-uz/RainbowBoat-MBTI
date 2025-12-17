@@ -6,9 +6,11 @@ import GameReport from './components/GameReport';
 import { generateAllTaskOptions, generateProfessionalReport } from './services/geminiService';
 import { speak } from './utils/tts';
 import { startSpeechRecognition, stopSpeechRecognition, isSpeechRecognitionSupported } from './utils/speechRecognition';
-import { Map as MapIcon, LogOut, Music, VideoOff, Dices, ChevronRight, ChevronLeft, BrainCircuit, Heart, Lightbulb, Mic, CircleHelp, X, Timer, CheckCircle, SkipForward, Users, RefreshCw, Star, Play, Power, Compass, Footprints, Loader, Zap, Repeat, Divide, Copy, Move, UserPlus, UsersRound, Settings, Flag, Radio, Sun, Moon } from 'lucide-react';
+import { Map as MapIcon, LogOut, Music, VideoOff, Dices, ChevronRight, ChevronLeft, BrainCircuit, Heart, Lightbulb, Mic, CircleHelp, X, Timer, CheckCircle, SkipForward, Users, RefreshCw, Star, Play, Power, Compass, Footprints, Loader, Zap, Repeat, Divide, Copy, Move, UserPlus, UsersRound, Settings, Flag, Radio, Sun, Moon, Volume2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AIConfigModal from './components/AIConfigModal';
+import LZString from 'lz-string';
+import { startAudioMonitoring, stopAudioMonitoring } from './utils/audioAnalyzer';
 
 const COLORS = [
     '#ef4444', '#f97316', '#eab308', '#84cc16', '#06b6d4', '#8b5cf6', '#d946ef', '#f43f5e', '#be123c', '#0f766e',
@@ -48,7 +50,8 @@ const PeerReviewModal: React.FC<{
     reviewer: Player;
     actor: Player;
     onSubmit: (score: number) => void;
-}> = ({ reviewer, actor, onSubmit }) => {
+    hasHighEnergyBonus: boolean;
+}> = ({ reviewer, actor, onSubmit, hasHighEnergyBonus }) => {
     const [rating, setRating] = useState(5);
 
     return (
@@ -61,6 +64,14 @@ const PeerReviewModal: React.FC<{
                 </div>
                 <h3 className="text-2xl font-bold text-white mb-2">评分环节</h3>
                 <p className="text-slate-400 mb-6"><strong>{reviewer.name}</strong>，请评价 <strong>{actor.name}</strong> 的表现</p>
+
+                {hasHighEnergyBonus && (
+                    <div className="mb-6 p-3 bg-red-500/20 border border-red-500/50 rounded-xl animate-pulse">
+                        <div className="flex items-center justify-center gap-2 text-red-500 font-bold">
+                            <Zap fill="currentColor" size={20} /> 全场沸腾！氛围加成已激活
+                        </div>
+                    </div>
+                )}
 
                 <div className="flex justify-center gap-2 mb-8">
                     {[1, 2, 3, 4, 5].map(star => (
@@ -268,6 +279,31 @@ function App() {
     // New State for Speech
     const [currentSpeechText, setCurrentSpeechText] = useState("");
     const [isListening, setIsListening] = useState(false);
+
+    // Share Data State
+    const [sharedReviewData, setSharedReviewData] = useState<any>(null);
+
+    // Audio Analysis State
+    const [micVolume, setMicVolume] = useState(0);
+    const [highEnergyBonus, setHighEnergyBonus] = useState(false);
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const data = params.get('share_data');
+        if (data) {
+            try {
+                // Determine if it was compressed or just encoded
+                // We will assume compressed for short URLs
+                const decompressed = LZString.decompressFromEncodedURIComponent(data);
+                if (decompressed) {
+                    const parsed = JSON.parse(decompressed);
+                    setSharedReviewData(parsed);
+                }
+            } catch (e) {
+                console.error("Failed to parse shared data", e);
+            }
+        }
+    }, []);
 
     const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -572,9 +608,14 @@ function App() {
                 movementState: 'IDLE',
                 activeSpecialAbility: 'NONE',
                 activeModifier: 'NORMAL',
+                activeSpecialAbility: 'NONE',
+                activeModifier: 'NORMAL',
                 helperId: null,
                 scoreTargetPlayerId: null
             }));
+
+            // Reset Bonus
+            setHighEnergyBonus(false);
 
             addLog(`${player.name} 掷出了 ${roll} 点 (视野: ${newSightRange}格)`, 'action');
         }, 1000);
@@ -752,12 +793,22 @@ function App() {
 
         // Start STT only if Human
         setCurrentSpeechText("");
+        setHighEnergyBonus(false);
+
         if (!currentPlayer.isBot && isSpeechRecognitionSupported()) {
             startSpeechRecognition(
                 (text) => setCurrentSpeechText(prev => prev + " " + text),
                 () => setIsListening(false)
             );
             setIsListening(true);
+
+            // Start Audio Monitoring
+            startAudioMonitoring((vol) => {
+                setMicVolume(vol);
+                if (vol > 0.4) {
+                    setHighEnergyBonus(true);
+                }
+            });
         }
 
         setGameState(prev => ({ ...prev, subPhase: 'TASK_EXECUTION' }));
@@ -768,14 +819,13 @@ function App() {
     };
 
     const handleTaskDone = () => {
-        // Stop STT
         if (isListening) {
             stopSpeechRecognition();
+            stopAudioMonitoring();
             setIsListening(false);
         }
 
         const player = gameState.players[gameState.currentPlayerIndex];
-        // Log task + speech
         const taskSummary = `任务: ${gameState.selectedTask?.title || '未知任务'}`;
         const speechDetail = currentSpeechText.trim() ? `玩家发言: "${currentSpeechText.trim()}"` : (player.isBot ? "（Bot 操作）" : "（玩家未检测到发言）");
 
@@ -790,7 +840,6 @@ function App() {
     const handlePeerScoreSubmit = (rating: number) => {
         const currentReviewerId = gameState.currentReviewerId;
 
-        // Update the reviewer's given score stats
         if (currentReviewerId) {
             setGameState(prev => {
                 const newPlayers = [...prev.players];
@@ -815,7 +864,6 @@ function App() {
             if (gameState.peerReviewQueue.length > 1) return;
         }
 
-        // Check Modifiers
         if (gameState.activeModifier === 'CLONE' || gameState.activeModifier === 'TRANSFER') {
             setGameState(prev => ({ ...prev, subPhase: 'SELECTING_SCORE_TARGET' }));
             return;
@@ -834,7 +882,7 @@ function App() {
         if (!task) return;
 
         const reviewerCount = Math.max(1, gameState.players.length - 1);
-        const totalRating = gameState.accumulatedRating;
+        const totalRating = gameState.accumulatedRating + lastRating;
         const avgRating = totalRating / reviewerCount;
 
         let basePoints = Math.ceil(avgRating * task.multiplier * 2);
@@ -844,16 +892,16 @@ function App() {
         if (mod === 'DOUBLE') basePoints *= 2;
         if (mod === 'HALF') basePoints = Math.floor(basePoints / 2);
 
+        if (highEnergyBonus) {
+            basePoints += 5;
+        }
+
         setGameState(prev => {
-            // Deep copy of players array to ensure React detects state change
-            // We must map and create NEW objects for the players we modify
             let newPlayers = prev.players.map(p => ({ ...p }));
-
             const currentPlayer = newPlayers[prev.currentPlayerIndex];
-            const modifier = gameState.activeModifier;
-            const ability = gameState.activeSpecialAbility;
+            const modifier = prev.activeModifier;
+            const ability = prev.activeSpecialAbility;
 
-            // Helper to apply score safely
             const applyScoreToPlayer = (targetPlayerId: string, points: number) => {
                 const targetIndex = newPlayers.findIndex(pl => pl.id === targetPlayerId);
                 if (targetIndex !== -1) {
@@ -864,10 +912,8 @@ function App() {
                 }
             };
 
-            // Logic
             if (ability === 'SUBSTITUTE' && prev.helperId) {
-                applyScoreToPlayer(prev.helperId, basePoints); // Helper gets full points
-                // Log is handled outside
+                applyScoreToPlayer(prev.helperId, basePoints);
             }
             else if (ability === 'COMPANION' && prev.helperId) {
                 applyScoreToPlayer(currentPlayer.id, basePoints);
@@ -880,7 +926,6 @@ function App() {
                 applyScoreToPlayer(prev.helperId, hPoints);
             }
             else {
-                // Standard / Transfer / Clone
                 if (modifier === 'TRANSFER' && prev.scoreTargetPlayerId) {
                     applyScoreToPlayer(prev.scoreTargetPlayerId, basePoints);
                 } else {
@@ -890,7 +935,6 @@ function App() {
                     }
                 }
             }
-
             return { ...prev, players: newPlayers };
         });
 
@@ -918,7 +962,8 @@ function App() {
                 remainingSteps: 0,
                 turn: nextIndex === 0 ? prev.turn + 1 : prev.turn,
                 currentReviewerId: null,
-                peerReviewQueue: []
+                peerReviewQueue: [],
+                accumulatedRating: 0
             };
         });
     };
@@ -927,6 +972,11 @@ function App() {
         setGameState(prev => ({ ...prev, players: finalPlayers, phase: 'ANALYSIS' }));
         const report = await generateProfessionalReport(finalPlayers, gameState.snapshots);
         setReportData(report);
+        if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.currentTime = 0;
+        }
+        setIsMusicPlaying(false);
     };
 
     const resetGame = () => {
@@ -964,6 +1014,8 @@ function App() {
         setBoard([]);
         setValidMoves([]);
         setReportData(null);
+        setSharedReviewData(null); // Clear shared data
+        stopMusic();
     };
 
     // --- RENDER ---
@@ -1022,7 +1074,22 @@ function App() {
         );
     }
 
-    if (gameState.phase === 'ANALYSIS') {
+    if (sharedReviewData) {
+        return (
+            <GameReport
+                players={sharedReviewData.players}
+                report={sharedReviewData.report}
+                startTime={sharedReviewData.startTime}
+                gameMode={sharedReviewData.gameMode}
+                onReturnHome={() => {
+                    window.history.pushState({}, '', window.location.pathname);
+                    setSharedReviewData(null);
+                }}
+            />
+        );
+    }
+
+    if (gameState.phase === 'ANALYSIS' && reportData) {
         return (
             <GameReport
                 players={gameState.players}
@@ -1261,9 +1328,29 @@ function App() {
 
                     <AnimatePresence>
                         {gameState.subPhase === 'PEER_REVIEW' && currentReviewer && (
-                            <PeerReviewModal reviewer={currentReviewer} actor={currentPlayer} onSubmit={handlePeerScoreSubmit} />
+                            <PeerReviewModal
+                                reviewer={currentReviewer}
+                                actor={currentPlayer}
+                                hasHighEnergyBonus={highEnergyBonus}
+                                onSubmit={handlePeerScoreSubmit}
+                            />
                         )}
-                    </AnimatePresence>
+
+                        {/* Mic Volume Meter (During Task) */}
+                        {gameState.subPhase === 'TASK_EXECUTION' && isListening && (
+                            <div className="absolute top-24 right-6 flex flex-col items-center gap-2">
+                                <div className="w-4 h-32 bg-slate-800 rounded-full overflow-hidden border border-slate-600 relative">
+                                    <div
+                                        className="absolute bottom-0 w-full transition-all duration-100 bg-gradient-to-t from-green-500 via-yellow-400 to-red-500"
+                                        style={{ height: `${Math.min(100, micVolume * 200)}%` }} // Boost visual
+                                    />
+                                    {/* Marker line for threshold */}
+                                    <div className="absolute bottom-[40%] w-full h-[2px] bg-white opacity-50"></div>
+                                </div>
+                                <Volume2 size={16} className={micVolume > 0.4 ? "text-red-500 animate-bounce" : "text-slate-500"} />
+                                {highEnergyBonus && <Zap size={16} className="text-yellow-400 fill-yellow-400 animate-pulse" />}
+                            </div>
+                        )}</AnimatePresence>
 
                     <AnimatePresence>
                         {(gameState.subPhase === 'SELECTING_SCORE_TARGET' || gameState.subPhase === 'SELECTING_SUBSTITUTE' || gameState.subPhase === 'SELECTING_COMPANION') && (
