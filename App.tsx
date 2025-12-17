@@ -10,7 +10,7 @@ import {
 } from "./services/geminiService";
 import { speak } from './utils/tts';
 import { startSpeechRecognition, stopSpeechRecognition, isSpeechRecognitionSupported } from './utils/speechRecognition';
-import { Map as MapIcon, LogOut, Music, VideoOff, Dices, ChevronRight, ChevronLeft, BrainCircuit, Heart, Lightbulb, Mic, CircleHelp, X, Timer, CheckCircle, SkipForward, Users, RefreshCw, Star, Play, Power, Compass, Footprints, Loader, Zap, Repeat, Divide, Copy, Move, UserPlus, UsersRound, Settings, Flag, Radio, Sun, Moon, Volume2 } from 'lucide-react';
+import { Map as MapIcon, LogOut, Music, VideoOff, Dices, ChevronRight, ChevronLeft, BrainCircuit, Heart, Lightbulb, Mic, CircleHelp, X, Timer, CheckCircle, SkipForward, Users, RefreshCw, Star, Play, Power, Compass, Footprints, Loader, Zap, Repeat, Divide, Copy, Move, UserPlus, UsersRound, Settings, Flag, Radio, Sun, Moon, Volume2, Eye } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AIConfigModal from './components/AIConfigModal';
 import LZString from 'lz-string';
@@ -948,6 +948,29 @@ function App() {
         return () => clearInterval(captureInterval);
     }, [gameState.subPhase, isCameraActive, cameraStream]);
 
+    // Ensure camera stream is attached when video element appears
+    useEffect(() => {
+        if (cameraStream && videoRef.current) {
+            videoRef.current.srcObject = cameraStream;
+        }
+    }, [cameraStream, gameState.subPhase]);
+
+    // Safety cleanup for camera when modal closes unexpectedly
+    useEffect(() => {
+        if (gameState.subPhase === 'IDLE' || gameState.subPhase === 'SELECTING_CARD') {
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                setCameraStream(null);
+                setIsCameraActive(false);
+            }
+            if (isListening) {
+                stopSpeechRecognition();
+                stopAudioMonitoring();
+                setIsListening(false);
+            }
+        }
+    }, [gameState.subPhase]);
+
     const handleTaskDone = () => {
         if (isListening) {
             stopSpeechRecognition();
@@ -1447,8 +1470,8 @@ function App() {
                     {/* Task Modal (Reused) */}
                     <AnimatePresence>
                         {(gameState.subPhase === 'VIEWING_TASK' || gameState.subPhase === 'TASK_EXECUTION') && (
-                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-md p-4">
-                                <div className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-md p-4">
+                                <div className={`w-full ${gameState.subPhase === 'TASK_EXECUTION' ? 'max-w-4xl' : 'max-w-xl'} bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden flex flex-col max-h-[90vh] transition-all duration-500`}>
                                     {!gameState.selectedTask ? (
                                         <div className="p-12 flex flex-col items-center justify-center space-y-4"><div className="w-16 h-16 rounded-full border-4 border-teal-500 border-t-transparent animate-spin"></div></div>
                                     ) : (
@@ -1462,75 +1485,89 @@ function App() {
                                                 </div>
                                                 <button onClick={() => setGameState(prev => ({ ...prev, subPhase: 'SELECTING_CARD' }))} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:text-white/50 dark:hover:text-white"><X size={20} /></button>
                                             </div>
-                                            <div className="p-8 flex-1 flex flex-col">
-                                                <p className="text-lg text-slate-600 dark:text-slate-300 leading-relaxed text-center mb-8 flex-1 flex items-center justify-center">{gameState.selectedTask.description}</p>
+                                            <div className="p-8 flex-1 flex flex-col min-h-0">
+                                                <p className="text-lg text-slate-600 dark:text-slate-300 leading-relaxed text-center mb-8 flex-shrink-0 flex items-center justify-center italic">
+                                                    {gameState.selectedTask.description}
+                                                </p>
+
                                                 {gameState.helperId && (<div className="mb-6 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-500/30 p-3 rounded-lg flex items-center gap-3 justify-center text-indigo-700 dark:text-indigo-200 text-sm"><Users size={16} /> <span>共振伙伴: <strong>{gameState.players.find(p => p.id === gameState.helperId)?.name}</strong></span></div>)}
+
                                                 {gameState.subPhase === 'VIEWING_TASK' ? (
                                                     <div className="space-y-3">
-                                                        {/* Humorous Reminder for Camera */}
                                                         <div className="px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 rounded-xl text-[10px] text-amber-700 dark:text-amber-300 italic text-center animate-pulse">
                                                             小贴士: 请面向镜头，让 AI 船长感受你的状态，这有助于生成更准确的深度分析。
                                                         </div>
-                                                        <button onClick={handleStartTask} className="w-full py-3.5 bg-gradient-to-r from-teal-600 to-blue-600 hover:brightness-110 rounded-xl font-bold text-white shadow-lg transition">开始挑战</button>
+                                                        <button onClick={handleStartTask} className="w-full py-3.5 bg-gradient-to-r from-teal-600 to-blue-600 hover:brightness-110 rounded-xl font-bold text-white shadow-lg transition text-lg">开始挑战</button>
                                                         <div className="flex gap-3">
-                                                            <button onClick={handleReselect} disabled={gameState.hasReselected} className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 disabled:opacity-50 rounded-xl text-slate-500 dark:text-slate-300 text-sm font-bold flex items-center justify-center gap-2"><RefreshCw size={14} /> 灵感重置</button>
-                                                            <button onClick={handleAskForHelp} className="flex-1 py-3 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/50 dark:hover:bg-indigo-900 rounded-xl text-indigo-600 dark:text-indigo-300 text-sm font-bold flex items-center justify-center gap-2 border border-indigo-200 dark:border-indigo-500/30"><Users size={14} /> 寻求连接 ({3 - gameState.sharedHelpUsedCount})</button>
-                                                            <button onClick={handleSkip} className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-slate-500 dark:text-slate-400 text-sm font-bold flex items-center justify-center gap-2"><SkipForward size={14} /> 跳过 (-{currentPlayer.skipUsedCount})</button>
+                                                            <button onClick={handleReselect} disabled={gameState.hasReselected} className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 disabled:opacity-50 rounded-xl text-slate-500 dark:text-slate-300 text-sm font-bold flex items-center justify-center gap-2 transition-all"><RefreshCw size={14} /> 灵感重置</button>
+                                                            <button onClick={handleAskForHelp} className="flex-1 py-3 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/50 dark:hover:bg-indigo-900 rounded-xl text-indigo-600 dark:text-indigo-300 text-sm font-bold flex items-center justify-center gap-2 border border-indigo-200 dark:border-indigo-500/30 transition-all"><Users size={14} /> 寻求连接 ({3 - gameState.sharedHelpUsedCount})</button>
+                                                            <button onClick={handleSkip} className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-slate-500 dark:text-slate-400 text-sm font-bold flex items-center justify-center gap-2 transition-all"><SkipForward size={14} /> 跳过 (-{currentPlayer.skipUsedCount})</button>
                                                         </div>
                                                     </div>
                                                 ) : (
-                                                    <>
-                                                        <div className="flex-1 w-full bg-slate-50 dark:bg-black/20 rounded-xl p-4 mb-4 border border-slate-200 dark:border-white/10 overflow-y-auto relative min-h-[120px]">
-                                                            {/* Optimized Mini Camera Preview (Floating inside Textarea area) */}
-                                                            {isCameraActive && (
-                                                                <div className="absolute bottom-2 right-2 w-28 h-20 rounded-lg overflow-hidden border-2 border-teal-500 shadow-lg z-30 group">
-                                                                    <video
-                                                                        ref={videoRef}
-                                                                        autoPlay
-                                                                        playsInline
-                                                                        muted
-                                                                        className="w-full h-full object-cover"
-                                                                    />
-                                                                    <div className="absolute inset-0 bg-teal-500/10 pointer-events-none"></div>
-                                                                    <div className="absolute top-1 left-1 px-1 bg-teal-500 rounded text-[6px] text-white font-bold">LIVE</div>
-                                                                </div>
-                                                            )}
-
-                                                            {isListening && (
-                                                                <div className="absolute top-4 right-4 flex items-center gap-2 text-red-500 animate-pulse font-bold text-sm z-20">
-                                                                    <Mic size={16} /> 录音中...
-                                                                </div>
-                                                            )}
-                                                            {/* STT Text Correction */}
-                                                            <textarea
-                                                                className="w-full h-full bg-transparent resize-none outline-none text-slate-600 dark:text-slate-300 text-lg leading-relaxed placeholder:text-slate-400/50"
-                                                                placeholder={isListening ? "正在聆听..." : "未检测到语音输入..."}
-                                                                value={currentSpeechText}
-                                                                onChange={(e) => setCurrentSpeechText(e.target.value)}
-                                                            />
-                                                        </div>
-                                                        <div className="flex gap-4">
-                                                            <div className="flex-1 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center overflow-hidden relative border-2 border-slate-200 dark:border-slate-700">
-                                                                {/* Hidden Backup Canvas */}
-                                                                <canvas ref={canvasRef} className="hidden" />
-
-                                                                {/* AI Sensing Badge (Simplified) */}
-                                                                {isCameraActive && (
-                                                                    <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 bg-teal-500/20 backdrop-blur-sm rounded text-[8px] text-teal-600 dark:text-teal-400 font-bold z-20">
-                                                                        AI 视觉已同步
+                                                    <div className="flex flex-1 overflow-hidden">
+                                                        {/* Left: Task & Input */}
+                                                        <div className="flex-1 p-0 flex flex-col border-r border-slate-100 dark:border-white/5 pr-4">
+                                                            <div className="flex-1 w-full bg-slate-50 dark:bg-black/20 rounded-2xl p-6 mb-6 border border-slate-200 dark:border-white/10 overflow-y-auto relative min-h-[200px]">
+                                                                {isListening && (
+                                                                    <div className="absolute top-4 right-4 flex items-center gap-2 text-red-500 animate-pulse font-bold text-sm z-20">
+                                                                        <Mic size={16} /> 录音中...
                                                                     </div>
                                                                 )}
-
-                                                                <span className="text-4xl font-mono font-bold text-slate-800 dark:text-white relative z-10">{taskTimer}s</span>
+                                                                <textarea
+                                                                    className="w-full h-full bg-transparent resize-none outline-none text-slate-700 dark:text-slate-200 text-xl leading-relaxed placeholder:text-slate-400 font-medium"
+                                                                    placeholder={isListening ? "正在将你的声音转化成灵魂语言..." : "请开始你的表达..."}
+                                                                    value={currentSpeechText}
+                                                                    onChange={(e) => setCurrentSpeechText(e.target.value)}
+                                                                />
                                                             </div>
-                                                            <button
-                                                                onClick={() => handleTaskDone()} // Manual finish
-                                                                className="flex-3 px-8 py-4 bg-teal-600 hover:bg-teal-500 text-white rounded-xl font-bold shadow-lg transition flex items-center gap-2"
-                                                            >
-                                                                <CheckCircle /> 完成挑战
-                                                            </button>
+
+                                                            <div className="flex gap-4">
+                                                                <div className="flex-1 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center overflow-hidden relative border-2 border-slate-200 dark:border-slate-700 h-20">
+                                                                    <canvas ref={canvasRef} className="hidden" />
+                                                                    <span className="text-5xl font-mono font-black text-slate-800 dark:text-white">{taskTimer}s</span>
+                                                                </div>
+                                                                <button
+                                                                    onClick={() => handleTaskDone()}
+                                                                    className="flex-[2] px-8 bg-teal-600 hover:bg-teal-500 text-white rounded-xl font-bold shadow-lg transition flex items-center justify-center gap-3 text-lg"
+                                                                >
+                                                                    <CheckCircle /> 提交表现
+                                                                </button>
+                                                            </div>
                                                         </div>
-                                                    </>
+
+                                                        {/* Right: Camera Feed (The "AI Observation Deck") */}
+                                                        {isCameraActive && (
+                                                            <div className="w-2/5 bg-slate-900 rounded-2xl flex flex-col relative group overflow-hidden">
+                                                                <video
+                                                                    ref={videoRef}
+                                                                    autoPlay
+                                                                    playsInline
+                                                                    muted
+                                                                    className="flex-1 w-full object-cover grayscale-[0.2] brightness-90 group-hover:grayscale-0 group-hover:brightness-100 transition-all duration-700"
+                                                                />
+
+                                                                {/* AI Scanning UI Overlay */}
+                                                                <div className="absolute top-4 left-4 right-4 flex justify-between items-start z-30">
+                                                                    <div className="px-2 py-1 bg-teal-500 text-white text-[10px] font-bold rounded flex items-center gap-1.5 backdrop-blur-md">
+                                                                        <div className="w-1.5 h-1.5 bg-white rounded-full animate-ping"></div>
+                                                                        AI 视觉同步中
+                                                                    </div>
+                                                                    <div className="w-8 h-8 rounded border-t-2 border-r-2 border-teal-400 opacity-60"></div>
+                                                                </div>
+                                                                <div className="absolute bottom-16 left-4 opacity-60">
+                                                                    <div className="w-8 h-8 rounded border-b-2 border-l-2 border-teal-400"></div>
+                                                                </div>
+
+                                                                <div className="p-4 bg-black/60 backdrop-blur-sm border-t border-white/10 text-[10px] text-slate-400 flex-shrink-0">
+                                                                    <div className="flex items-center gap-2 mb-1 text-teal-400 font-bold uppercase tracking-widest leading-none">
+                                                                        <Eye size={12} strokeWidth={3} /> Multimodal Sensor
+                                                                    </div>
+                                                                    正在捕获非语言信息及情感波动...
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 )}
                                             </div>
                                         </>

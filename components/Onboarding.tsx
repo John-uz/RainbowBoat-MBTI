@@ -52,31 +52,43 @@ const CaptainManualModal: React.FC<{ onClose: () => void }> = ({ onClose }) => (
                 </div>
                 <button onClick={onClose} className="text-slate-500 hover:text-slate-800 dark:hover:text-white transition"><X size={24} /></button>
             </div>
-            <div className="p-8 overflow-y-auto custom-scrollbar prose dark:prose-invert max-w-none text-slate-700 dark:text-slate-300">
-                <div className="bg-teal-50 dark:bg-teal-900/20 p-6 rounded-2xl border border-teal-100 dark:border-teal-800/50 mb-8">
-                    <h3 className="mt-0 text-teal-800 dark:text-teal-200">⚓ 尊敬的船长</h3>
-                    <p className="mb-0">作为《彩虹船》的现场主持人，你不仅是规则的维护者，更是“灵魂场域”的引导者。你的言语和节奏，将决定玩家能否在航行中实现深度的自我探索与同伴联结。</p>
+            <div className="p-8 overflow-y-auto custom-scrollbar prose dark:prose-invert max-w-none text-slate-700 dark:text-slate-300 space-y-8">
+                <div className="bg-teal-50 dark:bg-teal-900/20 p-6 rounded-2xl border border-teal-100 dark:border-teal-800/50">
+                    <h3 className="mt-0 text-teal-800 dark:text-teal-200 flex items-center gap-2">⚓ 尊敬的船长</h3>
+                    <p className="mb-0 text-sm leading-relaxed">
+                        你是这场航行的“灵魂领航员”。请利用本手册快速掌握主持技巧，确保每一位船员都能顺利抵达心灵深处。
+                    </p>
                 </div>
 
-                <h4 className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400"><Monitor size={20} /> 1. 环境营造 (Set the Scene)</h4>
-                <ul>
-                    <li><strong>视觉聚焦</strong>：建议将画面投射在大屏幕上。光线应柔和但充足，特别是玩家的面部，这有助于 **Blue Water 3.0** 视觉感知系统提取精准的神态诊断证据。</li>
-                    <li><strong>声音共振</strong>：开启背景音乐和语音播报。在安静或使用外接麦克风的环境下，AI 能更好地通过录音记录玩家的“灵魂对白”。</li>
-                </ul>
+                <div className="space-y-4">
+                    <h4 className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 mb-0"><Monitor size={20} /> 1. 开船前：硬件与配置</h4>
+                    <ul className="text-sm space-y-2">
+                        <li><strong>AI 智能检查</strong>：点击右上角 <Settings size={14} className="inline" /> 确保 API Key 已配置。如在海外建议用 Gemini/Groq，国内环境推荐 <strong>Zhipu (智谱)</strong>。</li>
+                        <li><strong>视觉对齐</strong>：调整屏幕或摄像头，确保挑战者的脸位于光线充足处。画面右侧的“观测舱”将捕捉非语言信息。</li>
+                        <li><strong>沉浸声场</strong>：建议连接音箱。系统会自动朗读任务及 AI 实时评语，仪式感是社交破冰的关键。</li>
+                    </ul>
+                </div>
 
-                <h4 className="flex items-center gap-2 text-amber-600 dark:text-amber-400"><Sparkles size={20} /> 2. 现场引导 (Live Hosting)</h4>
-                <ul>
-                    <li><strong>人格入场</strong>：鼓励玩家拍摄真实的自拍照，并协助新手解释他们的 MBTI 测试结果。强调“每一种人格都是上帝精心的杰作”。</li>
-                    <li><strong>共情式朗读</strong>：每当玩家抽中任务时，请以充满仪式感的语气朗读任务描述。当玩家遇到挑战卡壳时，温柔地鼓励他们“倾听内心的声音”。</li>
-                    <li><strong>互评环节</strong>：这是游戏的高光时刻。引导玩家不仅仅是打分，更鼓励他们分享：“刚才那个瞬间最触动我的是什么”。</li>
-                </ul>
+                <div className="space-y-4">
+                    <h4 className="flex items-center gap-2 text-amber-600 dark:text-amber-400 mb-0"><Sparkles size={20} /> 2. 航行中：核心规则提醒</h4>
+                    <ul className="text-sm space-y-2">
+                        <li><strong>认知功能轮询</strong>（荣格模式）：点击骰子后，系统会自动根据玩家功能栈轮询周围格子。如果没有当前功能，会自动顺延至下一个可用功能。</li>
+                        <li><strong>神秘格 (?)</strong>：踩中问号会触发随机特权或反转。作为船长，可以适时解释这是“命运的波动”。</li>
+                        <li><strong>共振伙伴</strong>：玩家遇到困难可请求他人协助，这会消耗全局共享的“连接次数”。鼓励大家在卡壳时“连线”队友。</li>
+                    </ul>
+                </div>
 
-                <h4 className="flex items-center gap-2 text-teal-600 dark:text-teal-400"><Settings size={20} /> 3. 运维秘籍 (Technical Tips)</h4>
-                <ul>
-                    <li><strong>AI 云端大脑</strong>：如果生成报告缓慢，点击右上角设置图标手动切换至 **Groq** (极速) 或 **Gemini** (全面)。</li>
-                    <li><strong>蓝海协议 3.0</strong>：请告知玩家，系统正在通过语音、视觉和评分实时编织一份“三维诊断日志”。这不仅是游戏，更是一次科学的自我发现。</li>
-                    <li><strong>赛博纪念</strong>：提醒玩家在结算页面扫码或下载纪念 HTML。扫码获取的专属报告是极佳的社交分享内容。</li>
-                </ul>
+                <div className="space-y-4">
+                    <h4 className="flex items-center gap-2 text-teal-600 dark:text-teal-400 mb-0"><Trophy size={20} /> 3. 终点站：报告与纪念</h4>
+                    <ul className="text-sm space-y-2">
+                        <li><strong>深度报告生成</strong>：点击“查看报告后”，AI 将汇总全程的语言、视觉和评分表现。生成的文字可以点击进行微调或再次呼叫 AI 润色。</li>
+                        <li><strong>专属扫码</strong>：在报告页面点击“手机查看”，会为每位玩家生成专属二维码。扫码后可直接在手机上保存带有人格属性的航行日志。</li>
+                    </ul>
+                </div>
+
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl text-[11px] text-slate-500 border border-slate-200 dark:border-slate-700 italic">
+                    💡 忘记规则了？随时点击右上角图标，航行中的规则逻辑会根据当前阶段智能更新。
+                </div>
             </div>
             <div className="p-5 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex justify-end">
                 <button onClick={onClose} className="px-6 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-lg font-bold">我已了解</button>
