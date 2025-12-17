@@ -3,7 +3,11 @@ import { GameMode, GameState, Player, JUNG_FUNCTIONS, MBTI_TYPES, MBTI_STACKS, B
 import Onboarding from './components/Onboarding';
 import GameBoard from './components/GameBoard';
 import GameReport from './components/GameReport';
-import { generateAllTaskOptions, generateProfessionalReport } from './services/geminiService';
+import {
+    generateAllTaskOptions,
+    generateProfessionalReport,
+    analyzeVisualAspect
+} from "./services/geminiService";
 import { speak } from './utils/tts';
 import { startSpeechRecognition, stopSpeechRecognition, isSpeechRecognitionSupported } from './utils/speechRecognition';
 import { Map as MapIcon, LogOut, Music, VideoOff, Dices, ChevronRight, ChevronLeft, BrainCircuit, Heart, Lightbulb, Mic, CircleHelp, X, Timer, CheckCircle, SkipForward, Users, RefreshCw, Star, Play, Power, Compass, Footprints, Loader, Zap, Repeat, Divide, Copy, Move, UserPlus, UsersRound, Settings, Flag, Radio, Sun, Moon, Volume2 } from 'lucide-react';
@@ -360,6 +364,13 @@ function App() {
 
     // Host Tools
     const [isManualMode, setIsManualMode] = useState(false);
+
+    // Multimodal Vision State
+    const videoRef = useRef<HTMLVideoElement | null>(null);
+    const canvasRef = useRef<HTMLCanvasElement | null>(null);
+    const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+    const [visualEvidence, setVisualEvidence] = useState<string[]>([]);
+    const [isCameraActive, setIsCameraActive] = useState(false);
 
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
@@ -866,7 +877,7 @@ function App() {
         setGameState(prev => ({ ...prev, helperId, sharedHelpUsedCount: prev.sharedHelpUsedCount + 1, subPhase: 'VIEWING_TASK' }));
     };
 
-    const handleStartTask = () => {
+    const handleStartTask = async () => {
         if (!gameState.selectedTask) return;
 
         const currentPlayer = gameState.players[gameState.currentPlayerIndex];
@@ -874,21 +885,35 @@ function App() {
         // Start STT only if Human
         setCurrentSpeechText("");
         setHighEnergyBonus(false);
+        setVisualEvidence([]); // Reset visual evidence for new task
 
-        if (!currentPlayer.isBot && isSpeechRecognitionSupported()) {
-            startSpeechRecognition(
-                (text) => setCurrentSpeechText(prev => prev + " " + text),
-                () => setIsListening(false)
-            );
-            setIsListening(true);
+        if (!currentPlayer.isBot) {
+            // Start Camera for Vision Analysis (Multimodal)
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 } });
+                setCameraStream(stream);
+                setIsCameraActive(true);
+                if (videoRef.current) videoRef.current.srcObject = stream;
+            } catch (e) {
+                console.warn("Camera access denied or unavailable", e);
+                setIsCameraActive(false);
+            }
 
-            // Start Audio Monitoring
-            startAudioMonitoring((vol) => {
-                setMicVolume(vol);
-                if (vol > 0.4) {
-                    setHighEnergyBonus(true);
-                }
-            });
+            if (isSpeechRecognitionSupported()) {
+                startSpeechRecognition(
+                    (text) => setCurrentSpeechText(prev => prev + " " + text),
+                    () => setIsListening(false)
+                );
+                setIsListening(true);
+
+                // Start Audio Monitoring
+                startAudioMonitoring((vol) => {
+                    setMicVolume(vol);
+                    if (vol > 0.4) {
+                        setHighEnergyBonus(true);
+                    }
+                });
+            }
         }
 
         setGameState(prev => ({ ...prev, subPhase: 'TASK_EXECUTION' }));
@@ -898,6 +923,31 @@ function App() {
         }, 1000);
     };
 
+    // Auto-capture keyframes for Vision Analysis
+    useEffect(() => {
+        if (gameState.subPhase !== 'TASK_EXECUTION' || !isCameraActive || !cameraStream) return;
+
+        const captureInterval = setInterval(async () => {
+            if (videoRef.current && canvasRef.current) {
+                const video = videoRef.current;
+                const canvas = canvasRef.current;
+                const context = canvas.getContext('2d');
+                if (context) {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    const base64 = canvas.toDataURL('image/jpeg', 0.6);
+
+                    // Call AI to translate visual to text evidence (Semantic Compression)
+                    const summary = await analyzeVisualAspect(base64, gameState.selectedTask?.title || "MBTI 互动");
+                    setVisualEvidence(prev => [...prev.slice(-2), summary]); // Keep last 3 visual snapshots
+                }
+            }
+        }, 15000); // Every 15 seconds
+
+        return () => clearInterval(captureInterval);
+    }, [gameState.subPhase, isCameraActive, cameraStream]);
+
     const handleTaskDone = () => {
         if (isListening) {
             stopSpeechRecognition();
@@ -905,12 +955,20 @@ function App() {
             setIsListening(false);
         }
 
+        // Stop Camera
+        if (cameraStream) {
+            cameraStream.getTracks().forEach(track => track.stop());
+            setCameraStream(null);
+            setIsCameraActive(false);
+        }
+
         const player = gameState.players[gameState.currentPlayerIndex];
         const taskSummary = `任务: ${gameState.selectedTask?.title || '未知任务'}`;
         const speechDetail = currentSpeechText.trim() ? `玩家发言: "${currentSpeechText.trim()}"` : (player.isBot ? "（Bot 操作）" : "（玩家未检测到发言）");
+        const visualDetail = visualEvidence.length > 0 ? `| 视觉观测: ${visualEvidence.join('; ')}` : "";
 
-        addLog(`${player.name} 完成了挑战。`, 'action', player.name, `${taskSummary}。${speechDetail}`);
-        snapshotLog(`${player.name}完成[${gameState.selectedTask?.category}]挑战。${speechDetail}`);
+        addLog(`${player.name} 完成了挑战。`, 'action', player.name, `${taskSummary}。${speechDetail} ${visualDetail}`);
+        snapshotLog(`${player.name}完成[${gameState.selectedTask?.category}]挑战。${speechDetail} ${visualDetail}`);
 
         const reviewers = gameState.players.filter(p => p.id !== gameState.players[gameState.currentPlayerIndex].id);
         if (reviewers.length === 0) { handlePeerScoreSubmit(5); return; }
@@ -1409,6 +1467,10 @@ function App() {
                                                 {gameState.helperId && (<div className="mb-6 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-500/30 p-3 rounded-lg flex items-center gap-3 justify-center text-indigo-700 dark:text-indigo-200 text-sm"><Users size={16} /> <span>共振伙伴: <strong>{gameState.players.find(p => p.id === gameState.helperId)?.name}</strong></span></div>)}
                                                 {gameState.subPhase === 'VIEWING_TASK' ? (
                                                     <div className="space-y-3">
+                                                        {/* Humorous Reminder for Camera */}
+                                                        <div className="px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 rounded-xl text-[10px] text-amber-700 dark:text-amber-300 italic text-center animate-pulse">
+                                                            小贴士: 请面向镜头，让 AI 船长感受你的状态，这有助于生成更准确的深度分析。
+                                                        </div>
                                                         <button onClick={handleStartTask} className="w-full py-3.5 bg-gradient-to-r from-teal-600 to-blue-600 hover:brightness-110 rounded-xl font-bold text-white shadow-lg transition">开始挑战</button>
                                                         <div className="flex gap-3">
                                                             <button onClick={handleReselect} disabled={gameState.hasReselected} className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 disabled:opacity-50 rounded-xl text-slate-500 dark:text-slate-300 text-sm font-bold flex items-center justify-center gap-2"><RefreshCw size={14} /> 灵感重置</button>
@@ -1433,8 +1495,11 @@ function App() {
                                                             />
                                                         </div>
                                                         <div className="flex gap-4">
-                                                            <div className="flex-1 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center">
-                                                                <span className="text-4xl font-mono font-bold text-slate-700 dark:text-slate-200">{taskTimer}s</span>
+                                                            <div className="flex-1 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center overflow-hidden relative">
+                                                                {/* Hidden Video for processing */}
+                                                                <video ref={videoRef} autoPlay playsInline muted className={`absolute inset-0 w-full h-full object-cover opacity-20 filter grayscale ${isCameraActive ? 'block' : 'hidden'}`} />
+                                                                <canvas ref={canvasRef} className="hidden" />
+                                                                <span className="text-4xl font-mono font-bold text-slate-700 dark:text-slate-200 relative z-10">{taskTimer}s</span>
                                                             </div>
                                                             <button
                                                                 onClick={() => handleTaskDone()} // Manual finish

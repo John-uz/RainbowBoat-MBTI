@@ -274,18 +274,21 @@ export const updateAIConfig = (newConfig: Partial<AIConfig>) => {
 // --- AI PROVIDER CALLERS ---
 
 // 1. Groq (Little G)
-const callGroq = async (system: string, user: string, jsonMode: boolean): Promise<string> => {
-    // Check User Config FIRST, then System Env
+const callGroq = async (system: string, user: string, jsonMode: boolean, imageData?: string): Promise<string> => {
     const effectiveKey = currentConfig.groqKey || SYSTEM_KEYS.groq;
-
     if (!effectiveKey) throw new Error("Skipped: No Groq Key");
+
+    const content: any[] = [{ type: "text", text: user }];
+    if (imageData) {
+        content.push({ type: "image_url", image_url: { url: imageData.startsWith('data:') ? imageData : `data:image/jpeg;base64,${imageData}` } });
+    }
 
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${effectiveKey}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
             model: currentConfig.groqModel,
-            messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
+            messages: [{ role: 'system', content: system }, { role: 'user', content: content }],
             response_format: jsonMode ? { type: "json_object" } : undefined
         })
     });
@@ -295,11 +298,14 @@ const callGroq = async (system: string, user: string, jsonMode: boolean): Promis
 };
 
 // 2. OpenRouter (Little O)
-const callOpenRouter = async (system: string, user: string, jsonMode: boolean): Promise<string> => {
-    // Check User Config FIRST, then System Env
+const callOpenRouter = async (system: string, user: string, jsonMode: boolean, imageData?: string): Promise<string> => {
     const effectiveKey = currentConfig.openRouterKey || SYSTEM_KEYS.openRouter;
-
     if (!effectiveKey) throw new Error("Skipped: No OpenRouter Key");
+
+    const content: any[] = [{ type: "text", text: user }];
+    if (imageData) {
+        content.push({ type: "image_url", image_url: { url: imageData.startsWith('data:') ? imageData : `data:image/jpeg;base64,${imageData}` } });
+    }
 
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
@@ -311,7 +317,7 @@ const callOpenRouter = async (system: string, user: string, jsonMode: boolean): 
         },
         body: JSON.stringify({
             model: currentConfig.openRouterModel,
-            messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
+            messages: [{ role: 'system', content: system }, { role: 'user', content: content }],
             response_format: jsonMode ? { type: "json_object" } : undefined
         })
     });
@@ -321,16 +327,31 @@ const callOpenRouter = async (system: string, user: string, jsonMode: boolean): 
 };
 
 // 3. Gemini (Mini)
-const callGemini = async (system: string, user: string, jsonMode: boolean): Promise<string> => {
-    // RUNTIME FALLBACK: Use User's key, or fallback to System Env Key
+const callGemini = async (system: string, user: string, jsonMode: boolean, imageData?: string): Promise<string> => {
     const effectiveKey = currentConfig.geminiKey || SYSTEM_KEYS.gemini;
-
     if (!effectiveKey) throw new Error("Skipped: No Gemini Key");
 
     const client = new GoogleGenAI({ apiKey: effectiveKey });
+
+    // Convert base64 image if exists
+    const imagePart = imageData ? {
+        inlineData: {
+            data: imageData.split(',')[1] || imageData,
+            mimeType: "image/jpeg"
+        }
+    } : null;
+
     const response = await client.models.generateContent({
         model: currentConfig.geminiModel,
-        contents: user,
+        contents: [
+            {
+                role: "user",
+                parts: [
+                    ...(imagePart ? [imagePart] : []),
+                    { text: user }
+                ]
+            }
+        ],
         config: {
             systemInstruction: system,
             responseMimeType: jsonMode ? "application/json" : "text/plain"
@@ -369,11 +390,9 @@ const extractJSON = (text: string): string => {
 
 // --- MAIN FALLBACK CONTROLLER ---
 
-const unifiedAICall = async (userPrompt: string, systemPromptOverride?: string): Promise<string> => {
+const unifiedAICall = async (userPrompt: string, systemPromptOverride?: string, imageData?: string): Promise<string> => {
     let system = systemPromptOverride || currentConfig.systemPersona;
 
-    // 协议层优化：如果使用了 JSON 模式，但指令中没写 JSON，强制追加。
-    // 这能解决 Groq/OpenRouter 因 Prompt 不含 "json" 关键词而报 400 的致命问题。
     if (!system.toLowerCase().includes("json")) {
         system += "\n\nIMPORTANT: You MUST respond strictly in valid raw JSON format.";
     }
@@ -382,24 +401,24 @@ const unifiedAICall = async (userPrompt: string, systemPromptOverride?: string):
 
     // Priority 1: Groq (小G)
     try {
-        console.log("Calling [小G] Groq...");
-        return await callGroq(system, userPrompt, true);
+        console.log(`Calling [小G] Groq${imageData ? ' (Vision)' : ''}...`);
+        return await callGroq(system, userPrompt, true, imageData);
     } catch (e) {
         errors.push(`Groq: ${(e as Error).message}`);
     }
 
     // Priority 2: OpenRouter (小O)
     try {
-        console.log("Calling [小O] OpenRouter...");
-        return await callOpenRouter(system, userPrompt, true);
+        console.log(`Calling [小O] OpenRouter${imageData ? ' (Vision)' : ''}...`);
+        return await callOpenRouter(system, userPrompt, true, imageData);
     } catch (e) {
         errors.push(`OpenRouter: ${(e as Error).message}`);
     }
 
     // Priority 3: Gemini (Mini)
     try {
-        console.log("Calling [Mini] Gemini...");
-        return await callGemini(system, userPrompt, true);
+        console.log(`Calling [Mini] Gemini${imageData ? ' (Vision)' : ''}...`);
+        return await callGemini(system, userPrompt, true, imageData);
     } catch (e) {
         errors.push(`Gemini: ${(e as Error).message}`);
     }
@@ -468,9 +487,26 @@ const aggregateEvidence = (players: Player[], historyLogs: LogEntry[]): string =
     }
 
     return players.map(p => {
-        const quotes = evidenceMap[p.id].slice(-5); // 每个玩家取最近5次高光发言
-        return `[玩家 ${p.name}(${p.id}) 的言论证据]: ${quotes.length > 0 ? quotes.join('; ') : "暂无深度发言"}`;
+        const quotes = evidenceMap[p.id].slice(-5);
+        return `[玩家 ${p.name}(${p.id})]: 证据链(${quotes.join('; ') || "无显著表现"})`;
     }).join('\n');
+};
+
+/**
+ * [视觉翻译官] 将 Base64 关键帧转化为文本描述
+ * 用于在不污染后续文本 Token 的前提下捕获神态证据
+ */
+export const analyzeVisualAspect = async (imageData: string, taskTitle: string): Promise<string> => {
+    const system = "你是一位资深的心理行为观察员。请观察图中执行任务的玩家，仅用 20 字以内描述其神态和肢体张力（例如：眼神坚定，手势较多，神情略显局促等）。不要包含开头和废话。";
+    const user = `玩家正在执行任务: ${taskTitle}`;
+
+    try {
+        // 调用 Vision 模型
+        const res = await unifiedAICall(user, system, imageData);
+        return res.trim() || "（未捕获明显神态特征）";
+    } catch (e) {
+        return "（视觉感知中断）";
+    }
 };
 
 const buildGameContext = (players: Player[], historyLogs: LogEntry[]) => {
