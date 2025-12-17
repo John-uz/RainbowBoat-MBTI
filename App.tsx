@@ -1495,11 +1495,26 @@ function App() {
                                                             />
                                                         </div>
                                                         <div className="flex gap-4">
-                                                            <div className="flex-1 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center overflow-hidden relative">
-                                                                {/* Hidden Video for processing */}
-                                                                <video ref={videoRef} autoPlay playsInline muted className={`absolute inset-0 w-full h-full object-cover opacity-20 filter grayscale ${isCameraActive ? 'block' : 'hidden'}`} />
+                                                            <div className="flex-1 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center overflow-hidden relative border-2 border-teal-500/30">
+                                                                {/* Video Preview with better visibility */}
+                                                                <video
+                                                                    ref={videoRef}
+                                                                    autoPlay
+                                                                    playsInline
+                                                                    muted
+                                                                    className={`absolute inset-0 w-full h-full object-cover opacity-60 transition-opacity duration-700 ${isCameraActive ? 'block' : 'hidden'}`}
+                                                                />
                                                                 <canvas ref={canvasRef} className="hidden" />
-                                                                <span className="text-4xl font-mono font-bold text-slate-700 dark:text-slate-200 relative z-10">{taskTimer}s</span>
+
+                                                                {/* AI Sensing Badge */}
+                                                                {isCameraActive && (
+                                                                    <div className="absolute top-2 left-2 flex items-center gap-1.5 px-2 py-1 bg-teal-500/80 backdrop-blur-sm rounded-md text-[8px] text-white font-bold animate-pulse z-20">
+                                                                        <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
+                                                                        AI 智能观测中
+                                                                    </div>
+                                                                )}
+
+                                                                <span className="text-4xl font-mono font-bold text-slate-800 dark:text-white relative z-10 drop-shadow-[0_2px_4px_rgba(255,255,255,0.8)] dark:drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">{taskTimer}s</span>
                                                             </div>
                                                             <button
                                                                 onClick={() => handleTaskDone()} // Manual finish
