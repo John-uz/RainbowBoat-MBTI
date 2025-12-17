@@ -46,6 +46,57 @@ const Dice3D: React.FC<{ value: number | null, rolling: boolean }> = ({ value, r
 };
 
 // Peer Scoring Modal
+// Mic Check Component
+const MicCheck: React.FC = () => {
+    const [volume, setVolume] = useState(0);
+    const [enabled, setEnabled] = useState(false);
+
+    useEffect(() => {
+        let timer: NodeJS.Timeout;
+        const start = () => {
+            setEnabled(true);
+            // Re-use the existing utility but for testing loop
+            startAudioMonitoring((vol) => setVolume(vol));
+        };
+        start();
+
+        return () => {
+            stopAudioMonitoring();
+            setEnabled(false);
+        };
+    }, []);
+
+    const bars = 20;
+
+    return (
+        <div className="flex flex-col items-center gap-2 mt-4 p-4 bg-black/20 rounded-xl border border-white/5 backdrop-blur-sm">
+            <div className="text-sm text-slate-300 flex items-center gap-2 uppercase tracking-widest">
+                <Mic size={14} className={volume > 0.05 ? "text-green-400" : "text-slate-500"} />
+                {volume > 0.05 ? <span className="text-green-400 font-bold">麦克风正常</span> : "声音检测中..."}
+            </div>
+            <div className="flex items-end gap-[2px] h-8">
+                {Array.from({ length: bars }).map((_, i) => {
+                    // Logic to light up bars based on volume (0 to 1)
+                    // If volume is 0.5, then 50% of bars should be lit
+                    const threshold = i / bars; // 0, 0.05, 0.1 ...
+                    const isActive = volume > threshold;
+                    // Make middle bars taller
+                    const height = 10 + Math.sin((i / bars) * Math.PI) * 20;
+
+                    return (
+                        <div
+                            key={i}
+                            className={`w-1 rounded-t-sm transition-all duration-75 ${isActive ? 'bg-green-400 shadow-[0_0_5px_#4ade80]' : 'bg-slate-700/50'}`}
+                            style={{ height: `${height}px` }}
+                        />
+                    );
+                })}
+            </div>
+            <div className="text-[10px] text-slate-500">试着说句话、或是鼓个掌！</div>
+        </div>
+    );
+};
+
 const PeerReviewModal: React.FC<{
     reviewer: Player;
     actor: Player;
@@ -287,6 +338,9 @@ function App() {
     const [micVolume, setMicVolume] = useState(0);
     const [highEnergyBonus, setHighEnergyBonus] = useState(false);
 
+    // Host Tools
+    const [isManualMode, setIsManualMode] = useState(false);
+
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         const data = params.get('share_data');
@@ -356,13 +410,16 @@ function App() {
         if (gameState.phase !== 'PLAYING') return;
 
         const currentPlayer = gameState.players[gameState.currentPlayerIndex];
-        if (!currentPlayer || !currentPlayer.isBot) return;
+        if (!currentPlayer || !currentPlayer.isBot && isManualMode) return; // If manual mode is on, human players don't auto-roll
 
         let timeoutId: NodeJS.Timeout;
 
         // 1. Start Turn (Roll Dice)
         if (gameState.subPhase === 'IDLE' && gameState.movementState === 'IDLE' && gameState.remainingSteps === 0) {
-            timeoutId = setTimeout(() => handleStartTurn(), 1500);
+            // Bots should always roll automatically, human players only if manual mode is off
+            if (currentPlayer.isBot || !isManualMode) {
+                timeoutId = setTimeout(() => handleStartTurn(), 1500);
+            }
         }
 
         // 2. Move Selection (After Roll)
@@ -409,7 +466,7 @@ function App() {
         }
 
         return () => clearTimeout(timeoutId);
-    }, [gameState.phase, gameState.subPhase, gameState.movementState, gameState.remainingSteps, gameState.currentPlayerIndex, validMoves]);
+    }, [gameState.phase, gameState.subPhase, gameState.movementState, gameState.remainingSteps, gameState.currentPlayerIndex, validMoves, isManualMode]);
 
     // Bot Reviewer Automation
     useEffect(() => {
@@ -587,7 +644,7 @@ function App() {
         }
     };
 
-    const handleStartTurn = () => {
+    const handleStartTurn = (manualValue?: number) => {
         const player = gameState.players[gameState.currentPlayerIndex];
 
         setGameState(prev => ({ ...prev, movementState: 'ROLLING' }));
@@ -595,7 +652,7 @@ function App() {
         setTimeout(() => {
             // Dice 1-6 for MBTI mode maybe better? Let's keep 1-8 but 33 tiles is small. 1-4?
             // Keeping 1-8 for now for fun chaos.
-            const roll = Math.floor(Math.random() * 6) + 1; // 1-6 for grid
+            const roll = manualValue ? manualValue : (Math.floor(Math.random() * 6) + 1); // 1-6 for grid
 
             // Randomize sight range (1 or 2)
             const newSightRange = Math.random() > 0.5 ? 2 : 1;
@@ -606,7 +663,6 @@ function App() {
                 remainingSteps: roll,
                 sightRange: newSightRange,
                 movementState: 'IDLE',
-                activeSpecialAbility: 'NONE',
                 activeModifier: 'NORMAL',
                 activeSpecialAbility: 'NONE',
                 activeModifier: 'NORMAL',
@@ -1035,38 +1091,41 @@ function App() {
         return (
             <div className="h-screen w-full flex flex-col items-center justify-center text-slate-800 dark:text-white relative overflow-hidden font-sans transition-colors duration-300">
                 {/* Background provided by body CSS */}
-                <div className="z-10 flex flex-col items-center w-full max-w-xl px-8 text-center bg-white/10 dark:bg-black/20 backdrop-blur-md rounded-3xl p-12 shadow-2xl border border-white/10">
+                <div className="z-10 flex flex-col items-center w-full max-w-4xl px-8 text-center bg-white/10 dark:bg-black/20 backdrop-blur-md rounded-3xl p-16 shadow-2xl border border-white/10">
                     <motion.h1
                         initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-                        className="text-6xl font-bold tracking-tight mb-2 text-transparent bg-clip-text bg-[linear-gradient(to_right,#ef4444,#f97316,#eab308,#22c55e,#3b82f6,#a855f7)] drop-shadow-lg"
+                        className="text-8xl font-bold tracking-tight mb-4 text-transparent bg-clip-text bg-[linear-gradient(to_right,#ef4444,#f97316,#eab308,#22c55e,#3b82f6,#a855f7)] drop-shadow-lg"
                     >
                         彩虹船
                     </motion.h1>
-                    <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="text-xl text-slate-200 mb-8 font-light italic">
+                    <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="text-3xl text-slate-200 mb-12 font-light italic">
                         “驶向海洋之心，领略生命之多彩”
                     </motion.p>
 
-                    <div className="w-full h-1 bg-slate-700 rounded-full overflow-hidden mb-8">
-                        <motion.div className="h-full bg-teal-400" initial={{ width: 0 }} animate={{ width: `${loadingProgress}%` }} />
+                    <div className="w-full h-4 bg-slate-700 rounded-full overflow-hidden mb-12 shadow-inner border border-slate-600">
+                        <motion.div className="h-full bg-gradient-to-r from-teal-400 to-blue-500 shadow-[0_0_15px_rgba(45,212,191,0.5)]" initial={{ width: 0 }} animate={{ width: `${loadingProgress}%` }} />
                     </div>
 
                     {/* Tutorial Carousel */}
-                    <div className="h-32 flex items-center justify-center">
+                    <div className="h-24 flex items-center justify-center mb-8">
                         <AnimatePresence mode='wait'>
-                            {loadingProgress < 30 && <motion.p key="1" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-xl text-slate-200">1. 登船：点击右下角按钮，激活罗盘</motion.p>}
-                            {loadingProgress >= 30 && loadingProgress < 60 && <motion.p key="2" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-xl text-slate-200">2. 航行：寻找你的“色彩坐标”，或者神秘的“？”</motion.p>}
-                            {loadingProgress >= 60 && loadingProgress < 90 && <motion.p key="3" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-xl text-slate-200">3. 共鸣：完成挑战，看见彩虹，获取能量</motion.p>}
-                            {loadingProgress >= 90 && <motion.p key="4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-xl text-teal-300 font-bold">航线已确认</motion.p>}
+                            {loadingProgress < 30 && <motion.p key="1" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="text-3xl text-slate-100 font-medium">1. 登船：点击右下角按钮，激活罗盘</motion.p>}
+                            {loadingProgress >= 30 && loadingProgress < 60 && <motion.p key="2" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="text-3xl text-slate-100 font-medium">2. 航行：寻找你的“色彩坐标”，或者神秘的“？”</motion.p>}
+                            {loadingProgress >= 60 && loadingProgress < 90 && <motion.p key="3" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="text-3xl text-slate-100 font-medium">3. 共鸣：完成挑战，看见彩虹，获取能量</motion.p>}
+                            {loadingProgress >= 90 && <motion.p key="4" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="text-4xl text-teal-300 font-bold drop-shadow-md">航线已确认，准备启航</motion.p>}
                         </AnimatePresence>
                     </div>
+
+                    {/* Mic Check Section */}
+                    <MicCheck />
 
                     {showStartBtn && (
                         <motion.button
                             initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
                             onClick={handleEnterGame}
-                            className="mt-4 px-12 py-4 bg-white text-slate-900 rounded-full font-bold text-xl shadow-[0_0_30px_rgba(20,184,166,0.5)] hover:scale-105 transition flex items-center gap-2"
+                            className="mt-8 px-16 py-6 bg-white text-slate-900 rounded-full font-bold text-3xl shadow-[0_0_40px_rgba(20,184,166,0.6)] hover:scale-105 hover:bg-teal-50 hover:text-teal-900 transition-all duration-300 flex items-center gap-3"
                         >
-                            <Play size={24} /> 启航
+                            <Play size={32} fill="currentColor" /> 启 航
                         </motion.button>
                     )}
                 </div>
@@ -1125,6 +1184,16 @@ function App() {
                             <div className="text-[10px] font-bold text-teal-600 dark:text-teal-400">{currentPlayer.mbti}</div>
                         </div>
                     </div>
+                </div>
+
+                <div className="flex items-center gap-4">
+                    <button
+                        onClick={() => setIsManualMode(!isManualMode)}
+                        className={`px-3 py-1 rounded-full text-xs font-bold border transition ${isManualMode ? 'bg-amber-500 text-white border-amber-600' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-300 dark:border-slate-700'}`}
+                        title="Enable Host Control (Manual Dice)"
+                    >
+                        {isManualMode ? "主持人模式: ON" : "主持人模式: OFF"}
+                    </button>
                 </div>
 
                 <div className="flex-1 flex justify-center">
@@ -1223,8 +1292,30 @@ function App() {
                     <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-20">
                         <div className="relative w-full h-full max-w-4xl max-h-[800px]">
                             <div className="absolute bottom-20 right-8 pointer-events-auto transition-all duration-300">
+                                {/* Host Manual Dice Input */}
+                                {isManualMode && gameState.subPhase === 'IDLE' && gameState.remainingSteps === 0 && (
+                                    <div className="mb-6 p-4 bg-slate-800/80 rounded-2xl border border-amber-500/30 backdrop-blur">
+                                        <h3 className="text-amber-400 font-bold mb-3 text-sm uppercase tracking-wider">主持人控点</h3>
+                                        <div className="flex gap-2 justify-center">
+                                            {[1, 2, 3, 4, 5, 6].map(n => (
+                                                <button
+                                                    key={n}
+                                                    onClick={() => handleStartTurn(n)}
+                                                    className="w-12 h-12 rounded-xl bg-slate-700 hover:bg-amber-500 text-white font-bold text-xl transition shadow-lg border border-slate-600"
+                                                >
+                                                    {n}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
                                 {gameState.subPhase === 'IDLE' && !currentPlayer.isBot && gameState.remainingSteps === 0 && (
-                                    <button onClick={handleStartTurn} disabled={gameState.movementState !== 'IDLE'} className="group relative w-24 h-24 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center shadow-2xl transition hover:scale-105 active:scale-95">
+                                    <button
+                                        onClick={() => handleStartTurn()}
+                                        disabled={isManualMode || gameState.movementState !== 'IDLE'} // Disable random roll if manual mode is on (host must click above, or disable mode)
+                                        className={`group relative w-24 h-24 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center shadow-2xl transition hover:scale-105 active:scale-95 ${isManualMode ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    >
                                         <div className="absolute inset-0 rounded-full border border-teal-500/30 animate-ping opacity-20"></div>
                                         <div className="flex flex-col items-center">
                                             <Compass className="text-teal-500 group-hover:text-teal-600 dark:group-hover:text-white transition mb-1" size={28} />
@@ -1304,19 +1395,33 @@ function App() {
                                                         </div>
                                                     </div>
                                                 ) : (
-                                                    <div className="flex flex-col items-center gap-4">
-                                                        <div className="flex items-center gap-2 text-teal-600 dark:text-teal-400">
-                                                            {isListening ? (
-                                                                <span className="animate-pulse flex items-center gap-1 text-xs"><Mic size={14} /> 正在聆听你的精彩发言...</span>
-                                                            ) : (
-                                                                <span className="text-xs text-slate-400 flex items-center gap-1">
-                                                                    {currentPlayer.isBot ? "🤖 Bot 正在执行任务..." : "等待操作..."}
-                                                                </span>
+                                                    <>
+                                                        <div className="flex-1 w-full bg-slate-50 dark:bg-black/20 rounded-xl p-4 mb-4 border border-slate-200 dark:border-white/10 overflow-y-auto relative">
+                                                            {isListening && (
+                                                                <div className="absolute top-4 right-4 flex items-center gap-2 text-red-500 animate-pulse font-bold text-sm">
+                                                                    <Mic size={16} /> 录音中...
+                                                                </div>
                                                             )}
+                                                            {/* STT Text Correction */}
+                                                            <textarea
+                                                                className="w-full h-full bg-transparent resize-none outline-none text-slate-600 dark:text-slate-300 text-lg leading-relaxed placeholder:text-slate-400/50"
+                                                                placeholder={isListening ? "正在聆听..." : "未检测到语音输入..."}
+                                                                value={currentSpeechText}
+                                                                onChange={(e) => setCurrentSpeechText(e.target.value)}
+                                                            />
                                                         </div>
-                                                        <div className="text-4xl font-mono font-bold text-teal-600 dark:text-teal-400">{taskTimer}s</div>
-                                                        <button onClick={handleTaskDone} className="w-full py-3 bg-green-600 hover:bg-green-500 rounded-xl font-bold text-white flex items-center justify-center gap-2"><CheckCircle size={18} /> 完成</button>
-                                                    </div>
+                                                        <div className="flex gap-4">
+                                                            <div className="flex-1 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center">
+                                                                <span className="text-4xl font-mono font-bold text-slate-700 dark:text-slate-200">{taskTimer}s</span>
+                                                            </div>
+                                                            <button
+                                                                onClick={() => handleTaskDone()} // Manual finish
+                                                                className="flex-3 px-8 py-4 bg-teal-600 hover:bg-teal-500 text-white rounded-xl font-bold shadow-lg transition flex items-center gap-2"
+                                                            >
+                                                                <CheckCircle /> 完成挑战
+                                                            </button>
+                                                        </div>
+                                                    </>
                                                 )}
                                             </div>
                                         </>
