@@ -443,11 +443,15 @@ function App() {
         }
 
         // 2. Move Selection (After Roll)
+        // 2. Move Selection (After Roll)
         if (gameState.movementState === 'IDLE' && gameState.remainingSteps > 0 && validMoves.length > 0) {
-            timeoutId = setTimeout(() => {
-                const randomMove = validMoves[Math.floor(Math.random() * validMoves.length)];
-                handleTileClick(randomMove);
-            }, 1500);
+            // Only Bots auto-select random moves. Humans must click tiles.
+            if (currentPlayer.isBot) {
+                timeoutId = setTimeout(() => {
+                    const randomMove = validMoves[Math.floor(Math.random() * validMoves.length)];
+                    handleTileClick(randomMove);
+                }, 1500);
+            }
         }
 
         // 3. Select Task Category
