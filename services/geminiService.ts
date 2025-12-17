@@ -217,14 +217,15 @@ const DEFAULT_REPORT_PROMPT = `
 2. **互动场域**：分析场上不同人格（如 NF 组与 ST 组）之间的化学反应。
 3. **成长建议**：基于玩家的【成长领域】，给出温柔但切中要害的建议。
 
-[输出要求]
+[输出要求 - 关键!]
 返回纯 JSON 对象：
 {
   "groupAnalysis": "150字左右的团体动力学分析。谁是那个‘粘合剂’(Fe)？谁是‘破局者’(Te/Ne)？大家整体氛围如何？",
   "playerAnalysis": {
-     "playerId": "针对该玩家的深度点评。结构：\n1. **高光时刻**：你在何时展现了[称号]的风采？\n2. **盲点觉察**：我注意到你在某时刻似乎陷入了[压力状态]...\n3. **彩虹寄语**：一句结合其 MBTI 类型的诗意或哲理建议。"
+     "在此填入玩家ID": "针对该玩家的深度点评。结构：\n1. **高光时刻**：你在何时展现了[称号]的风采？\n2. **盲点觉察**：我注意到你在某时刻似乎陷入了[压力状态]...\n3. **彩虹寄语**：一句结合其 MBTI 类型的诗意或哲理建议。"
   }
 }
+注意：playerAnalysis 的 Key 必须是输入数据中提供的 "ID" (例如 "user-0", "bot-1")，绝对不要使用名字。
 `.trim();
 
 const DEFAULT_CONFIG: AIConfig = {
@@ -554,7 +555,8 @@ export const generateProfessionalReport = async (
 ): Promise<{ groupAnalysis: string, playerAnalysis: Record<string, string> }> => {
 
     const storyLog = snapshots.join('\n');
-    const playersStr = players.map(p => `${p.name}(${p.mbti})`).join(', ');
+    // FIX: Include ID in the player string so AI knows what key to use
+    const playersStr = players.map(p => `Name:${p.name}, MBTI:${p.mbti}, ID:${p.id}`).join('; ');
 
     // Inject Knowledge Base for ALL players present
     let profilesContext = "\n[玩家 MBTI 深度资料库]\n";
@@ -569,7 +571,7 @@ export const generateProfessionalReport = async (
 
     const inputData = `
         [数据]
-        玩家: ${playersStr}
+        玩家列表(包含ID): ${playersStr}
         游戏高光日志: ${storyLog}
         ${profilesContext}
     `;

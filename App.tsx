@@ -11,8 +11,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import AIConfigModal from './components/AIConfigModal';
 
 const COLORS = [
-  '#ef4444', '#f97316', '#eab308', '#84cc16', '#06b6d4', '#8b5cf6', '#d946ef', '#f43f5e', '#be123c', '#0f766e',
-  '#1d4ed8', '#4338ca', '#a21caf', '#be185d', '#881337', '#7c2d12'
+    '#ef4444', '#f97316', '#eab308', '#84cc16', '#06b6d4', '#8b5cf6', '#d946ef', '#f43f5e', '#be123c', '#0f766e',
+    '#1d4ed8', '#4338ca', '#a21caf', '#be185d', '#881337', '#7c2d12'
 ];
 const getRandomMBTI = () => MBTI_TYPES[Math.floor(Math.random() * MBTI_TYPES.length)];
 
@@ -35,43 +35,43 @@ const Dice3D: React.FC<{ value: number | null, rolling: boolean }> = ({ value, r
                 .face:nth-child(5) { transform: rotateX(90deg) translateZ(30px); }
                 .face:nth-child(6) { transform: rotateX(-90deg) translateZ(30px); }
             `}</style>
-            
+
             <div className={`dice-wrap ${rolling ? 'spinning' : ''} transition-all duration-500`}>
-                {[1,2,3,4,8,6].map((n,i) => <div key={i} className="face">{rolling ? '?' : (i===0?value:n)}</div>)}
+                {[1, 2, 3, 4, 8, 6].map((n, i) => <div key={i} className="face">{rolling ? '?' : (i === 0 ? value : n)}</div>)}
             </div>
         </div>
     );
 };
 
 // Peer Scoring Modal
-const PeerReviewModal: React.FC<{ 
+const PeerReviewModal: React.FC<{
     reviewer: Player;
     actor: Player;
     onSubmit: (score: number) => void;
 }> = ({ reviewer, actor, onSubmit }) => {
     const [rating, setRating] = useState(5);
-    
+
     return (
-        <motion.div initial={{opacity:0, scale: 0.9}} animate={{opacity:1, scale: 1}} className="absolute inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md">
+        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="absolute inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md">
             <div className="bg-slate-800 p-8 rounded-3xl border border-slate-700 shadow-2xl max-w-md w-full text-center">
                 <div className="flex justify-center mb-4">
-                     <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-slate-500 relative">
-                        {reviewer.avatar.startsWith('data:') ? <img src={reviewer.avatar} className="w-full h-full object-cover"/> : <div className="bg-slate-700 w-full h-full flex items-center justify-center font-bold text-2xl">{reviewer.name[0]}</div>}
-                     </div>
+                    <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-slate-500 relative">
+                        {reviewer.avatar.startsWith('data:') ? <img src={reviewer.avatar} className="w-full h-full object-cover" /> : <div className="bg-slate-700 w-full h-full flex items-center justify-center font-bold text-2xl">{reviewer.name[0]}</div>}
+                    </div>
                 </div>
                 <h3 className="text-2xl font-bold text-white mb-2">评分环节</h3>
                 <p className="text-slate-400 mb-6"><strong>{reviewer.name}</strong>，请评价 <strong>{actor.name}</strong> 的表现</p>
-                
+
                 <div className="flex justify-center gap-2 mb-8">
-                    {[1,2,3,4,5].map(star => (
+                    {[1, 2, 3, 4, 5].map(star => (
                         <button key={star} onClick={() => setRating(star)} className="transition transform hover:scale-110">
                             <Star size={40} fill={star <= rating ? "#fbbf24" : "none"} stroke={star <= rating ? "#fbbf24" : "#475569"} />
                         </button>
                     ))}
                 </div>
-                
+
                 <div className="text-xl font-bold text-yellow-500 mb-8">{rating} 星 - {rating === 5 ? "直击灵魂" : rating >= 3 ? "真诚分享" : "继续加油"}</div>
-                
+
                 <button onClick={() => onSubmit(rating)} className="w-full py-4 bg-gradient-to-r from-teal-500 to-blue-600 rounded-xl font-bold text-white text-lg shadow-lg">
                     提交评分
                 </button>
@@ -83,7 +83,7 @@ const PeerReviewModal: React.FC<{
 const generateMap = (mode: GameMode): BoardTile[] => {
     let tiles: BoardTile[] = [];
     let index = 0;
-    
+
     const getRandomModifier = (): ScoreModifier => {
         const rand = Math.random();
         // Adjusted probabilities: 50% Normal, 50% Special
@@ -98,11 +98,11 @@ const generateMap = (mode: GameMode): BoardTile[] => {
         // ... (JUNG_8 generation remains same)
         const FUNCTION_IDS = ['Te', 'Ti', 'Fe', 'Fi', 'Se', 'Si', 'Ne', 'Ni'];
         const MAP_RADIUS = 4;
-        
+
         let deck: string[] = [];
-        FUNCTION_IDS.forEach(f => { for(let k=0; k<7; k++) deck.push(f); });
-        for(let k=0; k<4; k++) deck.push('?');
-        
+        FUNCTION_IDS.forEach(f => { for (let k = 0; k < 7; k++) deck.push(f); });
+        for (let k = 0; k < 4; k++) deck.push('?');
+
         for (let i = deck.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [deck[i], deck[j]] = [deck[j], deck[i]];
@@ -116,23 +116,23 @@ const generateMap = (mode: GameMode): BoardTile[] => {
             for (let r = r1; r <= r2; r++) {
                 const isCenter = q === 0 && r === 0;
                 let fid = isCenter ? '?' : (deck.pop() || 'Te');
-                
+
                 let mod: ScoreModifier = 'NORMAL';
                 let special: SpecialAbility = 'NONE';
 
                 if (fid === '?') {
-                    if (isCenter) special = 'FREEDOM'; 
+                    if (isCenter) special = 'FREEDOM';
                     else special = specialAbilitiesDeck.pop() || 'FREEDOM';
                 } else {
                     mod = getRandomModifier();
                 }
 
-                tiles.push({ 
-                    index: index++, 
-                    functionId: fid, 
+                tiles.push({
+                    index: index++,
+                    functionId: fid,
                     modifier: mod,
                     specialAbility: special,
-                    q, r 
+                    q, r
                 });
             }
         }
@@ -143,49 +143,49 @@ const generateMap = (mode: GameMode): BoardTile[] => {
                 id: 'NF', // Top-Left Quadrant
                 types: MBTI_GROUPS['外交家 (NF)'].types,
                 coords: [
-                    {q:0, r:0}, {q:1, r:0}, {q:2, r:0}, // Top Edge Left
-                    {q:0, r:1}, {q:0, r:2},             // Left Edge Top
-                    {q:0, r:3}, {q:1, r:3}, {q:2, r:3}  // Left Spine (Mid Row Left)
+                    { q: 0, r: 0 }, { q: 1, r: 0 }, { q: 2, r: 0 }, // Top Edge Left
+                    { q: 0, r: 1 }, { q: 0, r: 2 },             // Left Edge Top
+                    { q: 0, r: 3 }, { q: 1, r: 3 }, { q: 2, r: 3 }  // Left Spine (Mid Row Left)
                 ]
             },
             {
                 id: 'NT', // Top-Right Quadrant
                 types: MBTI_GROUPS['分析家 (NT)'].types,
                 coords: [
-                    {q:6, r:0}, {q:5, r:0}, {q:4, r:0}, // Top Edge Right
-                    {q:6, r:1}, {q:6, r:2},             // Right Edge Top
-                    {q:3, r:0}, {q:3, r:1}, {q:3, r:2}  // Top Spine (Mid Col Top)
+                    { q: 6, r: 0 }, { q: 5, r: 0 }, { q: 4, r: 0 }, // Top Edge Right
+                    { q: 6, r: 1 }, { q: 6, r: 2 },             // Right Edge Top
+                    { q: 3, r: 0 }, { q: 3, r: 1 }, { q: 3, r: 2 }  // Top Spine (Mid Col Top)
                 ]
             },
             {
                 id: 'SP', // Bottom-Right Quadrant
                 types: MBTI_GROUPS['探险家 (SP)'].types,
                 coords: [
-                    {q:6, r:6}, {q:5, r:6}, {q:4, r:6}, // Bot Edge Right
-                    {q:6, r:5}, {q:6, r:4},             // Right Edge Bot
-                    {q:6, r:3}, {q:5, r:3}, {q:4, r:3}  // Right Spine (Mid Row Right)
+                    { q: 6, r: 6 }, { q: 5, r: 6 }, { q: 4, r: 6 }, // Bot Edge Right
+                    { q: 6, r: 5 }, { q: 6, r: 4 },             // Right Edge Bot
+                    { q: 6, r: 3 }, { q: 5, r: 3 }, { q: 4, r: 3 }  // Right Spine (Mid Row Right)
                 ]
             },
             {
                 id: 'SJ', // Bottom-Left Quadrant
                 types: MBTI_GROUPS['守护者 (SJ)'].types,
                 coords: [
-                    {q:0, r:6}, {q:1, r:6}, {q:2, r:6}, // Bot Edge Left
-                    {q:0, r:5}, {q:0, r:4},             // Left Edge Bot
-                    {q:3, r:6}, {q:3, r:5}, {q:3, r:4}  // Bot Spine (Mid Col Bot)
+                    { q: 0, r: 6 }, { q: 1, r: 6 }, { q: 2, r: 6 }, // Bot Edge Left
+                    { q: 0, r: 5 }, { q: 0, r: 4 },             // Left Edge Bot
+                    { q: 3, r: 6 }, { q: 3, r: 5 }, { q: 3, r: 4 }  // Bot Spine (Mid Col Bot)
                 ]
             }
         ];
 
         // 1. Center Tile (Hub) at (3,3)
-        tiles.push({ 
-            index: index++, 
-            functionId: 'Hub', 
+        tiles.push({
+            index: index++,
+            functionId: 'Hub',
             characterName: MBTI_CHARACTERS['Hub'],
             q: 3, r: 3, // Center of 7x7 grid
-            zone: 'Hub', 
-            modifier: 'NORMAL', 
-            specialAbility: 'FREEDOM' 
+            zone: 'Hub',
+            modifier: 'NORMAL',
+            specialAbility: 'FREEDOM'
         });
 
         // 2. Quadrants
@@ -193,7 +193,7 @@ const generateMap = (mode: GameMode): BoardTile[] => {
             // Prepare 8 types (4 types * 2 cards)
             let typeDeck: string[] = [];
             group.types.forEach(t => { typeDeck.push(t); typeDeck.push(t); });
-            
+
             // Shuffle
             for (let i = typeDeck.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
@@ -209,7 +209,7 @@ const generateMap = (mode: GameMode): BoardTile[] => {
                     index: index++,
                     functionId: type,
                     characterName: charName,
-                    q: coord.q, 
+                    q: coord.q,
                     r: coord.r,
                     zone: group.id,
                     modifier: getRandomModifier(),
@@ -222,712 +222,11 @@ const generateMap = (mode: GameMode): BoardTile[] => {
 };
 
 function App() {
-  const [board, setBoard] = useState<BoardTile[]>([]);
-  const [validMoves, setValidMoves] = useState<number[]>([]);
-  const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(true);
-  const [gameState, setGameState] = useState<GameState>({
-    players: [],
-    currentPlayerIndex: 0,
-    gameMode: GameMode.JUNG_8,
-    turn: 1,
-    targetScore: 40,
-    logs: [],
-    phase: 'ONBOARDING',
-    subPhase: 'IDLE',
-    currentTile: null,
-    selectedTask: null,
-    activeModifier: 'NORMAL',
-    activeSpecialAbility: 'NONE',
-    remainingSteps: 0,
-    sightRange: 1, // Default sight range
-    helperId: null,
-    scoreTargetPlayerId: null,
-    sharedHelpUsedCount: 0,
-    hasReselected: false,
-    pregeneratedTasks: null,
-    movementState: 'IDLE',
-    diceValue: null,
-    highestScore: 0,
-    snapshots: [],
-    startTime: Date.now(),
-    peerReviewQueue: [],
-    currentReviewerId: null,
-    accumulatedRating: 0
-  });
-
-  const [isMusicPlaying, setIsMusicPlaying] = useState(false);
-  const [taskTimer, setTaskTimer] = useState(0);
-  const [reportData, setReportData] = useState<any>(null);
-  const [loadingProgress, setLoadingProgress] = useState(0);
-  const [showStartBtn, setShowStartBtn] = useState(false);
-  
-  // New State for Config Modal
-  const [showConfig, setShowConfig] = useState(false);
-  
-  // New State for Speech
-  const [currentSpeechText, setCurrentSpeechText] = useState("");
-  const [isListening, setIsListening] = useState(false);
-  
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  useEffect(() => {
-    audioRef.current = new Audio('https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3'); 
-    audioRef.current.loop = true;
-    audioRef.current.volume = 0.2;
-    
-    // Attempt play immediately, though browsers might block it until interaction
-    // We handle the play call again in initGame
-  }, []);
-
-  // Audio Ducking: Lower volume when listening to speech to prevent feedback loop
-  useEffect(() => {
-    if (audioRef.current) {
-        if (isMusicPlaying) {
-            // Duck volume to 2% if listening, else 20%
-            audioRef.current.volume = isListening ? 0.02 : 0.2;
-        } else {
-            audioRef.current.pause();
-        }
-    }
-  }, [isListening, isMusicPlaying]);
-
-  useEffect(() => {
-      if (audioRef.current) {
-          if (isMusicPlaying) {
-              audioRef.current.play().catch(e => console.log("Audio autoplay blocked until interaction"));
-          } else {
-              audioRef.current.pause();
-          }
-      }
-  }, [isMusicPlaying]);
-
-
-  // Theme Management
-  useEffect(() => {
-      const html = document.documentElement;
-      if (isDarkMode) {
-          html.classList.add('dark');
-      } else {
-          html.classList.remove('dark');
-      }
-  }, [isDarkMode]);
-
-  const toggleTheme = () => setIsDarkMode(!isDarkMode);
-
-  // --- BOT AUTOMATION LOGIC ---
-  useEffect(() => {
-    if (gameState.phase !== 'PLAYING') return;
-    
-    const currentPlayer = gameState.players[gameState.currentPlayerIndex];
-    if (!currentPlayer || !currentPlayer.isBot) return;
-
-    let timeoutId: NodeJS.Timeout;
-
-    // 1. Start Turn (Roll Dice)
-    if (gameState.subPhase === 'IDLE' && gameState.movementState === 'IDLE' && gameState.remainingSteps === 0) {
-        timeoutId = setTimeout(() => handleStartTurn(), 1500);
-    }
-
-    // 2. Move Selection (After Roll)
-    if (gameState.movementState === 'IDLE' && gameState.remainingSteps > 0 && validMoves.length > 0) {
-        timeoutId = setTimeout(() => {
-            const randomMove = validMoves[Math.floor(Math.random() * validMoves.length)];
-            handleTileClick(randomMove);
-        }, 1500);
-    }
-
-    // 3. Select Task Category
-    if (gameState.subPhase === 'SELECTING_CARD') {
-        timeoutId = setTimeout(() => {
-            const categories: ('standard' | 'truth' | 'dare' | 'deep')[] = ['standard', 'truth', 'dare', 'deep'];
-            const randomCat = categories[Math.floor(Math.random() * categories.length)];
-            handleSelectCategory(randomCat);
-        }, 2000);
-    }
-
-    // 4. Perform Task (Wait and Finish)
-    if (gameState.subPhase === 'VIEWING_TASK') {
-        timeoutId = setTimeout(() => {
-             // Bots start task (without audio)
-             handleStartTask();
-             // Simulate performing task
-             setTimeout(() => {
-                 handleTaskDone();
-             }, 3000);
-        }, 2000);
-    }
-
-    // 5. Special Ability / Selection (Simple Random)
-    if (['SELECTING_SCORE_TARGET', 'SELECTING_SUBSTITUTE', 'SELECTING_COMPANION', 'CHOOSING_HELPER'].includes(gameState.subPhase)) {
-         timeoutId = setTimeout(() => {
-             const others = gameState.players.filter(p => p.id !== currentPlayer.id);
-             const randomTarget = others[Math.floor(Math.random() * others.length)];
-             if (randomTarget) {
-                 if (gameState.subPhase === 'SELECTING_SCORE_TARGET') handleScoreTargetSelect(randomTarget.id);
-                 else if (gameState.subPhase === 'SELECTING_SUBSTITUTE') handleSubstituteSelect(randomTarget.id);
-                 else if (gameState.subPhase === 'SELECTING_COMPANION') handleCompanionSelect(randomTarget.id);
-                 else if (gameState.subPhase === 'CHOOSING_HELPER') handleChooseHelper(randomTarget.id);
-             }
-         }, 2000);
-    }
-    
-    return () => clearTimeout(timeoutId);
-  }, [gameState.phase, gameState.subPhase, gameState.movementState, gameState.remainingSteps, gameState.currentPlayerIndex, validMoves]);
-
-  // Bot Reviewer Automation
-  useEffect(() => {
-      if (gameState.subPhase === 'PEER_REVIEW' && gameState.currentReviewerId) {
-          const reviewer = gameState.players.find(p => p.id === gameState.currentReviewerId);
-          if (reviewer && reviewer.isBot) {
-              const timer = setTimeout(() => {
-                  // Bot gives generous scores
-                  handlePeerScoreSubmit(Math.random() > 0.3 ? 5 : 4);
-              }, 1500);
-              return () => clearTimeout(timer);
-          }
-      }
-  }, [gameState.subPhase, gameState.currentReviewerId]);
-
-  // --- LOGIC: NEXT STEP FINDER ---
-  const calculateValidNextSteps = (player: Player, currentBoard: BoardTile[]): number[] => {
-      const currentTile = currentBoard.find(t => t.index === player.position);
-      if (!currentTile) return [];
-
-      let neighbors: BoardTile[] = [];
-      if (gameState.gameMode === GameMode.JUNG_8) {
-          neighbors = getHexNeighbors(currentTile, currentBoard);
-      } else {
-          neighbors = getGridNeighbors(currentTile, currentBoard);
-      }
-      
-      // Remove backwards move
-      const forwardNeighbors = neighbors.filter(t => t.index !== player.previousPosition);
-
-      if (gameState.movementState === 'TELEPORTING') {
-          return currentBoard.filter(t => t.functionId !== 'Hub').map(t => t.index);
-      }
-
-      // MBTI 16 Mode: Just choose direction, no stack logic
-      if (gameState.gameMode === GameMode.MBTI_16) {
-          return forwardNeighbors.map(t => t.index);
-      }
-
-      // JUNG 8 Mode: Cognitive Stack Logic
-      const stack = MBTI_STACKS[player.mbti] || [];
-      let targetFunctionId = '?'; 
-      let lookAheadIndex = player.stackIndex + 1;
-      
-      for (let i = 0; i < stack.length; i++) {
-          const checkIndex = (lookAheadIndex + i) % stack.length;
-          const funcToCheck = stack[checkIndex];
-          const hasNeighbor = forwardNeighbors.some(t => t.functionId === funcToCheck);
-          if (hasNeighbor) {
-              targetFunctionId = funcToCheck;
-              break; 
-          }
-      }
-
-      const validTargets = forwardNeighbors.filter(t => 
-          t.functionId === targetFunctionId || t.functionId === '?'
-      );
-
-      return validTargets.map(t => t.index);
-  };
-
-  // Recalculate valid moves whenever position or remaining steps change
-  useEffect(() => {
-      if (gameState.phase !== 'PLAYING') return;
-      
-      const currentPlayer = gameState.players[gameState.currentPlayerIndex];
-      // FIX: Guard against undefined player to prevent crash on load
-      if (!currentPlayer) return;
-
-      if (gameState.movementState === 'IDLE' && gameState.remainingSteps > 0) {
-          const moves = calculateValidNextSteps(currentPlayer, board);
-          setValidMoves(moves);
-      } else if (gameState.movementState === 'TELEPORTING') {
-           const moves = board.filter(t => t.index !== currentPlayer.position).map(t => t.index);
-           setValidMoves(moves);
-      } else if (gameState.remainingSteps === 0 && gameState.movementState === 'IDLE') {
-          setValidMoves([]);
-      }
-  }, [gameState.remainingSteps, gameState.movementState, gameState.currentPlayerIndex, gameState.players]); 
-
-
-  const addLog = (text: string, type: 'system' | 'chat' | 'action' = 'system', author?: string, taskDetails?: string) => {
-    const entry = { id: Date.now().toString() + Math.random(), text, type, author, timestamp: Date.now(), taskDetails };
-    setGameState(prev => ({ ...prev, logs: [...prev.logs, entry] }));
-    if (author && author !== 'system') speak(text, author);
-  };
-
-  const snapshotLog = (text: string) => {
-      setGameState(prev => ({ ...prev, snapshots: [...prev.snapshots, text] }));
-  };
-
-  const startLoading = (humanPlayers: any[], mode: GameMode, botCount: number, targetScore: number) => {
-      setGameState(prev => ({ ...prev, phase: 'LOADING' }));
-      let p = 0;
-      const interval = setInterval(() => {
-          p += 1; 
-          setLoadingProgress(p);
-          if (p >= 100) {
-              clearInterval(interval);
-              setShowStartBtn(true);
-          }
-      }, 50); 
-      (window as any).pendingGameConfig = { humanPlayers, mode, botCount, targetScore };
-  };
-
-  const handleEnterGame = () => {
-      const config = (window as any).pendingGameConfig;
-      initGame(config.humanPlayers, config.mode, config.botCount, config.targetScore);
-  }
-
-  const initGame = (humanPlayers: any[], mode: GameMode, botCount: number, targetScore: number) => {
-    const newBoard = generateMap(mode);
-    setBoard(newBoard);
-    
-    // Find Center (3,3) for MBTI or (0,0) for Jung
-    const centerQ = mode === GameMode.MBTI_16 ? 3 : 0;
-    const centerR = mode === GameMode.MBTI_16 ? 3 : 0;
-    const centerTile = newBoard.find(t => t.q === centerQ && t.r === centerR);
-    
-    const players: Player[] = humanPlayers.map((p, i) => {
-        // Default to center
-        let startPos = centerTile?.index || 0;
-        
-        // MBTI Mode: Randomly on their own type if exists
-        if (mode === GameMode.MBTI_16) {
-            // Find all tiles matching this player's type
-            const typeTiles = newBoard.filter(t => t.functionId === p.mbti);
-            if (typeTiles.length > 0) {
-                // Pick one randomly
-                const randomTile = typeTiles[Math.floor(Math.random() * typeTiles.length)];
-                startPos = randomTile.index;
-            }
-        }
-        
-        return {
-            id: `user-${i}`, name: p.name || `P${i+1}`, mbti: p.mbti, isBot: false, 
-            avatar: p.avatarImage || 'user', color: COLORS[i % COLORS.length],
-            trustScore: 0, insightScore: 0, expressionScore: 0, totalRatingGiven: 0, position: startPos, 
-            previousPosition: null, stackIndex: 0, skipUsedCount: 0
-        };
-    });
-
-    for (let i = 0; i < botCount; i++) {
-        const botMbti = getRandomMBTI();
-        const names = BOT_NAMES[botMbti] || [`Bot ${i}`];
-        
-        let startPos = centerTile?.index || 0;
-         if (mode === GameMode.MBTI_16) {
-            const typeTiles = newBoard.filter(t => t.functionId === botMbti);
-            if (typeTiles.length > 0) {
-                const randomTile = typeTiles[Math.floor(Math.random() * typeTiles.length)];
-                startPos = randomTile.index;
-            }
-        }
-
-        players.push({
-            id: `bot-${i}`, name: names[0], mbti: botMbti, isBot: true,
-            avatar: 'bot', color: COLORS[(players.length) % COLORS.length],
-            trustScore: 0, insightScore: 0, expressionScore: 0, totalRatingGiven: 0, position: startPos, 
-            previousPosition: null, stackIndex: 0, skipUsedCount: 0
-        });
-    }
-
-    setGameState(prev => ({
-        ...prev, players, gameMode: mode, targetScore, phase: 'PLAYING', subPhase: 'IDLE',
-        logs: [{ id: '0', text: '欢迎登上彩虹船。', type: 'system', timestamp: Date.now() }],
-        sightRange: 1 // Init sight
-    }));
-    
-    // Explicitly start music when game starts (user interaction chain)
-    setIsMusicPlaying(true);
-    if (audioRef.current) {
-        audioRef.current.volume = 0.2;
-        audioRef.current.play().catch(e => console.warn("Autoplay prevented:", e));
-    }
-  };
-
-  const handleStartTurn = () => {
-      const player = gameState.players[gameState.currentPlayerIndex];
-      
-      setGameState(prev => ({ ...prev, movementState: 'ROLLING' }));
-      
-      setTimeout(() => {
-          // Dice 1-6 for MBTI mode maybe better? Let's keep 1-8 but 33 tiles is small. 1-4?
-          // Keeping 1-8 for now for fun chaos.
-          const roll = Math.floor(Math.random() * 6) + 1; // 1-6 for grid
-          
-          // Randomize sight range (1 or 2)
-          const newSightRange = Math.random() > 0.5 ? 2 : 1;
-          
-          setGameState(prev => ({ 
-              ...prev, 
-              diceValue: roll, 
-              remainingSteps: roll,
-              sightRange: newSightRange,
-              movementState: 'IDLE',
-              activeSpecialAbility: 'NONE',
-              activeModifier: 'NORMAL',
-              helperId: null,
-              scoreTargetPlayerId: null
-          }));
-          
-          addLog(`${player.name} 掷出了 ${roll} 点 (视野: ${newSightRange}格)`, 'action');
-      }, 1000);
-  };
-
-  const handleTileClick = (tileIndex: number) => {
-      if (!validMoves.includes(tileIndex)) return;
-
-      const player = gameState.players[gameState.currentPlayerIndex];
-      const targetTile = board.find(t => t.index === tileIndex);
-      if (!targetTile) return;
-
-      const stack = MBTI_STACKS[player.mbti] || [];
-      let newStackIndex = player.stackIndex;
-      
-      if (gameState.gameMode === GameMode.JUNG_8 && targetTile.functionId !== '?') {
-          for(let i=1; i<stack.length; i++) {
-               const idx = (player.stackIndex + i) % stack.length;
-               if (stack[idx] === targetTile.functionId) {
-                   newStackIndex = idx;
-                   break;
-               }
-          }
-      }
-
-      const isTeleportLanding = gameState.movementState === 'TELEPORTING';
-
-      // Update Position & Steps
-      setGameState(prev => {
-          const newPlayers = [...prev.players];
-          const p = newPlayers[prev.currentPlayerIndex];
-          p.previousPosition = p.position; 
-          p.position = tileIndex;
-          p.stackIndex = newStackIndex;
-
-          const newRemaining = isTeleportLanding ? 0 : prev.remainingSteps - 1;
-
-          return { 
-              ...prev, 
-              players: newPlayers,
-              currentTile: targetTile,
-              remainingSteps: newRemaining,
-              movementState: 'MOVING_STEP',
-              activeModifier: targetTile.modifier,
-              activeSpecialAbility: targetTile.specialAbility
-          };
-      });
-      setValidMoves([]); 
-
-      // Animation delay then logic
-      setTimeout(() => {
-          if (isTeleportLanding || gameState.remainingSteps === 1) { 
-             finishMovementAndTriggerEvent(targetTile, isTeleportLanding);
-          } else {
-             setGameState(prev => ({ ...prev, movementState: 'IDLE' }));
-          }
-      }, 600);
-  }
-
-  const finishMovementAndTriggerEvent = (tile: BoardTile, justTeleported: boolean) => {
-      const player = gameState.players[gameState.currentPlayerIndex];
-
-      setGameState(prev => ({ ...prev, movementState: 'IDLE' }));
-
-      if (!justTeleported && tile.specialAbility !== 'NONE' && tile.functionId === '?' ) {
-           handleSpecialAbility(tile.specialAbility);
-           return;
-      }
-      
-      // In MBTI 16 mode, center is special
-      if (gameState.gameMode === GameMode.MBTI_16 && tile.functionId === 'Hub' && !justTeleported) {
-           handleSpecialAbility('FREEDOM');
-           return;
-      }
-
-      // Generate Tasks
-      generateAllTaskOptions(tile.functionId, gameState.players, player, gameState.logs).then(tasks => {
-          setGameState(prev => ({ ...prev, pregeneratedTasks: tasks }));
-      });
-
-      setGameState(prev => ({
-           ...prev,
-           subPhase: 'SELECTING_CARD',
-           selectedTask: null,
-           hasReselected: false,
-           scoreTargetPlayerId: prev.scoreTargetPlayerId,
-           helperId: prev.helperId
-      }));
-      
-      addLog(`抵达 ${tile.characterName || tile.functionId}，正在翻开命运牌...`, 'system');
-  };
-
-  const handleSpecialAbility = (ability: SpecialAbility) => {
-      const player = gameState.players[gameState.currentPlayerIndex];
-      
-      if (ability === 'FREEDOM') {
-          setGameState(prev => ({ ...prev, movementState: 'TELEPORTING' }));
-          addLog(`${player.name} 开启了自由门，请选择任意功能格降落！`, 'action');
-          return; 
-      }
-
-      if (ability === 'SUBSTITUTE') {
-          setGameState(prev => ({ ...prev, subPhase: 'SELECTING_SUBSTITUTE' }));
-          addLog(`${player.name} 正在寻找替身...`, 'action');
-          return;
-      }
-
-      if (ability === 'COMPANION') {
-          setGameState(prev => ({ ...prev, subPhase: 'SELECTING_COMPANION' }));
-          addLog(`${player.name} 正在寻找同伴...`, 'action');
-          return;
-      }
-
-      // Fallback
-      setGameState(prev => ({ ...prev, subPhase: 'SELECTING_CARD' }));
-  };
-
-  const handleSubstituteSelect = (targetId: string) => {
-      setGameState(prev => ({ ...prev, helperId: targetId, subPhase: 'IDLE', movementState: 'TELEPORTING' })); 
-      addLog(`指定了替身，请选择任意功能格降落！`, 'system');
-  };
-
-  const handleCompanionSelect = (targetId: string) => {
-      setGameState(prev => ({ ...prev, helperId: targetId, subPhase: 'IDLE', movementState: 'TELEPORTING' }));
-      addLog(`结伴同行，请选择任意功能格降落！`, 'system');
-  };
-
-  const handleSelectCategory = (category: 'standard' | 'truth' | 'dare' | 'deep') => {
-      const cached = gameState.pregeneratedTasks?.[category];
-      if (cached) {
-          setGameState(prev => ({ ...prev, subPhase: 'VIEWING_TASK', selectedTask: cached }));
-      } else {
-           setGameState(prev => ({ ...prev, subPhase: 'VIEWING_TASK', selectedTask: null })); 
-           const tile = gameState.currentTile;
-           if (tile) {
-             generateAllTaskOptions(tile.functionId, gameState.players, gameState.players[gameState.currentPlayerIndex], gameState.logs).then(tasks => {
-                 setGameState(prev => ({ ...prev, selectedTask: tasks[category], pregeneratedTasks: tasks }));
-             });
-           }
-      }
-  };
-
-  const handleReselect = () => {
-      if (gameState.hasReselected || !gameState.pregeneratedTasks) return;
-      const categories: ('standard' | 'truth' | 'dare' | 'deep')[] = ['standard', 'truth', 'dare', 'deep'];
-      const currentCat = gameState.selectedTask?.category;
-      const available = categories.filter(c => c !== currentCat);
-      const randomCat = available[Math.floor(Math.random() * available.length)];
-      setGameState(prev => ({ ...prev, hasReselected: true, selectedTask: prev.pregeneratedTasks![randomCat] }));
-  };
-
-  const handleSkip = () => {
-      const player = gameState.players[gameState.currentPlayerIndex];
-      setGameState(prev => {
-          const newPlayers = [...prev.players];
-          newPlayers[prev.currentPlayerIndex].skipUsedCount += 1;
-          return { ...prev, players: newPlayers, subPhase: 'IDLE' };
-      });
-      nextTurn();
-  };
-
-  const handleAskForHelp = () => {
-      if (gameState.sharedHelpUsedCount >= 3) { alert("次数耗尽"); return; }
-      setGameState(prev => ({ ...prev, subPhase: 'CHOOSING_HELPER' }));
-  };
-
-  const handleChooseHelper = (helperId: string) => {
-      setGameState(prev => ({ ...prev, helperId, sharedHelpUsedCount: prev.sharedHelpUsedCount + 1, subPhase: 'VIEWING_TASK' }));
-  };
-
-  const handleStartTask = () => {
-      if (!gameState.selectedTask) return;
-      
-      const currentPlayer = gameState.players[gameState.currentPlayerIndex];
-
-      // Start STT only if Human
-      setCurrentSpeechText("");
-      if (!currentPlayer.isBot && isSpeechRecognitionSupported()) {
-          startSpeechRecognition(
-              (text) => setCurrentSpeechText(prev => prev + " " + text),
-              () => setIsListening(false)
-          );
-          setIsListening(true);
-      }
-
-      setGameState(prev => ({ ...prev, subPhase: 'TASK_EXECUTION' }));
-      setTaskTimer(gameState.selectedTask.durationSeconds);
-      const timerId = setInterval(() => {
-          setTaskTimer(prev => { if (prev <= 1) { clearInterval(timerId); return 0; } return prev - 1; });
-      }, 1000);
-  };
-
-  const handleTaskDone = () => {
-      // Stop STT
-      if (isListening) {
-          stopSpeechRecognition();
-          setIsListening(false);
-      }
-
-      const player = gameState.players[gameState.currentPlayerIndex];
-      // Log task + speech
-      const taskSummary = `任务: ${gameState.selectedTask?.title || '未知任务'}`;
-      const speechDetail = currentSpeechText.trim() ? `玩家发言: "${currentSpeechText.trim()}"` : (player.isBot ? "（Bot 操作）" : "（玩家未检测到发言）");
-      
-      addLog(`${player.name} 完成了挑战。`, 'action', player.name, `${taskSummary}。${speechDetail}`);
-      snapshotLog(`${player.name}完成[${gameState.selectedTask?.category}]挑战。${speechDetail}`);
-
-      const reviewers = gameState.players.filter(p => p.id !== gameState.players[gameState.currentPlayerIndex].id);
-      if (reviewers.length === 0) { handlePeerScoreSubmit(5); return; }
-      setGameState(prev => ({ ...prev, subPhase: 'PEER_REVIEW', peerReviewQueue: reviewers.map(r => r.id), currentReviewerId: reviewers[0].id, accumulatedRating: 0 }));
-  };
-
-  const handlePeerScoreSubmit = (rating: number) => {
-      const currentReviewerId = gameState.currentReviewerId;
-      
-      // Update the reviewer's given score stats
-      if (currentReviewerId) {
-          setGameState(prev => {
-              const newPlayers = [...prev.players];
-              const reviewerIndex = newPlayers.findIndex(p => p.id === currentReviewerId);
-              if (reviewerIndex !== -1) {
-                  newPlayers[reviewerIndex] = {
-                      ...newPlayers[reviewerIndex],
-                      totalRatingGiven: (newPlayers[reviewerIndex].totalRatingGiven || 0) + rating
-                  };
-              }
-              return { ...prev, players: newPlayers };
-          });
-      }
-
-      if (currentReviewerId && gameState.peerReviewQueue.length > 0) {
-          setGameState(prev => {
-              const newQueue = prev.peerReviewQueue.filter(id => id !== currentReviewerId);
-              const nextReviewerId = newQueue.length > 0 ? newQueue[0] : null;
-              if (nextReviewerId) return { ...prev, accumulatedRating: prev.accumulatedRating + rating, peerReviewQueue: newQueue, currentReviewerId: nextReviewerId };
-              else return { ...prev, accumulatedRating: prev.accumulatedRating + rating, peerReviewQueue: [], currentReviewerId: null };
-          });
-          if (gameState.peerReviewQueue.length > 1) return; 
-      }
-      
-      // Check Modifiers
-      if (gameState.activeModifier === 'CLONE' || gameState.activeModifier === 'TRANSFER') {
-           setGameState(prev => ({ ...prev, subPhase: 'SELECTING_SCORE_TARGET' }));
-           return;
-      }
-      finalizeTurn(rating);
-  };
-
-  const handleScoreTargetSelect = (targetId: string) => {
-      setGameState(prev => ({ ...prev, scoreTargetPlayerId: targetId }));
-      finalizeTurn(0); 
-  };
-
-  const finalizeTurn = (lastRating: number) => {
-      const player = gameState.players[gameState.currentPlayerIndex];
-      const task = gameState.selectedTask;
-      if (!task) return;
-
-      const reviewerCount = Math.max(1, gameState.players.length - 1); 
-      const totalRating = gameState.accumulatedRating; 
-      const avgRating = totalRating / reviewerCount;
-      
-      let basePoints = Math.ceil(avgRating * task.multiplier * 2); 
-      const mod = gameState.activeModifier;
-      const ability = gameState.activeSpecialAbility;
-
-      if (mod === 'DOUBLE') basePoints *= 2;
-      if (mod === 'HALF') basePoints = Math.floor(basePoints / 2);
-      
-      setGameState(prev => {
-          const newPlayers = [...prev.players];
-          const p = newPlayers[prev.currentPlayerIndex];
-          
-          const applyScore = (pl: Player, pts: number) => {
-             if (task.scoreType === 'trust') pl.trustScore += pts;
-             else if (task.scoreType === 'insight') pl.insightScore += pts;
-             else pl.expressionScore += pts;
-          };
-
-          // Handle Substitute (Target gets all points)
-          if (ability === 'SUBSTITUTE' && prev.helperId) {
-              applyScore(p, basePoints);
-              addLog(`${prev.players.find(x=>x.id===prev.helperId)?.name} 完成了替身任务，${p.name} 获得分数。`, 'action');
-          } 
-          // Handle Companion (Both get FULL points)
-          else if (ability === 'COMPANION' && prev.helperId) {
-               applyScore(p, basePoints);
-               const comp = newPlayers.find(pl => pl.id === prev.helperId);
-               if (comp) applyScore(comp, basePoints);
-               addLog(`结伴同行成功！两人均获得 ${basePoints} 分。`, 'action');
-          }
-          // Normal Helper (Split points)
-          else if (prev.helperId && ability === 'NONE' && mod === 'NORMAL') {
-               const hPoints = Math.ceil(basePoints / 2);
-               const pPoints = Math.floor(basePoints / 2);
-               applyScore(p, pPoints);
-               const h = newPlayers.find(pl => pl.id === prev.helperId);
-               if (h) applyScore(h, hPoints);
-          }
-          else {
-             // Normal Scoring / Transfer / Clone
-             if (mod === 'TRANSFER' && prev.scoreTargetPlayerId) {
-                const target = newPlayers.find(pl => pl.id === prev.scoreTargetPlayerId);
-                if (target) applyScore(target, basePoints);
-             } else {
-                applyScore(p, basePoints);
-                if (mod === 'CLONE' && prev.scoreTargetPlayerId) {
-                    const target = newPlayers.find(pl => pl.id === prev.scoreTargetPlayerId);
-                    if (target) applyScore(target, basePoints);
-                }
-             }
-          }
-          
-          return { ...prev, players: newPlayers };
-      });
-      
-      nextTurn();
-  };
-
-  const nextTurn = () => {
-      setGameState(prev => {
-          const p = prev.players[prev.currentPlayerIndex];
-          const total = p.trustScore + p.insightScore + p.expressionScore;
-          if (total >= prev.targetScore) {
-              handleGameOver(prev.players);
-              return prev;
-          }
-          const nextIndex = (prev.currentPlayerIndex + 1) % prev.players.length;
-          return {
-              ...prev,
-              currentPlayerIndex: nextIndex,
-              subPhase: 'IDLE',
-              selectedTask: null,
-              helperId: null,
-              scoreTargetPlayerId: null,
-              activeModifier: 'NORMAL',
-              activeSpecialAbility: 'NONE',
-              remainingSteps: 0,
-              turn: nextIndex === 0 ? prev.turn + 1 : prev.turn,
-              currentReviewerId: null,
-              peerReviewQueue: []
-          };
-      });
-  };
-
-  const handleGameOver = async (finalPlayers: Player[]) => {
-      setGameState(prev => ({ ...prev, players: finalPlayers, phase: 'ANALYSIS' }));
-      const report = await generateProfessionalReport(finalPlayers, gameState.snapshots);
-      setReportData(report);
-  };
-
-  const resetGame = () => { 
-      setGameState(prev => ({
+    const [board, setBoard] = useState<BoardTile[]>([]);
+    const [validMoves, setValidMoves] = useState<number[]>([]);
+    const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
+    const [isDarkMode, setIsDarkMode] = useState(true);
+    const [gameState, setGameState] = useState<GameState>({
         players: [],
         currentPlayerIndex: 0,
         gameMode: GameMode.JUNG_8,
@@ -941,7 +240,7 @@ function App() {
         activeModifier: 'NORMAL',
         activeSpecialAbility: 'NONE',
         remainingSteps: 0,
-        sightRange: 1, // Reset sight
+        sightRange: 1, // Default sight range
         helperId: null,
         scoreTargetPlayerId: null,
         sharedHelpUsedCount: 0,
@@ -955,436 +254,1140 @@ function App() {
         peerReviewQueue: [],
         currentReviewerId: null,
         accumulatedRating: 0
-      }));
-      setLoadingProgress(0);
-      setShowStartBtn(false);
-      setBoard([]);
-      setValidMoves([]);
-      setReportData(null);
-  };
+    });
 
-  // --- RENDER ---
+    const [isMusicPlaying, setIsMusicPlaying] = useState(false);
+    const [taskTimer, setTaskTimer] = useState(0);
+    const [reportData, setReportData] = useState<any>(null);
+    const [loadingProgress, setLoadingProgress] = useState(0);
+    const [showStartBtn, setShowStartBtn] = useState(false);
 
-  if (gameState.phase === 'ONBOARDING') {
-      return (
-        <Onboarding 
-            onComplete={startLoading} 
-            isDarkMode={isDarkMode} 
-            toggleTheme={toggleTheme} 
-        />
-      );
-  }
+    // New State for Config Modal
+    const [showConfig, setShowConfig] = useState(false);
 
-  // ... (LOADING and ANALYSIS phases render the same)
-  if (gameState.phase === 'LOADING') {
-      return (
-          <div className="h-screen w-full flex flex-col items-center justify-center text-slate-800 dark:text-white relative overflow-hidden font-sans transition-colors duration-300">
-              {/* Background provided by body CSS */}
-              <div className="z-10 flex flex-col items-center w-full max-w-xl px-8 text-center bg-white/10 dark:bg-black/20 backdrop-blur-md rounded-3xl p-12 shadow-2xl border border-white/10">
-                  <motion.h1 
-                    initial={{opacity:0, y:20}} animate={{opacity:1, y:0}} 
-                    className="text-6xl font-bold tracking-tight mb-2 text-transparent bg-clip-text bg-[linear-gradient(to_right,#ef4444,#f97316,#eab308,#22c55e,#3b82f6,#a855f7)] drop-shadow-lg"
-                  >
-                      彩虹船
-                  </motion.h1>
-                  <motion.p initial={{opacity:0}} animate={{opacity:1}} transition={{delay: 0.3}} className="text-xl text-slate-200 mb-8 font-light italic">
-                      “驶向海洋之心，领略生命之多彩”
-                  </motion.p>
+    // New State for Speech
+    const [currentSpeechText, setCurrentSpeechText] = useState("");
+    const [isListening, setIsListening] = useState(false);
 
-                  <div className="w-full h-1 bg-slate-700 rounded-full overflow-hidden mb-8">
-                      <motion.div className="h-full bg-teal-400" initial={{width:0}} animate={{width: `${loadingProgress}%`}} />
-                  </div>
+    const audioRef = useRef<HTMLAudioElement | null>(null);
 
-                  {/* Tutorial Carousel */}
-                  <div className="h-32 flex items-center justify-center">
-                      <AnimatePresence mode='wait'>
-                        {loadingProgress < 30 && <motion.p key="1" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="text-xl text-slate-200">1. 登船：点击右下角按钮，激活罗盘</motion.p>}
-                        {loadingProgress >= 30 && loadingProgress < 60 && <motion.p key="2" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="text-xl text-slate-200">2. 航行：寻找你的“色彩坐标”，或者神秘的“？”</motion.p>}
-                        {loadingProgress >= 60 && loadingProgress < 90 && <motion.p key="3" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="text-xl text-slate-200">3. 共鸣：完成挑战，看见彩虹，获取能量</motion.p>}
-                        {loadingProgress >= 90 && <motion.p key="4" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="text-xl text-teal-300 font-bold">航线已确认</motion.p>}
-                      </AnimatePresence>
-                  </div>
-                  
-                  {showStartBtn && (
-                      <motion.button
-                        initial={{scale:0.8, opacity:0}} animate={{scale:1, opacity:1}}
-                        onClick={handleEnterGame}
-                        className="mt-4 px-12 py-4 bg-white text-slate-900 rounded-full font-bold text-xl shadow-[0_0_30px_rgba(20,184,166,0.5)] hover:scale-105 transition flex items-center gap-2"
-                      >
-                          <Play size={24}/> 启航
-                      </motion.button>
-                  )}
-              </div>
-          </div>
-      );
-  }
+    useEffect(() => {
+        audioRef.current = new Audio('https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3');
+        audioRef.current.loop = true;
+        audioRef.current.volume = 0.2;
 
-  if (gameState.phase === 'ANALYSIS') {
-      return (
-        <GameReport 
-            players={gameState.players} 
-            report={reportData || { groupAnalysis: '', playerAnalysis: {} }} 
-            onReturnHome={resetGame} 
-            startTime={gameState.startTime}
-            gameMode={gameState.gameMode}
-        />
-      );
-  }
+        // Attempt play immediately, though browsers might block it until interaction
+        // We handle the play call again in initGame
+    }, []);
 
-  const currentPlayer = gameState.players[gameState.currentPlayerIndex];
-  if (!currentPlayer) return <div className="h-screen bg-slate-950 flex items-center justify-center text-white">Loading Game State...</div>;
+    // Audio Ducking: Lower volume when listening to speech to prevent feedback loop
+    useEffect(() => {
+        if (audioRef.current) {
+            if (isMusicPlaying) {
+                // Duck volume to 2% if listening, else 20%
+                audioRef.current.volume = isListening ? 0.02 : 0.2;
+            } else {
+                audioRef.current.pause();
+            }
+        }
+    }, [isListening, isMusicPlaying]);
 
-  const currentReviewer = gameState.currentReviewerId ? gameState.players.find(p => p.id === gameState.currentReviewerId) : null;
-  const playerStack = MBTI_STACKS[currentPlayer.mbti] || [];
+    useEffect(() => {
+        if (audioRef.current) {
+            if (isMusicPlaying) {
+                audioRef.current.play().catch(e => console.log("Audio autoplay blocked until interaction"));
+            } else {
+                audioRef.current.pause();
+            }
+        }
+    }, [isMusicPlaying]);
 
-  return (
-    <div className="h-screen w-full text-slate-800 dark:text-slate-200 font-sans flex flex-col overflow-hidden relative selection:bg-teal-500/30 transition-colors duration-300">
-        
-        {/* Top Bar - Transparent with blur */}
-        <header className="h-16 bg-white/80 dark:bg-slate-900/60 backdrop-blur border-b border-slate-200 dark:border-white/5 flex items-center justify-between px-6 shrink-0 z-30 transition-colors duration-300">
-            <div className="flex items-center gap-6 w-1/3">
-                 <button onClick={resetGame} className="flex items-center gap-1 text-slate-500 hover:text-teal-600 dark:text-slate-400 dark:hover:text-white transition group" title="Return to Home">
-                    <LogOut size={16} className="group-hover:-translate-x-1 transition"/>
-                 </button>
-                 <div className="flex items-center gap-3 bg-slate-100 dark:bg-slate-800/50 pr-4 rounded-full border border-slate-200 dark:border-slate-700/50">
-                     <div className="w-10 h-10 rounded-full border-2 border-teal-500/50 overflow-hidden">
-                        {currentPlayer.avatar.startsWith('data:') ? <img src={currentPlayer.avatar} className="w-full h-full object-cover"/> : <div className="bg-slate-200 dark:bg-slate-700 w-full h-full flex items-center justify-center font-bold text-lg">{currentPlayer.name[0]}</div>}
-                     </div>
-                     <div>
-                         <div className="font-bold text-slate-700 dark:text-white text-sm">{currentPlayer.name}</div>
-                         <div className="text-[10px] font-bold text-teal-600 dark:text-teal-400">{currentPlayer.mbti}</div>
-                     </div>
-                 </div>
+
+    // Theme Management
+    useEffect(() => {
+        const html = document.documentElement;
+        if (isDarkMode) {
+            html.classList.add('dark');
+        } else {
+            html.classList.remove('dark');
+        }
+    }, [isDarkMode]);
+
+    const toggleTheme = () => setIsDarkMode(!isDarkMode);
+
+    // --- BOT AUTOMATION LOGIC ---
+    useEffect(() => {
+        if (gameState.phase !== 'PLAYING') return;
+
+        const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+        if (!currentPlayer || !currentPlayer.isBot) return;
+
+        let timeoutId: NodeJS.Timeout;
+
+        // 1. Start Turn (Roll Dice)
+        if (gameState.subPhase === 'IDLE' && gameState.movementState === 'IDLE' && gameState.remainingSteps === 0) {
+            timeoutId = setTimeout(() => handleStartTurn(), 1500);
+        }
+
+        // 2. Move Selection (After Roll)
+        if (gameState.movementState === 'IDLE' && gameState.remainingSteps > 0 && validMoves.length > 0) {
+            timeoutId = setTimeout(() => {
+                const randomMove = validMoves[Math.floor(Math.random() * validMoves.length)];
+                handleTileClick(randomMove);
+            }, 1500);
+        }
+
+        // 3. Select Task Category
+        if (gameState.subPhase === 'SELECTING_CARD') {
+            timeoutId = setTimeout(() => {
+                const categories: ('standard' | 'truth' | 'dare' | 'deep')[] = ['standard', 'truth', 'dare', 'deep'];
+                const randomCat = categories[Math.floor(Math.random() * categories.length)];
+                handleSelectCategory(randomCat);
+            }, 2000);
+        }
+
+        // 4. Perform Task (Wait and Finish)
+        if (gameState.subPhase === 'VIEWING_TASK') {
+            timeoutId = setTimeout(() => {
+                // Bots start task (without audio)
+                handleStartTask();
+                // Simulate performing task
+                setTimeout(() => {
+                    handleTaskDone();
+                }, 3000);
+            }, 2000);
+        }
+
+        // 5. Special Ability / Selection (Simple Random)
+        if (['SELECTING_SCORE_TARGET', 'SELECTING_SUBSTITUTE', 'SELECTING_COMPANION', 'CHOOSING_HELPER'].includes(gameState.subPhase)) {
+            timeoutId = setTimeout(() => {
+                const others = gameState.players.filter(p => p.id !== currentPlayer.id);
+                const randomTarget = others[Math.floor(Math.random() * others.length)];
+                if (randomTarget) {
+                    if (gameState.subPhase === 'SELECTING_SCORE_TARGET') handleScoreTargetSelect(randomTarget.id);
+                    else if (gameState.subPhase === 'SELECTING_SUBSTITUTE') handleSubstituteSelect(randomTarget.id);
+                    else if (gameState.subPhase === 'SELECTING_COMPANION') handleCompanionSelect(randomTarget.id);
+                    else if (gameState.subPhase === 'CHOOSING_HELPER') handleChooseHelper(randomTarget.id);
+                }
+            }, 2000);
+        }
+
+        return () => clearTimeout(timeoutId);
+    }, [gameState.phase, gameState.subPhase, gameState.movementState, gameState.remainingSteps, gameState.currentPlayerIndex, validMoves]);
+
+    // Bot Reviewer Automation
+    useEffect(() => {
+        if (gameState.subPhase === 'PEER_REVIEW' && gameState.currentReviewerId) {
+            const reviewer = gameState.players.find(p => p.id === gameState.currentReviewerId);
+            if (reviewer && reviewer.isBot) {
+                const timer = setTimeout(() => {
+                    // Bot gives generous scores
+                    handlePeerScoreSubmit(Math.random() > 0.3 ? 5 : 4);
+                }, 1500);
+                return () => clearTimeout(timer);
+            }
+        }
+    }, [gameState.subPhase, gameState.currentReviewerId]);
+
+    // --- LOGIC: NEXT STEP FINDER ---
+    const calculateValidNextSteps = (player: Player, currentBoard: BoardTile[]): number[] => {
+        const currentTile = currentBoard.find(t => t.index === player.position);
+        if (!currentTile) return [];
+
+        let neighbors: BoardTile[] = [];
+        if (gameState.gameMode === GameMode.JUNG_8) {
+            neighbors = getHexNeighbors(currentTile, currentBoard);
+        } else {
+            neighbors = getGridNeighbors(currentTile, currentBoard);
+        }
+
+        // Remove backwards move
+        const forwardNeighbors = neighbors.filter(t => t.index !== player.previousPosition);
+
+        if (gameState.movementState === 'TELEPORTING') {
+            return currentBoard.filter(t => t.functionId !== 'Hub').map(t => t.index);
+        }
+
+        // MBTI 16 Mode: Just choose direction, no stack logic
+        if (gameState.gameMode === GameMode.MBTI_16) {
+            return forwardNeighbors.map(t => t.index);
+        }
+
+        // JUNG 8 Mode: Cognitive Stack Logic
+        const stack = MBTI_STACKS[player.mbti] || [];
+        let targetFunctionId = '?';
+        let lookAheadIndex = player.stackIndex + 1;
+
+        for (let i = 0; i < stack.length; i++) {
+            const checkIndex = (lookAheadIndex + i) % stack.length;
+            const funcToCheck = stack[checkIndex];
+            const hasNeighbor = forwardNeighbors.some(t => t.functionId === funcToCheck);
+            if (hasNeighbor) {
+                targetFunctionId = funcToCheck;
+                break;
+            }
+        }
+
+        const validTargets = forwardNeighbors.filter(t =>
+            t.functionId === targetFunctionId || t.functionId === '?'
+        );
+
+        return validTargets.map(t => t.index);
+    };
+
+    // Recalculate valid moves whenever position or remaining steps change
+    useEffect(() => {
+        if (gameState.phase !== 'PLAYING') return;
+
+        const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+        // FIX: Guard against undefined player to prevent crash on load
+        if (!currentPlayer) return;
+
+        if (gameState.movementState === 'IDLE' && gameState.remainingSteps > 0) {
+            const moves = calculateValidNextSteps(currentPlayer, board);
+            setValidMoves(moves);
+        } else if (gameState.movementState === 'TELEPORTING') {
+            const moves = board.filter(t => t.index !== currentPlayer.position).map(t => t.index);
+            setValidMoves(moves);
+        } else if (gameState.remainingSteps === 0 && gameState.movementState === 'IDLE') {
+            setValidMoves([]);
+        }
+    }, [gameState.remainingSteps, gameState.movementState, gameState.currentPlayerIndex, gameState.players]);
+
+
+    const addLog = (text: string, type: 'system' | 'chat' | 'action' = 'system', author?: string, taskDetails?: string) => {
+        const entry = { id: Date.now().toString() + Math.random(), text, type, author, timestamp: Date.now(), taskDetails };
+        setGameState(prev => ({ ...prev, logs: [...prev.logs, entry] }));
+        if (author && author !== 'system') speak(text, author);
+    };
+
+    const snapshotLog = (text: string) => {
+        setGameState(prev => ({ ...prev, snapshots: [...prev.snapshots, text] }));
+    };
+
+    const startLoading = (humanPlayers: any[], mode: GameMode, botCount: number, targetScore: number) => {
+        setGameState(prev => ({ ...prev, phase: 'LOADING' }));
+        let p = 0;
+        const interval = setInterval(() => {
+            p += 1;
+            setLoadingProgress(p);
+            if (p >= 100) {
+                clearInterval(interval);
+                setShowStartBtn(true);
+            }
+        }, 50);
+        (window as any).pendingGameConfig = { humanPlayers, mode, botCount, targetScore };
+    };
+
+    const handleEnterGame = () => {
+        const config = (window as any).pendingGameConfig;
+        initGame(config.humanPlayers, config.mode, config.botCount, config.targetScore);
+    }
+
+    const initGame = (humanPlayers: any[], mode: GameMode, botCount: number, targetScore: number) => {
+        const newBoard = generateMap(mode);
+        setBoard(newBoard);
+
+        // Find Center (3,3) for MBTI or (0,0) for Jung
+        const centerQ = mode === GameMode.MBTI_16 ? 3 : 0;
+        const centerR = mode === GameMode.MBTI_16 ? 3 : 0;
+        const centerTile = newBoard.find(t => t.q === centerQ && t.r === centerR);
+
+        const players: Player[] = humanPlayers.map((p, i) => {
+            // Default to center
+            let startPos = centerTile?.index || 0;
+
+            // MBTI Mode: Randomly on their own type if exists
+            if (mode === GameMode.MBTI_16) {
+                // Find all tiles matching this player's type
+                const typeTiles = newBoard.filter(t => t.functionId === p.mbti);
+                if (typeTiles.length > 0) {
+                    // Pick one randomly
+                    const randomTile = typeTiles[Math.floor(Math.random() * typeTiles.length)];
+                    startPos = randomTile.index;
+                }
+            }
+
+            return {
+                id: `user-${i}`, name: p.name || `P${i + 1}`, mbti: p.mbti, isBot: false,
+                avatar: p.avatarImage || 'user', color: COLORS[i % COLORS.length],
+                trustScore: 0, insightScore: 0, expressionScore: 0, totalRatingGiven: 0, position: startPos,
+                previousPosition: null, stackIndex: 0, skipUsedCount: 0
+            };
+        });
+
+        for (let i = 0; i < botCount; i++) {
+            const botMbti = getRandomMBTI();
+            const names = BOT_NAMES[botMbti] || [`Bot ${i}`];
+
+            let startPos = centerTile?.index || 0;
+            if (mode === GameMode.MBTI_16) {
+                const typeTiles = newBoard.filter(t => t.functionId === botMbti);
+                if (typeTiles.length > 0) {
+                    const randomTile = typeTiles[Math.floor(Math.random() * typeTiles.length)];
+                    startPos = randomTile.index;
+                }
+            }
+
+            players.push({
+                id: `bot-${i}`, name: names[0], mbti: botMbti, isBot: true,
+                avatar: 'bot', color: COLORS[(players.length) % COLORS.length],
+                trustScore: 0, insightScore: 0, expressionScore: 0, totalRatingGiven: 0, position: startPos,
+                previousPosition: null, stackIndex: 0, skipUsedCount: 0
+            });
+        }
+
+        setGameState(prev => ({
+            ...prev, players, gameMode: mode, targetScore, phase: 'PLAYING', subPhase: 'IDLE',
+            logs: [{ id: '0', text: '欢迎登上彩虹船。', type: 'system', timestamp: Date.now() }],
+            sightRange: 1 // Init sight
+        }));
+
+        // Explicitly start music when game starts (user interaction chain)
+        setIsMusicPlaying(true);
+        if (audioRef.current) {
+            audioRef.current.volume = 0.2;
+            audioRef.current.play().catch(e => console.warn("Autoplay prevented:", e));
+        }
+    };
+
+    const handleStartTurn = () => {
+        const player = gameState.players[gameState.currentPlayerIndex];
+
+        setGameState(prev => ({ ...prev, movementState: 'ROLLING' }));
+
+        setTimeout(() => {
+            // Dice 1-6 for MBTI mode maybe better? Let's keep 1-8 but 33 tiles is small. 1-4?
+            // Keeping 1-8 for now for fun chaos.
+            const roll = Math.floor(Math.random() * 6) + 1; // 1-6 for grid
+
+            // Randomize sight range (1 or 2)
+            const newSightRange = Math.random() > 0.5 ? 2 : 1;
+
+            setGameState(prev => ({
+                ...prev,
+                diceValue: roll,
+                remainingSteps: roll,
+                sightRange: newSightRange,
+                movementState: 'IDLE',
+                activeSpecialAbility: 'NONE',
+                activeModifier: 'NORMAL',
+                helperId: null,
+                scoreTargetPlayerId: null
+            }));
+
+            addLog(`${player.name} 掷出了 ${roll} 点 (视野: ${newSightRange}格)`, 'action');
+        }, 1000);
+    };
+
+    const handleTileClick = (tileIndex: number) => {
+        if (!validMoves.includes(tileIndex)) return;
+
+        const player = gameState.players[gameState.currentPlayerIndex];
+        const targetTile = board.find(t => t.index === tileIndex);
+        if (!targetTile) return;
+
+        const stack = MBTI_STACKS[player.mbti] || [];
+        let newStackIndex = player.stackIndex;
+
+        if (gameState.gameMode === GameMode.JUNG_8 && targetTile.functionId !== '?') {
+            for (let i = 1; i < stack.length; i++) {
+                const idx = (player.stackIndex + i) % stack.length;
+                if (stack[idx] === targetTile.functionId) {
+                    newStackIndex = idx;
+                    break;
+                }
+            }
+        }
+
+        const isTeleportLanding = gameState.movementState === 'TELEPORTING';
+
+        // Update Position & Steps
+        setGameState(prev => {
+            const newPlayers = [...prev.players];
+            const p = newPlayers[prev.currentPlayerIndex];
+            p.previousPosition = p.position;
+            p.position = tileIndex;
+            p.stackIndex = newStackIndex;
+
+            const newRemaining = isTeleportLanding ? 0 : prev.remainingSteps - 1;
+
+            return {
+                ...prev,
+                players: newPlayers,
+                currentTile: targetTile,
+                remainingSteps: newRemaining,
+                movementState: 'MOVING_STEP',
+                activeModifier: targetTile.modifier,
+                activeSpecialAbility: targetTile.specialAbility
+            };
+        });
+        setValidMoves([]);
+
+        // Animation delay then logic
+        setTimeout(() => {
+            if (isTeleportLanding || gameState.remainingSteps === 1) {
+                finishMovementAndTriggerEvent(targetTile, isTeleportLanding);
+            } else {
+                setGameState(prev => ({ ...prev, movementState: 'IDLE' }));
+            }
+        }, 600);
+    }
+
+    const finishMovementAndTriggerEvent = (tile: BoardTile, justTeleported: boolean) => {
+        const player = gameState.players[gameState.currentPlayerIndex];
+
+        setGameState(prev => ({ ...prev, movementState: 'IDLE' }));
+
+        if (!justTeleported && tile.specialAbility !== 'NONE' && tile.functionId === '?') {
+            handleSpecialAbility(tile.specialAbility);
+            return;
+        }
+
+        // In MBTI 16 mode, center is special
+        if (gameState.gameMode === GameMode.MBTI_16 && tile.functionId === 'Hub' && !justTeleported) {
+            handleSpecialAbility('FREEDOM');
+            return;
+        }
+
+        // Generate Tasks
+        generateAllTaskOptions(tile.functionId, gameState.players, player, gameState.logs).then(tasks => {
+            setGameState(prev => ({ ...prev, pregeneratedTasks: tasks }));
+        });
+
+        setGameState(prev => ({
+            ...prev,
+            subPhase: 'SELECTING_CARD',
+            selectedTask: null,
+            hasReselected: false,
+            scoreTargetPlayerId: prev.scoreTargetPlayerId,
+            helperId: prev.helperId
+        }));
+
+        addLog(`抵达 ${tile.characterName || tile.functionId}，正在翻开命运牌...`, 'system');
+    };
+
+    const handleSpecialAbility = (ability: SpecialAbility) => {
+        const player = gameState.players[gameState.currentPlayerIndex];
+
+        if (ability === 'FREEDOM') {
+            setGameState(prev => ({ ...prev, movementState: 'TELEPORTING' }));
+            addLog(`${player.name} 开启了自由门，请选择任意功能格降落！`, 'action');
+            return;
+        }
+
+        if (ability === 'SUBSTITUTE') {
+            setGameState(prev => ({ ...prev, subPhase: 'SELECTING_SUBSTITUTE' }));
+            addLog(`${player.name} 正在寻找替身...`, 'action');
+            return;
+        }
+
+        if (ability === 'COMPANION') {
+            setGameState(prev => ({ ...prev, subPhase: 'SELECTING_COMPANION' }));
+            addLog(`${player.name} 正在寻找同伴...`, 'action');
+            return;
+        }
+
+        // Fallback
+        setGameState(prev => ({ ...prev, subPhase: 'SELECTING_CARD' }));
+    };
+
+    const handleSubstituteSelect = (targetId: string) => {
+        setGameState(prev => ({ ...prev, helperId: targetId, subPhase: 'IDLE', movementState: 'TELEPORTING' }));
+        addLog(`指定了替身，请选择任意功能格降落！`, 'system');
+    };
+
+    const handleCompanionSelect = (targetId: string) => {
+        setGameState(prev => ({ ...prev, helperId: targetId, subPhase: 'IDLE', movementState: 'TELEPORTING' }));
+        addLog(`结伴同行，请选择任意功能格降落！`, 'system');
+    };
+
+    const handleSelectCategory = (category: 'standard' | 'truth' | 'dare' | 'deep') => {
+        const cached = gameState.pregeneratedTasks?.[category];
+        if (cached) {
+            setGameState(prev => ({ ...prev, subPhase: 'VIEWING_TASK', selectedTask: cached }));
+        } else {
+            setGameState(prev => ({ ...prev, subPhase: 'VIEWING_TASK', selectedTask: null }));
+            const tile = gameState.currentTile;
+            if (tile) {
+                generateAllTaskOptions(tile.functionId, gameState.players, gameState.players[gameState.currentPlayerIndex], gameState.logs).then(tasks => {
+                    setGameState(prev => ({ ...prev, selectedTask: tasks[category], pregeneratedTasks: tasks }));
+                });
+            }
+        }
+    };
+
+    const handleReselect = () => {
+        if (gameState.hasReselected || !gameState.pregeneratedTasks) return;
+        const categories: ('standard' | 'truth' | 'dare' | 'deep')[] = ['standard', 'truth', 'dare', 'deep'];
+        const currentCat = gameState.selectedTask?.category;
+        const available = categories.filter(c => c !== currentCat);
+        const randomCat = available[Math.floor(Math.random() * available.length)];
+        setGameState(prev => ({ ...prev, hasReselected: true, selectedTask: prev.pregeneratedTasks![randomCat] }));
+    };
+
+    const handleSkip = () => {
+        const player = gameState.players[gameState.currentPlayerIndex];
+        setGameState(prev => {
+            const newPlayers = [...prev.players];
+            newPlayers[prev.currentPlayerIndex].skipUsedCount += 1;
+            return { ...prev, players: newPlayers, subPhase: 'IDLE' };
+        });
+        nextTurn();
+    };
+
+    const handleAskForHelp = () => {
+        if (gameState.sharedHelpUsedCount >= 3) { alert("次数耗尽"); return; }
+        setGameState(prev => ({ ...prev, subPhase: 'CHOOSING_HELPER' }));
+    };
+
+    const handleChooseHelper = (helperId: string) => {
+        setGameState(prev => ({ ...prev, helperId, sharedHelpUsedCount: prev.sharedHelpUsedCount + 1, subPhase: 'VIEWING_TASK' }));
+    };
+
+    const handleStartTask = () => {
+        if (!gameState.selectedTask) return;
+
+        const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+
+        // Start STT only if Human
+        setCurrentSpeechText("");
+        if (!currentPlayer.isBot && isSpeechRecognitionSupported()) {
+            startSpeechRecognition(
+                (text) => setCurrentSpeechText(prev => prev + " " + text),
+                () => setIsListening(false)
+            );
+            setIsListening(true);
+        }
+
+        setGameState(prev => ({ ...prev, subPhase: 'TASK_EXECUTION' }));
+        setTaskTimer(gameState.selectedTask.durationSeconds);
+        const timerId = setInterval(() => {
+            setTaskTimer(prev => { if (prev <= 1) { clearInterval(timerId); return 0; } return prev - 1; });
+        }, 1000);
+    };
+
+    const handleTaskDone = () => {
+        // Stop STT
+        if (isListening) {
+            stopSpeechRecognition();
+            setIsListening(false);
+        }
+
+        const player = gameState.players[gameState.currentPlayerIndex];
+        // Log task + speech
+        const taskSummary = `任务: ${gameState.selectedTask?.title || '未知任务'}`;
+        const speechDetail = currentSpeechText.trim() ? `玩家发言: "${currentSpeechText.trim()}"` : (player.isBot ? "（Bot 操作）" : "（玩家未检测到发言）");
+
+        addLog(`${player.name} 完成了挑战。`, 'action', player.name, `${taskSummary}。${speechDetail}`);
+        snapshotLog(`${player.name}完成[${gameState.selectedTask?.category}]挑战。${speechDetail}`);
+
+        const reviewers = gameState.players.filter(p => p.id !== gameState.players[gameState.currentPlayerIndex].id);
+        if (reviewers.length === 0) { handlePeerScoreSubmit(5); return; }
+        setGameState(prev => ({ ...prev, subPhase: 'PEER_REVIEW', peerReviewQueue: reviewers.map(r => r.id), currentReviewerId: reviewers[0].id, accumulatedRating: 0 }));
+    };
+
+    const handlePeerScoreSubmit = (rating: number) => {
+        const currentReviewerId = gameState.currentReviewerId;
+
+        // Update the reviewer's given score stats
+        if (currentReviewerId) {
+            setGameState(prev => {
+                const newPlayers = [...prev.players];
+                const reviewerIndex = newPlayers.findIndex(p => p.id === currentReviewerId);
+                if (reviewerIndex !== -1) {
+                    newPlayers[reviewerIndex] = {
+                        ...newPlayers[reviewerIndex],
+                        totalRatingGiven: (newPlayers[reviewerIndex].totalRatingGiven || 0) + rating
+                    };
+                }
+                return { ...prev, players: newPlayers };
+            });
+        }
+
+        if (currentReviewerId && gameState.peerReviewQueue.length > 0) {
+            setGameState(prev => {
+                const newQueue = prev.peerReviewQueue.filter(id => id !== currentReviewerId);
+                const nextReviewerId = newQueue.length > 0 ? newQueue[0] : null;
+                if (nextReviewerId) return { ...prev, accumulatedRating: prev.accumulatedRating + rating, peerReviewQueue: newQueue, currentReviewerId: nextReviewerId };
+                else return { ...prev, accumulatedRating: prev.accumulatedRating + rating, peerReviewQueue: [], currentReviewerId: null };
+            });
+            if (gameState.peerReviewQueue.length > 1) return;
+        }
+
+        // Check Modifiers
+        if (gameState.activeModifier === 'CLONE' || gameState.activeModifier === 'TRANSFER') {
+            setGameState(prev => ({ ...prev, subPhase: 'SELECTING_SCORE_TARGET' }));
+            return;
+        }
+        finalizeTurn(rating);
+    };
+
+    const handleScoreTargetSelect = (targetId: string) => {
+        setGameState(prev => ({ ...prev, scoreTargetPlayerId: targetId }));
+        finalizeTurn(0);
+    };
+
+    const finalizeTurn = (lastRating: number) => {
+        const player = gameState.players[gameState.currentPlayerIndex];
+        const task = gameState.selectedTask;
+        if (!task) return;
+
+        const reviewerCount = Math.max(1, gameState.players.length - 1);
+        const totalRating = gameState.accumulatedRating;
+        const avgRating = totalRating / reviewerCount;
+
+        let basePoints = Math.ceil(avgRating * task.multiplier * 2);
+        const mod = gameState.activeModifier;
+        const ability = gameState.activeSpecialAbility;
+
+        if (mod === 'DOUBLE') basePoints *= 2;
+        if (mod === 'HALF') basePoints = Math.floor(basePoints / 2);
+
+        setGameState(prev => {
+            // Deep copy of players array to ensure React detects state change
+            // We must map and create NEW objects for the players we modify
+            let newPlayers = prev.players.map(p => ({ ...p }));
+
+            const currentPlayer = newPlayers[prev.currentPlayerIndex];
+            const modifier = gameState.activeModifier;
+            const ability = gameState.activeSpecialAbility;
+
+            // Helper to apply score safely
+            const applyScoreToPlayer = (targetPlayerId: string, points: number) => {
+                const targetIndex = newPlayers.findIndex(pl => pl.id === targetPlayerId);
+                if (targetIndex !== -1) {
+                    const target = newPlayers[targetIndex];
+                    if (task.scoreType === 'trust') target.trustScore += points;
+                    else if (task.scoreType === 'insight') target.insightScore += points;
+                    else target.expressionScore += points;
+                }
+            };
+
+            // Logic
+            if (ability === 'SUBSTITUTE' && prev.helperId) {
+                applyScoreToPlayer(prev.helperId, basePoints); // Helper gets full points
+                // Log is handled outside
+            }
+            else if (ability === 'COMPANION' && prev.helperId) {
+                applyScoreToPlayer(currentPlayer.id, basePoints);
+                applyScoreToPlayer(prev.helperId, basePoints);
+            }
+            else if (prev.helperId && ability === 'NONE' && modifier === 'NORMAL') {
+                const hPoints = Math.ceil(basePoints / 2);
+                const pPoints = Math.floor(basePoints / 2);
+                applyScoreToPlayer(currentPlayer.id, pPoints);
+                applyScoreToPlayer(prev.helperId, hPoints);
+            }
+            else {
+                // Standard / Transfer / Clone
+                if (modifier === 'TRANSFER' && prev.scoreTargetPlayerId) {
+                    applyScoreToPlayer(prev.scoreTargetPlayerId, basePoints);
+                } else {
+                    applyScoreToPlayer(currentPlayer.id, basePoints);
+                    if (modifier === 'CLONE' && prev.scoreTargetPlayerId) {
+                        applyScoreToPlayer(prev.scoreTargetPlayerId, basePoints);
+                    }
+                }
+            }
+
+            return { ...prev, players: newPlayers };
+        });
+
+        nextTurn();
+    };
+
+    const nextTurn = () => {
+        setGameState(prev => {
+            const p = prev.players[prev.currentPlayerIndex];
+            const total = p.trustScore + p.insightScore + p.expressionScore;
+            if (total >= prev.targetScore) {
+                handleGameOver(prev.players);
+                return prev;
+            }
+            const nextIndex = (prev.currentPlayerIndex + 1) % prev.players.length;
+            return {
+                ...prev,
+                currentPlayerIndex: nextIndex,
+                subPhase: 'IDLE',
+                selectedTask: null,
+                helperId: null,
+                scoreTargetPlayerId: null,
+                activeModifier: 'NORMAL',
+                activeSpecialAbility: 'NONE',
+                remainingSteps: 0,
+                turn: nextIndex === 0 ? prev.turn + 1 : prev.turn,
+                currentReviewerId: null,
+                peerReviewQueue: []
+            };
+        });
+    };
+
+    const handleGameOver = async (finalPlayers: Player[]) => {
+        setGameState(prev => ({ ...prev, players: finalPlayers, phase: 'ANALYSIS' }));
+        const report = await generateProfessionalReport(finalPlayers, gameState.snapshots);
+        setReportData(report);
+    };
+
+    const resetGame = () => {
+        setGameState(prev => ({
+            players: [],
+            currentPlayerIndex: 0,
+            gameMode: GameMode.JUNG_8,
+            turn: 1,
+            targetScore: 40,
+            logs: [],
+            phase: 'ONBOARDING',
+            subPhase: 'IDLE',
+            currentTile: null,
+            selectedTask: null,
+            activeModifier: 'NORMAL',
+            activeSpecialAbility: 'NONE',
+            remainingSteps: 0,
+            sightRange: 1, // Reset sight
+            helperId: null,
+            scoreTargetPlayerId: null,
+            sharedHelpUsedCount: 0,
+            hasReselected: false,
+            pregeneratedTasks: null,
+            movementState: 'IDLE',
+            diceValue: null,
+            highestScore: 0,
+            snapshots: [],
+            startTime: Date.now(),
+            peerReviewQueue: [],
+            currentReviewerId: null,
+            accumulatedRating: 0
+        }));
+        setLoadingProgress(0);
+        setShowStartBtn(false);
+        setBoard([]);
+        setValidMoves([]);
+        setReportData(null);
+    };
+
+    // --- RENDER ---
+
+    if (gameState.phase === 'ONBOARDING') {
+        return (
+            <Onboarding
+                onComplete={startLoading}
+                isDarkMode={isDarkMode}
+                toggleTheme={toggleTheme}
+            />
+        );
+    }
+
+    // ... (LOADING and ANALYSIS phases render the same)
+    if (gameState.phase === 'LOADING') {
+        return (
+            <div className="h-screen w-full flex flex-col items-center justify-center text-slate-800 dark:text-white relative overflow-hidden font-sans transition-colors duration-300">
+                {/* Background provided by body CSS */}
+                <div className="z-10 flex flex-col items-center w-full max-w-xl px-8 text-center bg-white/10 dark:bg-black/20 backdrop-blur-md rounded-3xl p-12 shadow-2xl border border-white/10">
+                    <motion.h1
+                        initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+                        className="text-6xl font-bold tracking-tight mb-2 text-transparent bg-clip-text bg-[linear-gradient(to_right,#ef4444,#f97316,#eab308,#22c55e,#3b82f6,#a855f7)] drop-shadow-lg"
+                    >
+                        彩虹船
+                    </motion.h1>
+                    <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="text-xl text-slate-200 mb-8 font-light italic">
+                        “驶向海洋之心，领略生命之多彩”
+                    </motion.p>
+
+                    <div className="w-full h-1 bg-slate-700 rounded-full overflow-hidden mb-8">
+                        <motion.div className="h-full bg-teal-400" initial={{ width: 0 }} animate={{ width: `${loadingProgress}%` }} />
+                    </div>
+
+                    {/* Tutorial Carousel */}
+                    <div className="h-32 flex items-center justify-center">
+                        <AnimatePresence mode='wait'>
+                            {loadingProgress < 30 && <motion.p key="1" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-xl text-slate-200">1. 登船：点击右下角按钮，激活罗盘</motion.p>}
+                            {loadingProgress >= 30 && loadingProgress < 60 && <motion.p key="2" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-xl text-slate-200">2. 航行：寻找你的“色彩坐标”，或者神秘的“？”</motion.p>}
+                            {loadingProgress >= 60 && loadingProgress < 90 && <motion.p key="3" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-xl text-slate-200">3. 共鸣：完成挑战，看见彩虹，获取能量</motion.p>}
+                            {loadingProgress >= 90 && <motion.p key="4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-xl text-teal-300 font-bold">航线已确认</motion.p>}
+                        </AnimatePresence>
+                    </div>
+
+                    {showStartBtn && (
+                        <motion.button
+                            initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                            onClick={handleEnterGame}
+                            className="mt-4 px-12 py-4 bg-white text-slate-900 rounded-full font-bold text-xl shadow-[0_0_30px_rgba(20,184,166,0.5)] hover:scale-105 transition flex items-center gap-2"
+                        >
+                            <Play size={24} /> 启航
+                        </motion.button>
+                    )}
+                </div>
             </div>
+        );
+    }
 
-            <div className="flex-1 flex justify-center">
-                 {gameState.gameMode === GameMode.JUNG_8 && (
-                     <div className="flex items-center px-6 py-2 rounded-full bg-white/40 dark:bg-black/40 border border-slate-200 dark:border-white/5 backdrop-blur-md shadow-inner overflow-x-auto no-scrollbar max-w-xl">
-                     {playerStack.map((f, i) => {
-                         const isCurrent = i === currentPlayer.stackIndex;
-                         return (
-                            <div key={i} className={`flex flex-col items-center relative transition-all duration-500 ${isCurrent ? 'mx-3' : 'mx-1'}`}>
-                                 {isCurrent && <div className="text-[9px] text-teal-600 dark:text-teal-400 font-bold mb-1 absolute -top-4">当前</div>}
-                                <div className={`w-8 h-8 flex items-center justify-center text-[10px] font-bold rounded-full transition-all duration-500 ${isCurrent ? 'bg-teal-500 text-white scale-125 shadow-[0_0_15px_#14b8a6]' : 'bg-slate-200 dark:bg-slate-800 text-slate-500'}`}>
-                                    {f}
-                                </div>
-                            </div>
-                         )
-                     })}
-                     </div>
-                 )}
-                 {gameState.gameMode === GameMode.MBTI_16 && (
-                     <div className="flex items-center px-6 py-2 rounded-full bg-white/40 dark:bg-black/40 border border-slate-200 dark:border-white/5 backdrop-blur-md shadow-inner overflow-x-auto no-scrollbar max-w-2xl">
-                         {MBTI_TYPES.map((type, i) => {
-                             const isCurrent = gameState.currentTile?.functionId === type;
-                             // Find group to use correct color
-                             let groupColor = 'text-slate-500';
-                             let activeClass = 'bg-slate-200 dark:bg-slate-800 text-slate-500';
-                             
-                             const groupEntry = Object.entries(MBTI_GROUPS).find(([_, g]) => g.types.includes(type));
-                             if (groupEntry) {
-                                 const [_, groupData] = groupEntry;
-                                 if (isCurrent) {
-                                     // Parse tailwind classes to apply active style manually or just keep it simple
-                                     // Let's use specific active colors based on group
-                                     if (groupData.hexColor === '#a855f7') activeClass = 'bg-purple-500 text-white shadow-[0_0_15px_#a855f7] scale-110'; // NT
-                                     else if (groupData.hexColor === '#22c55e') activeClass = 'bg-green-500 text-white shadow-[0_0_15px_#22c55e] scale-110'; // NF
-                                     else if (groupData.hexColor === '#3b82f6') activeClass = 'bg-blue-500 text-white shadow-[0_0_15px_#3b82f6] scale-110'; // SJ
-                                     else if (groupData.hexColor === '#eab308') activeClass = 'bg-yellow-500 text-white shadow-[0_0_15px_#eab308] scale-110'; // SP
-                                 }
-                             }
+    if (gameState.phase === 'ANALYSIS') {
+        return (
+            <GameReport
+                players={gameState.players}
+                report={reportData || { groupAnalysis: '', playerAnalysis: {} }}
+                onReturnHome={resetGame}
+                startTime={gameState.startTime}
+                gameMode={gameState.gameMode}
+            />
+        );
+    }
 
-                             return (
-                                <div key={type} className={`flex flex-col items-center relative transition-all duration-500 mx-1 shrink-0`}>
-                                     {isCurrent && <div className="text-[9px] text-teal-600 dark:text-teal-400 font-bold mb-1 absolute -top-4">当前</div>}
-                                    <div className={`px-2 py-1 flex items-center justify-center text-[10px] font-bold rounded-md transition-all duration-500 ${isCurrent ? activeClass : 'bg-slate-200 dark:bg-slate-800 text-slate-500'}`}>
-                                        {type}
-                                    </div>
-                                </div>
-                             )
-                         })}
-                     </div>
-                 )}
-            </div>
+    const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+    if (!currentPlayer) return <div className="h-screen bg-slate-950 flex items-center justify-center text-white">Loading Game State...</div>;
 
-            <div className="w-1/3 flex justify-end gap-3">
-                <button onClick={() => handleGameOver(gameState.players)} className="px-3 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 dark:bg-red-900/20 dark:hover:bg-red-900/50 border border-red-200 dark:border-red-800/50 text-red-600 dark:text-red-300 transition flex items-center gap-1.5 text-xs font-bold mr-2">
-                    <Flag size={14} /> 结束游戏
-                </button>
-                <button onClick={toggleTheme} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-amber-500 dark:hover:text-yellow-400 transition">
-                    {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
-                </button>
-                <button onClick={() => setShowConfig(true)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 hover:text-teal-600 dark:hover:text-teal-400 transition" title="AI Config">
-                  <Settings size={18} />
-                </button>
-                <button onClick={() => setIsMusicPlaying(!isMusicPlaying)} className={`p-2 rounded-full transition ${isMusicPlaying ? 'text-teal-500 bg-teal-500/10' : 'text-slate-600 dark:text-slate-400'}`} title={isMusicPlaying ? "Pause Music" : "Play Music"}>
-                    <Music size={18}/>
-                </button>
-            </div>
-        </header>
+    const currentReviewer = gameState.currentReviewerId ? gameState.players.find(p => p.id === gameState.currentReviewerId) : null;
+    const playerStack = MBTI_STACKS[currentPlayer.mbti] || [];
 
-        <main className="flex-1 flex overflow-hidden relative">
-            {/* Transparent background for main content to show ocean bg */}
-            <div className="flex-1 relative bg-transparent flex flex-col transition-all duration-300">
-                <div className="flex-1 flex items-center justify-center overflow-hidden cursor-grab active:cursor-grabbing">
-                    <GameBoard 
-                        players={gameState.players} 
-                        currentPlayerId={currentPlayer.id} 
-                        boardLayout={board}
-                        validMoves={validMoves} 
-                        onTileClick={handleTileClick} 
-                        gameMode={gameState.gameMode}
-                        visibilityRadius={gameState.sightRange} // Using sightRange instead of diceValue
-                    />
+    return (
+        <div className="h-screen w-full text-slate-800 dark:text-slate-200 font-sans flex flex-col overflow-hidden relative selection:bg-teal-500/30 transition-colors duration-300">
+
+            {/* Top Bar - Transparent with blur */}
+            <header className="h-16 bg-white/80 dark:bg-slate-900/60 backdrop-blur border-b border-slate-200 dark:border-white/5 flex items-center justify-between px-6 shrink-0 z-30 transition-colors duration-300">
+                <div className="flex items-center gap-6 w-1/3">
+                    <button onClick={resetGame} className="flex items-center gap-1 text-slate-500 hover:text-teal-600 dark:text-slate-400 dark:hover:text-white transition group" title="Return to Home">
+                        <LogOut size={16} className="group-hover:-translate-x-1 transition" />
+                    </button>
+                    <div className="flex items-center gap-3 bg-slate-100 dark:bg-slate-800/50 pr-4 rounded-full border border-slate-200 dark:border-slate-700/50">
+                        <div className="w-10 h-10 rounded-full border-2 border-teal-500/50 overflow-hidden">
+                            {currentPlayer.avatar.startsWith('data:') ? <img src={currentPlayer.avatar} className="w-full h-full object-cover" /> : <div className="bg-slate-200 dark:bg-slate-700 w-full h-full flex items-center justify-center font-bold text-lg">{currentPlayer.name[0]}</div>}
+                        </div>
+                        <div>
+                            <div className="font-bold text-slate-700 dark:text-white text-sm">{currentPlayer.name}</div>
+                            <div className="text-[10px] font-bold text-teal-600 dark:text-teal-400">{currentPlayer.mbti}</div>
+                        </div>
+                    </div>
                 </div>
 
-                {/* ... (Rest of existing UI components) ... */}
-                <AnimatePresence>
-                    {(gameState.remainingSteps > 0 && gameState.movementState !== 'ROLLING') && (
-                        <motion.div initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 1.5, opacity: 0 }} className="absolute inset-0 pointer-events-none flex items-center justify-center z-10">
-                            <div className="text-[10rem] font-bold text-slate-900/10 dark:text-white/20 drop-shadow-lg select-none">
-                                {gameState.remainingSteps}
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-
-                {/* Dice & Interactions */}
-                <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-20">
-                    <div className="relative w-full h-full max-w-4xl max-h-[800px]">
-                        <div className="absolute bottom-20 right-8 pointer-events-auto transition-all duration-300">
-                            {gameState.subPhase === 'IDLE' && !currentPlayer.isBot && gameState.remainingSteps === 0 && (
-                                <button onClick={handleStartTurn} disabled={gameState.movementState !== 'IDLE'} className="group relative w-24 h-24 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center shadow-2xl transition hover:scale-105 active:scale-95">
-                                    <div className="absolute inset-0 rounded-full border border-teal-500/30 animate-ping opacity-20"></div>
-                                    <div className="flex flex-col items-center">
-                                        <Compass className="text-teal-500 group-hover:text-teal-600 dark:group-hover:text-white transition mb-1" size={28} />
-                                        <span className="text-[10px] text-teal-600/80 dark:text-teal-500/80 font-bold uppercase tracking-widest">启程</span>
+                <div className="flex-1 flex justify-center">
+                    {gameState.gameMode === GameMode.JUNG_8 && (
+                        <div className="flex items-center px-6 py-2 rounded-full bg-white/40 dark:bg-black/40 border border-slate-200 dark:border-white/5 backdrop-blur-md shadow-inner overflow-x-auto no-scrollbar max-w-xl">
+                            {playerStack.map((f, i) => {
+                                const isCurrent = i === currentPlayer.stackIndex;
+                                return (
+                                    <div key={i} className={`flex flex-col items-center relative transition-all duration-500 ${isCurrent ? 'mx-3' : 'mx-1'}`}>
+                                        {isCurrent && <div className="text-[9px] text-teal-600 dark:text-teal-400 font-bold mb-1 absolute -top-4">当前</div>}
+                                        <div className={`w-8 h-8 flex items-center justify-center text-[10px] font-bold rounded-full transition-all duration-500 ${isCurrent ? 'bg-teal-500 text-white scale-125 shadow-[0_0_15px_#14b8a6]' : 'bg-slate-200 dark:bg-slate-800 text-slate-500'}`}>
+                                            {f}
+                                        </div>
                                     </div>
-                                </button>
-                            )}
-                            {gameState.movementState === 'ROLLING' && (<div className="absolute inset-0 flex items-center justify-center -translate-y-12"><Dice3D value={gameState.diceValue} rolling={true} /></div>)}
+                                )
+                            })}
                         </div>
+                    )}
+                    {gameState.gameMode === GameMode.MBTI_16 && (
+                        <div className="flex items-center px-6 py-2 rounded-full bg-white/40 dark:bg-black/40 border border-slate-200 dark:border-white/5 backdrop-blur-md shadow-inner overflow-x-auto no-scrollbar max-w-2xl">
+                            {MBTI_TYPES.map((type, i) => {
+                                const isCurrent = gameState.currentTile?.functionId === type;
+                                // Find group to use correct color
+                                let groupColor = 'text-slate-500';
+                                let activeClass = 'bg-slate-200 dark:bg-slate-800 text-slate-500';
 
-                        {/* Modifiers & Tasks (Reused) */}
-                        <AnimatePresence>
-                            {gameState.movementState === 'IDLE' && (gameState.activeModifier !== 'NORMAL' || gameState.activeSpecialAbility !== 'NONE') && gameState.subPhase === 'SELECTING_CARD' && (
-                                <motion.div initial={{scale: 0, opacity:0}} animate={{scale: 1, opacity:1}} exit={{scale: 2, opacity:0}} className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                    <div className="bg-white/90 dark:bg-black/80 backdrop-blur-md p-6 rounded-3xl border-2 border-amber-500 text-center shadow-[0_0_50px_rgba(245,158,11,0.5)] text-slate-800 dark:text-white">
-                                        <div className="text-6xl mb-2">
-                                            {gameState.activeModifier === 'DOUBLE' && '⚡ x2'} {gameState.activeModifier === 'HALF' && '📉 ÷2'} {gameState.activeModifier === 'CLONE' && '👯'} {gameState.activeModifier === 'TRANSFER' && '↔️'}
-                                            {gameState.activeSpecialAbility === 'FREEDOM' && '🚀'} {gameState.activeSpecialAbility === 'SUBSTITUTE' && '🎭'} {gameState.activeSpecialAbility === 'COMPANION' && '🤝'}
-                                        </div>
-                                        <div className="text-2xl font-bold text-amber-500 dark:text-amber-400">
-                                            {gameState.activeModifier === 'DOUBLE' && '能量激化'} {gameState.activeModifier === 'HALF' && '迷雾重重'} {gameState.activeModifier === 'CLONE' && '命运克隆'} {gameState.activeModifier === 'TRANSFER' && '乾坤挪移'}
-                                            {gameState.activeSpecialAbility === 'FREEDOM' && '自由之门'} {gameState.activeSpecialAbility === 'SUBSTITUTE' && '寻找替身'} {gameState.activeSpecialAbility === 'COMPANION' && '结伴同行'}
+                                const groupEntry = Object.entries(MBTI_GROUPS).find(([_, g]) => g.types.includes(type));
+                                if (groupEntry) {
+                                    const [_, groupData] = groupEntry;
+                                    if (isCurrent) {
+                                        // Parse tailwind classes to apply active style manually or just keep it simple
+                                        // Let's use specific active colors based on group
+                                        if (groupData.hexColor === '#a855f7') activeClass = 'bg-purple-500 text-white shadow-[0_0_15px_#a855f7] scale-110'; // NT
+                                        else if (groupData.hexColor === '#22c55e') activeClass = 'bg-green-500 text-white shadow-[0_0_15px_#22c55e] scale-110'; // NF
+                                        else if (groupData.hexColor === '#3b82f6') activeClass = 'bg-blue-500 text-white shadow-[0_0_15px_#3b82f6] scale-110'; // SJ
+                                        else if (groupData.hexColor === '#eab308') activeClass = 'bg-yellow-500 text-white shadow-[0_0_15px_#eab308] scale-110'; // SP
+                                    }
+                                }
+
+                                return (
+                                    <div key={type} className={`flex flex-col items-center relative transition-all duration-500 mx-1 shrink-0`}>
+                                        {isCurrent && <div className="text-[9px] text-teal-600 dark:text-teal-400 font-bold mb-1 absolute -top-4">当前</div>}
+                                        <div className={`px-2 py-1 flex items-center justify-center text-[10px] font-bold rounded-md transition-all duration-500 ${isCurrent ? activeClass : 'bg-slate-200 dark:bg-slate-800 text-slate-500'}`}>
+                                            {type}
                                         </div>
                                     </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
+                                )
+                            })}
+                        </div>
+                    )}
+                </div>
 
-                        <AnimatePresence>
-                        {gameState.subPhase === 'SELECTING_CARD' && (
-                            <motion.div initial={{scale:0.8, opacity:0}} animate={{scale:1, opacity:1}} exit={{scale:0.8, opacity:0}} className="absolute inset-0 flex items-center justify-center pointer-events-auto">
-                                <div className="grid grid-cols-2 gap-6 p-8 bg-white/90 dark:bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-slate-200 dark:border-slate-700 shadow-2xl">
-                                    {(['standard', 'truth', 'dare', 'deep'] as const).map((cat) => {
-                                        const config = TASK_CATEGORIES_CONFIG[cat];
-                                        return (
-                                        <button key={cat} onClick={() => handleSelectCategory(cat)} className={`w-40 h-48 rounded-2xl flex flex-col items-center justify-center gap-4 transition-all hover:-translate-y-2 hover:shadow-xl border ${config.color} bg-opacity-20 hover:bg-opacity-30 group`}>
-                                            <div className="text-5xl group-hover:scale-110 transition">{config.icon}</div>
-                                            <div className="text-center"><div className="font-bold text-slate-800 dark:text-white">{config.name}</div><div className="text-[10px] text-slate-500 dark:text-white/60">x{config.multiplier} 倍能量</div></div>
-                                        </button>
-                                        )
-                                    })}
+                <div className="w-1/3 flex justify-end gap-3">
+                    <button onClick={() => handleGameOver(gameState.players)} className="px-3 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 dark:bg-red-900/20 dark:hover:bg-red-900/50 border border-red-200 dark:border-red-800/50 text-red-600 dark:text-red-300 transition flex items-center gap-1.5 text-xs font-bold mr-2">
+                        <Flag size={14} /> 结束游戏
+                    </button>
+                    <button onClick={toggleTheme} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-amber-500 dark:hover:text-yellow-400 transition">
+                        {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+                    </button>
+                    <button onClick={() => setShowConfig(true)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 hover:text-teal-600 dark:hover:text-teal-400 transition" title="AI Config">
+                        <Settings size={18} />
+                    </button>
+                    <button onClick={() => setIsMusicPlaying(!isMusicPlaying)} className={`p-2 rounded-full transition ${isMusicPlaying ? 'text-teal-500 bg-teal-500/10' : 'text-slate-600 dark:text-slate-400'}`} title={isMusicPlaying ? "Pause Music" : "Play Music"}>
+                        <Music size={18} />
+                    </button>
+                </div>
+            </header>
+
+            <main className="flex-1 flex overflow-hidden relative">
+                {/* Transparent background for main content to show ocean bg */}
+                <div className="flex-1 relative bg-transparent flex flex-col transition-all duration-300">
+                    <div className="flex-1 flex items-center justify-center overflow-hidden cursor-grab active:cursor-grabbing">
+                        <GameBoard
+                            players={gameState.players}
+                            currentPlayerId={currentPlayer.id}
+                            boardLayout={board}
+                            validMoves={validMoves}
+                            onTileClick={handleTileClick}
+                            gameMode={gameState.gameMode}
+                            visibilityRadius={gameState.sightRange} // Using sightRange instead of diceValue
+                        />
+                    </div>
+
+                    {/* ... (Rest of existing UI components) ... */}
+                    <AnimatePresence>
+                        {(gameState.remainingSteps > 0 && gameState.movementState !== 'ROLLING') && (
+                            <motion.div initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 1.5, opacity: 0 }} className="absolute inset-0 pointer-events-none flex items-center justify-center z-10">
+                                <div className="text-[10rem] font-bold text-slate-900/10 dark:text-white/20 drop-shadow-lg select-none">
+                                    {gameState.remainingSteps}
                                 </div>
                             </motion.div>
                         )}
-                        </AnimatePresence>
-                    </div>
-                </div>
+                    </AnimatePresence>
 
-                {/* Task Modal (Reused) */}
-                <AnimatePresence>
-                {(gameState.subPhase === 'VIEWING_TASK' || gameState.subPhase === 'TASK_EXECUTION') && (
-                    <motion.div initial={{opacity:0}} animate={{opacity:1}} className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-md p-4">
-                        <div className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-                            {!gameState.selectedTask ? (
-                                <div className="p-12 flex flex-col items-center justify-center space-y-4"><div className="w-16 h-16 rounded-full border-4 border-teal-500 border-t-transparent animate-spin"></div></div>
-                            ) : (
-                            <>
-                            <div className={`p-8 ${TASK_CATEGORIES_CONFIG[gameState.selectedTask.category].color} bg-opacity-20 text-center relative`}>
-                                <div className="text-6xl mb-4">{TASK_CATEGORIES_CONFIG[gameState.selectedTask.category].icon}</div>
-                                <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">{gameState.selectedTask.title}</h2>
-                                <div className="flex justify-center gap-3">
-                                    <span className="px-3 py-1 bg-black/10 dark:bg-black/20 rounded-full text-xs text-slate-600 dark:text-white/90">⏱ {gameState.selectedTask.durationSeconds}秒</span>
-                                    <span className="px-3 py-1 bg-black/10 dark:bg-black/20 rounded-full text-xs text-slate-600 dark:text-white/90">✨ {gameState.selectedTask.scoreType}</span>
-                                </div>
-                                <button onClick={() => setGameState(prev => ({...prev, subPhase: 'SELECTING_CARD'}))} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:text-white/50 dark:hover:text-white"><X size={20}/></button>
+                    {/* Dice & Interactions */}
+                    <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-20">
+                        <div className="relative w-full h-full max-w-4xl max-h-[800px]">
+                            <div className="absolute bottom-20 right-8 pointer-events-auto transition-all duration-300">
+                                {gameState.subPhase === 'IDLE' && !currentPlayer.isBot && gameState.remainingSteps === 0 && (
+                                    <button onClick={handleStartTurn} disabled={gameState.movementState !== 'IDLE'} className="group relative w-24 h-24 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center shadow-2xl transition hover:scale-105 active:scale-95">
+                                        <div className="absolute inset-0 rounded-full border border-teal-500/30 animate-ping opacity-20"></div>
+                                        <div className="flex flex-col items-center">
+                                            <Compass className="text-teal-500 group-hover:text-teal-600 dark:group-hover:text-white transition mb-1" size={28} />
+                                            <span className="text-[10px] text-teal-600/80 dark:text-teal-500/80 font-bold uppercase tracking-widest">启程</span>
+                                        </div>
+                                    </button>
+                                )}
+                                {gameState.movementState === 'ROLLING' && (<div className="absolute inset-0 flex items-center justify-center -translate-y-12"><Dice3D value={gameState.diceValue} rolling={true} /></div>)}
                             </div>
-                            <div className="p-8 flex-1 flex flex-col">
-                                <p className="text-lg text-slate-600 dark:text-slate-300 leading-relaxed text-center mb-8 flex-1 flex items-center justify-center">{gameState.selectedTask.description}</p>
-                                {gameState.helperId && (<div className="mb-6 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-500/30 p-3 rounded-lg flex items-center gap-3 justify-center text-indigo-700 dark:text-indigo-200 text-sm"><Users size={16}/> <span>共振伙伴: <strong>{gameState.players.find(p => p.id === gameState.helperId)?.name}</strong></span></div>)}
-                                {gameState.subPhase === 'VIEWING_TASK' ? (
-                                    <div className="space-y-3">
-                                        <button onClick={handleStartTask} className="w-full py-3.5 bg-gradient-to-r from-teal-600 to-blue-600 hover:brightness-110 rounded-xl font-bold text-white shadow-lg transition">开始挑战</button>
-                                        <div className="flex gap-3">
-                                            <button onClick={handleReselect} disabled={gameState.hasReselected} className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 disabled:opacity-50 rounded-xl text-slate-500 dark:text-slate-300 text-sm font-bold flex items-center justify-center gap-2"><RefreshCw size={14}/> 灵感重置</button>
-                                            <button onClick={handleAskForHelp} className="flex-1 py-3 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/50 dark:hover:bg-indigo-900 rounded-xl text-indigo-600 dark:text-indigo-300 text-sm font-bold flex items-center justify-center gap-2 border border-indigo-200 dark:border-indigo-500/30"><Users size={14}/> 寻求连接 ({3 - gameState.sharedHelpUsedCount})</button>
-                                            <button onClick={handleSkip} className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-slate-500 dark:text-slate-400 text-sm font-bold flex items-center justify-center gap-2"><SkipForward size={14}/> 跳过 (-{currentPlayer.skipUsedCount})</button>
+
+                            {/* Modifiers & Tasks (Reused) */}
+                            <AnimatePresence>
+                                {gameState.movementState === 'IDLE' && (gameState.activeModifier !== 'NORMAL' || gameState.activeSpecialAbility !== 'NONE') && gameState.subPhase === 'SELECTING_CARD' && (
+                                    <motion.div initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 2, opacity: 0 }} className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                        <div className="bg-white/90 dark:bg-black/80 backdrop-blur-md p-6 rounded-3xl border-2 border-amber-500 text-center shadow-[0_0_50px_rgba(245,158,11,0.5)] text-slate-800 dark:text-white">
+                                            <div className="text-6xl mb-2">
+                                                {gameState.activeModifier === 'DOUBLE' && '⚡ x2'} {gameState.activeModifier === 'HALF' && '📉 ÷2'} {gameState.activeModifier === 'CLONE' && '👯'} {gameState.activeModifier === 'TRANSFER' && '↔️'}
+                                                {gameState.activeSpecialAbility === 'FREEDOM' && '🚀'} {gameState.activeSpecialAbility === 'SUBSTITUTE' && '🎭'} {gameState.activeSpecialAbility === 'COMPANION' && '🤝'}
+                                            </div>
+                                            <div className="text-2xl font-bold text-amber-500 dark:text-amber-400">
+                                                {gameState.activeModifier === 'DOUBLE' && '能量激化'} {gameState.activeModifier === 'HALF' && '迷雾重重'} {gameState.activeModifier === 'CLONE' && '命运克隆'} {gameState.activeModifier === 'TRANSFER' && '乾坤挪移'}
+                                                {gameState.activeSpecialAbility === 'FREEDOM' && '自由之门'} {gameState.activeSpecialAbility === 'SUBSTITUTE' && '寻找替身'} {gameState.activeSpecialAbility === 'COMPANION' && '结伴同行'}
+                                            </div>
                                         </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+
+                            <AnimatePresence>
+                                {gameState.subPhase === 'SELECTING_CARD' && (
+                                    <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.8, opacity: 0 }} className="absolute inset-0 flex items-center justify-center pointer-events-auto">
+                                        <div className="grid grid-cols-2 gap-6 p-8 bg-white/90 dark:bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-slate-200 dark:border-slate-700 shadow-2xl">
+                                            {(['standard', 'truth', 'dare', 'deep'] as const).map((cat) => {
+                                                const config = TASK_CATEGORIES_CONFIG[cat];
+                                                return (
+                                                    <button key={cat} onClick={() => handleSelectCategory(cat)} className={`w-40 h-48 rounded-2xl flex flex-col items-center justify-center gap-4 transition-all hover:-translate-y-2 hover:shadow-xl border ${config.color} bg-opacity-20 hover:bg-opacity-30 group`}>
+                                                        <div className="text-5xl group-hover:scale-110 transition">{config.icon}</div>
+                                                        <div className="text-center"><div className="font-bold text-slate-800 dark:text-white">{config.name}</div><div className="text-[10px] text-slate-500 dark:text-white/60">x{config.multiplier} 倍能量</div></div>
+                                                    </button>
+                                                )
+                                            })}
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                    </div>
+
+                    {/* Task Modal (Reused) */}
+                    <AnimatePresence>
+                        {(gameState.subPhase === 'VIEWING_TASK' || gameState.subPhase === 'TASK_EXECUTION') && (
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-md p-4">
+                                <div className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                                    {!gameState.selectedTask ? (
+                                        <div className="p-12 flex flex-col items-center justify-center space-y-4"><div className="w-16 h-16 rounded-full border-4 border-teal-500 border-t-transparent animate-spin"></div></div>
+                                    ) : (
+                                        <>
+                                            <div className={`p-8 ${TASK_CATEGORIES_CONFIG[gameState.selectedTask.category].color} bg-opacity-20 text-center relative`}>
+                                                <div className="text-6xl mb-4">{TASK_CATEGORIES_CONFIG[gameState.selectedTask.category].icon}</div>
+                                                <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">{gameState.selectedTask.title}</h2>
+                                                <div className="flex justify-center gap-3">
+                                                    <span className="px-3 py-1 bg-black/10 dark:bg-black/20 rounded-full text-xs text-slate-600 dark:text-white/90">⏱ {gameState.selectedTask.durationSeconds}秒</span>
+                                                    <span className="px-3 py-1 bg-black/10 dark:bg-black/20 rounded-full text-xs text-slate-600 dark:text-white/90">✨ {gameState.selectedTask.scoreType}</span>
+                                                </div>
+                                                <button onClick={() => setGameState(prev => ({ ...prev, subPhase: 'SELECTING_CARD' }))} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:text-white/50 dark:hover:text-white"><X size={20} /></button>
+                                            </div>
+                                            <div className="p-8 flex-1 flex flex-col">
+                                                <p className="text-lg text-slate-600 dark:text-slate-300 leading-relaxed text-center mb-8 flex-1 flex items-center justify-center">{gameState.selectedTask.description}</p>
+                                                {gameState.helperId && (<div className="mb-6 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-500/30 p-3 rounded-lg flex items-center gap-3 justify-center text-indigo-700 dark:text-indigo-200 text-sm"><Users size={16} /> <span>共振伙伴: <strong>{gameState.players.find(p => p.id === gameState.helperId)?.name}</strong></span></div>)}
+                                                {gameState.subPhase === 'VIEWING_TASK' ? (
+                                                    <div className="space-y-3">
+                                                        <button onClick={handleStartTask} className="w-full py-3.5 bg-gradient-to-r from-teal-600 to-blue-600 hover:brightness-110 rounded-xl font-bold text-white shadow-lg transition">开始挑战</button>
+                                                        <div className="flex gap-3">
+                                                            <button onClick={handleReselect} disabled={gameState.hasReselected} className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 disabled:opacity-50 rounded-xl text-slate-500 dark:text-slate-300 text-sm font-bold flex items-center justify-center gap-2"><RefreshCw size={14} /> 灵感重置</button>
+                                                            <button onClick={handleAskForHelp} className="flex-1 py-3 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/50 dark:hover:bg-indigo-900 rounded-xl text-indigo-600 dark:text-indigo-300 text-sm font-bold flex items-center justify-center gap-2 border border-indigo-200 dark:border-indigo-500/30"><Users size={14} /> 寻求连接 ({3 - gameState.sharedHelpUsedCount})</button>
+                                                            <button onClick={handleSkip} className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-slate-500 dark:text-slate-400 text-sm font-bold flex items-center justify-center gap-2"><SkipForward size={14} /> 跳过 (-{currentPlayer.skipUsedCount})</button>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex flex-col items-center gap-4">
+                                                        <div className="flex items-center gap-2 text-teal-600 dark:text-teal-400">
+                                                            {isListening ? (
+                                                                <span className="animate-pulse flex items-center gap-1 text-xs"><Mic size={14} /> 正在聆听你的精彩发言...</span>
+                                                            ) : (
+                                                                <span className="text-xs text-slate-400 flex items-center gap-1">
+                                                                    {currentPlayer.isBot ? "🤖 Bot 正在执行任务..." : "等待操作..."}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div className="text-4xl font-mono font-bold text-teal-600 dark:text-teal-400">{taskTimer}s</div>
+                                                        <button onClick={handleTaskDone} className="w-full py-3 bg-green-600 hover:bg-green-500 rounded-xl font-bold text-white flex items-center justify-center gap-2"><CheckCircle size={18} /> 完成</button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    <AnimatePresence>
+                        {gameState.subPhase === 'PEER_REVIEW' && currentReviewer && (
+                            <PeerReviewModal reviewer={currentReviewer} actor={currentPlayer} onSubmit={handlePeerScoreSubmit} />
+                        )}
+                    </AnimatePresence>
+
+                    <AnimatePresence>
+                        {(gameState.subPhase === 'SELECTING_SCORE_TARGET' || gameState.subPhase === 'SELECTING_SUBSTITUTE' || gameState.subPhase === 'SELECTING_COMPANION') && (
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                                <div className="w-full max-w-sm bg-white dark:bg-slate-800 p-6 rounded-2xl text-center border-2 border-amber-500/50 shadow-2xl">
+                                    <h3 className="font-bold text-amber-500 dark:text-amber-400 mb-2 text-xl">
+                                        {gameState.subPhase === 'SELECTING_SCORE_TARGET' && (gameState.activeModifier === 'CLONE' ? '👯 选择克隆对象' : '↔️ 选择转移对象')}
+                                        {gameState.subPhase === 'SELECTING_SUBSTITUTE' && '🎭 寻找替身'}
+                                        {gameState.subPhase === 'SELECTING_COMPANION' && '🤝 结伴同行'}
+                                    </h3>
+                                    <div className="grid grid-cols-2 gap-3 max-h-60 overflow-y-auto mt-4">
+                                        {gameState.players.filter(p => p.id !== currentPlayer.id).map(p => (
+                                            <button key={p.id} onClick={() => {
+                                                if (gameState.subPhase === 'SELECTING_SCORE_TARGET') handleScoreTargetSelect(p.id);
+                                                if (gameState.subPhase === 'SELECTING_SUBSTITUTE') handleSubstituteSelect(p.id);
+                                                if (gameState.subPhase === 'SELECTING_COMPANION') handleCompanionSelect(p.id);
+                                            }} className="p-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 rounded-xl flex flex-col items-center gap-2 border border-transparent hover:border-amber-500 transition">
+                                                <div className="w-10 h-10 rounded-full bg-slate-300 dark:bg-slate-600 overflow-hidden">
+                                                    {p.avatar.startsWith('data:') ? <img src={p.avatar} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center font-bold text-slate-700 dark:text-white">{p.name[0]}</div>}
+                                                </div>
+                                                <span className="text-sm font-bold text-slate-800 dark:text-white">{p.name}</span>
+                                            </button>
+                                        ))}
                                     </div>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    {/* Choosing Helper Modal */}
+                    <AnimatePresence>
+                        {gameState.subPhase === 'CHOOSING_HELPER' && (
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                                <div className="w-full max-w-sm bg-white dark:bg-slate-800 p-6 rounded-2xl text-center">
+                                    <h3 className="font-bold text-slate-800 dark:text-white mb-4">选择共振伙伴</h3>
+                                    <div className="grid grid-cols-2 gap-3 max-h-60 overflow-y-auto">
+                                        {gameState.players.filter(p => p.id !== currentPlayer.id).map(p => (
+                                            <button key={p.id} onClick={() => handleChooseHelper(p.id)} className="p-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 rounded-xl flex flex-col items-center gap-2">
+                                                <div className="w-8 h-8 rounded-full bg-slate-300 dark:bg-slate-600 overflow-hidden">
+                                                    {p.avatar.startsWith('data:') ? <img src={p.avatar} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center font-bold text-slate-700 dark:text-white">{p.name[0]}</div>}
+                                                </div>
+                                                <span className="text-xs text-slate-800 dark:text-white">{p.name}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    {/* Player Avatar (Bottom Left - replaces Video) */}
+                    <div className="absolute bottom-6 left-6 z-40">
+                        <div className="relative group w-32 h-32">
+                            <div className="w-full h-full rounded-full overflow-hidden border-2 border-slate-200 dark:border-slate-700 shadow-2xl bg-white dark:bg-black flex items-center justify-center">
+                                {currentPlayer.avatar.startsWith('data:') ? (
+                                    <img src={currentPlayer.avatar} className="w-full h-full object-cover" />
                                 ) : (
-                                    <div className="flex flex-col items-center gap-4">
-                                        <div className="flex items-center gap-2 text-teal-600 dark:text-teal-400">
-                                            {isListening ? (
-                                                <span className="animate-pulse flex items-center gap-1 text-xs"><Mic size={14}/> 正在聆听你的精彩发言...</span>
-                                            ) : (
-                                                <span className="text-xs text-slate-400 flex items-center gap-1">
-                                                    {currentPlayer.isBot ? "🤖 Bot 正在执行任务..." : "等待操作..."}
-                                                </span>
-                                            )}
-                                        </div>
-                                        <div className="text-4xl font-mono font-bold text-teal-600 dark:text-teal-400">{taskTimer}s</div>
-                                        <button onClick={handleTaskDone} className="w-full py-3 bg-green-600 hover:bg-green-500 rounded-xl font-bold text-white flex items-center justify-center gap-2"><CheckCircle size={18}/> 完成</button>
-                                    </div>
+                                    <div className="text-4xl font-bold text-slate-400 dark:text-slate-500">{currentPlayer.name[0]}</div>
                                 )}
                             </div>
-                            </>
-                            )}
                         </div>
-                    </motion.div>
-                )}
-                </AnimatePresence>
-
-                <AnimatePresence>
-                {gameState.subPhase === 'PEER_REVIEW' && currentReviewer && (
-                    <PeerReviewModal reviewer={currentReviewer} actor={currentPlayer} onSubmit={handlePeerScoreSubmit} />
-                )}
-                </AnimatePresence>
-
-                <AnimatePresence>
-                {(gameState.subPhase === 'SELECTING_SCORE_TARGET' || gameState.subPhase === 'SELECTING_SUBSTITUTE' || gameState.subPhase === 'SELECTING_COMPANION') && (
-                    <motion.div initial={{opacity:0}} animate={{opacity:1}} className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-                         <div className="w-full max-w-sm bg-white dark:bg-slate-800 p-6 rounded-2xl text-center border-2 border-amber-500/50 shadow-2xl">
-                            <h3 className="font-bold text-amber-500 dark:text-amber-400 mb-2 text-xl">
-                                {gameState.subPhase === 'SELECTING_SCORE_TARGET' && (gameState.activeModifier === 'CLONE' ? '👯 选择克隆对象' : '↔️ 选择转移对象')}
-                                {gameState.subPhase === 'SELECTING_SUBSTITUTE' && '🎭 寻找替身'}
-                                {gameState.subPhase === 'SELECTING_COMPANION' && '🤝 结伴同行'}
-                            </h3>
-                            <div className="grid grid-cols-2 gap-3 max-h-60 overflow-y-auto mt-4">
-                                {gameState.players.filter(p => p.id !== currentPlayer.id).map(p => (
-                                    <button key={p.id} onClick={() => {
-                                            if (gameState.subPhase === 'SELECTING_SCORE_TARGET') handleScoreTargetSelect(p.id);
-                                            if (gameState.subPhase === 'SELECTING_SUBSTITUTE') handleSubstituteSelect(p.id);
-                                            if (gameState.subPhase === 'SELECTING_COMPANION') handleCompanionSelect(p.id);
-                                        }} className="p-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 rounded-xl flex flex-col items-center gap-2 border border-transparent hover:border-amber-500 transition">
-                                        <div className="w-10 h-10 rounded-full bg-slate-300 dark:bg-slate-600 overflow-hidden">
-                                            {p.avatar.startsWith('data:') ? <img src={p.avatar} className="w-full h-full object-cover"/> : <div className="w-full h-full flex items-center justify-center font-bold text-slate-700 dark:text-white">{p.name[0]}</div>}
-                                        </div>
-                                        <span className="text-sm font-bold text-slate-800 dark:text-white">{p.name}</span>
-                                    </button>
-                                ))}
-                            </div>
-                         </div>
-                    </motion.div>
-                )}
-                </AnimatePresence>
-
-                {/* Choosing Helper Modal */}
-                <AnimatePresence>
-                {gameState.subPhase === 'CHOOSING_HELPER' && (
-                    <motion.div initial={{opacity:0}} animate={{opacity:1}} className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-                         <div className="w-full max-w-sm bg-white dark:bg-slate-800 p-6 rounded-2xl text-center">
-                            <h3 className="font-bold text-slate-800 dark:text-white mb-4">选择共振伙伴</h3>
-                            <div className="grid grid-cols-2 gap-3 max-h-60 overflow-y-auto">
-                                {gameState.players.filter(p => p.id !== currentPlayer.id).map(p => (
-                                    <button key={p.id} onClick={() => handleChooseHelper(p.id)} className="p-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 rounded-xl flex flex-col items-center gap-2">
-                                        <div className="w-8 h-8 rounded-full bg-slate-300 dark:bg-slate-600 overflow-hidden">
-                                            {p.avatar.startsWith('data:') ? <img src={p.avatar} className="w-full h-full object-cover"/> : <div className="w-full h-full flex items-center justify-center font-bold text-slate-700 dark:text-white">{p.name[0]}</div>}
-                                        </div>
-                                        <span className="text-xs text-slate-800 dark:text-white">{p.name}</span>
-                                    </button>
-                                ))}
-                            </div>
-                         </div>
-                    </motion.div>
-                )}
-                </AnimatePresence>
-
-                {/* Player Avatar (Bottom Left - replaces Video) */}
-                <div className="absolute bottom-6 left-6 z-40">
-                     <div className="relative group w-32 h-32">
-                         <div className="w-full h-full rounded-full overflow-hidden border-2 border-slate-200 dark:border-slate-700 shadow-2xl bg-white dark:bg-black flex items-center justify-center">
-                              {currentPlayer.avatar.startsWith('data:') ? (
-                                  <img src={currentPlayer.avatar} className="w-full h-full object-cover" />
-                              ) : (
-                                  <div className="text-4xl font-bold text-slate-400 dark:text-slate-500">{currentPlayer.name[0]}</div>
-                              )}
-                         </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Sidebar (Right) */}
-            <div className={`bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border-l border-slate-200 dark:border-white/5 flex flex-col transition-all duration-300 z-20 shadow-xl ${isSidebarMinimized ? 'w-16' : 'w-64'}`}>
-                <div className="h-16 flex items-center justify-between px-4 border-b border-slate-200 dark:border-white/5 shrink-0">
-                    {!isSidebarMinimized && <span className="font-bold text-slate-400 text-xs uppercase tracking-widest">当前能量场</span>}
-                    <button onClick={() => setIsSidebarMinimized(!isSidebarMinimized)} className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-white transition"><ChevronRight size={16} /></button>
-                </div>
-                {!isSidebarMinimized ? (
-                    <div className="flex-1 flex flex-col overflow-hidden">
-                        <div 
-                            className={`overflow-y-auto custom-scrollbar p-3 transition-all duration-300 ${gameState.players.length > 6 ? 'space-y-1.5' : 'space-y-3'}`}
-                            style={{ maxHeight: '65%' }}
-                        >
-                             {[...gameState.players].sort((a,b) => (b.trustScore+b.insightScore+b.expressionScore) - (a.trustScore+a.insightScore+a.expressionScore)).map((p) => {
-                                 const total = p.trustScore + p.insightScore + p.expressionScore;
-                                 const isCompact = gameState.players.length > 6;
-                                 return (
-                                 <div key={p.id} className={`rounded-xl border transition-all ${isCompact ? 'p-2' : 'p-3'} ${p.id === currentPlayer.id ? 'bg-slate-50 dark:bg-slate-800 border-teal-500/30 shadow-lg' : 'bg-transparent border-slate-100 dark:border-slate-800/50'}`}>
-                                     <div className="flex justify-between items-center mb-1.5">
-                                         <div className="flex items-center gap-2">
-                                             <div className={`rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-slate-700 dark:text-white overflow-hidden ring-1 ring-slate-300 dark:ring-slate-600 ${isCompact ? 'w-6 h-6 text-[9px]' : 'w-8 h-8 text-[10px]'}`}>
-                                                 {p.avatar.startsWith('data:') ? <img src={p.avatar} className="w-full h-full object-cover"/> : p.name[0]}
-                                             </div>
-                                             <div className="leading-tight">
-                                                 <div className={`font-bold text-slate-700 dark:text-slate-200 ${isCompact ? 'text-[10px]' : 'text-xs'}`}>{p.name}</div>
-                                                 <div className="text-[9px] text-slate-400 dark:text-slate-500">{p.mbti}</div>
-                                             </div>
-                                         </div>
-                                         <div className={`font-bold text-amber-500 ${isCompact ? 'text-xs' : 'text-sm'}`}>{total}</div>
-                                     </div>
-                                     <div className="flex gap-1 text-[9px] text-slate-500">
-                                        <div className="flex-1 bg-slate-100 dark:bg-slate-900/40 rounded px-1.5 py-0.5 flex justify-between"><span>信</span><span className="text-blue-500 dark:text-blue-400">{p.trustScore}</span></div>
-                                        <div className="flex-1 bg-slate-100 dark:bg-slate-900/40 rounded px-1.5 py-0.5 flex justify-between"><span>觉</span><span className="text-purple-500 dark:text-purple-400">{p.insightScore}</span></div>
-                                        <div className="flex-1 bg-slate-100 dark:bg-slate-900/40 rounded px-1.5 py-0.5 flex justify-between"><span>表</span><span className="text-orange-500 dark:text-orange-400">{p.expressionScore}</span></div>
-                                     </div>
-                                 </div>
-                                 )
-                             })}
+                {/* Sidebar (Right) */}
+                <div className={`bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border-l border-slate-200 dark:border-white/5 flex flex-col transition-all duration-300 z-20 shadow-xl ${isSidebarMinimized ? 'w-16' : 'w-64'}`}>
+                    <div className="h-16 flex items-center justify-between px-4 border-b border-slate-200 dark:border-white/5 shrink-0">
+                        {!isSidebarMinimized && <span className="font-bold text-slate-400 text-xs uppercase tracking-widest">当前能量场</span>}
+                        <button onClick={() => setIsSidebarMinimized(!isSidebarMinimized)} className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-white transition"><ChevronRight size={16} /></button>
+                    </div>
+                    {!isSidebarMinimized ? (
+                        <div className="flex-1 flex flex-col overflow-hidden">
+                            <div
+                                className={`overflow-y-auto custom-scrollbar p-3 transition-all duration-300 ${gameState.players.length > 6 ? 'space-y-1.5' : 'space-y-3'}`}
+                                style={{ maxHeight: '65%' }}
+                            >
+                                {[...gameState.players].sort((a, b) => (b.trustScore + b.insightScore + b.expressionScore) - (a.trustScore + a.insightScore + a.expressionScore)).map((p) => {
+                                    const total = p.trustScore + p.insightScore + p.expressionScore;
+                                    const isCompact = gameState.players.length > 6;
+                                    return (
+                                        <div key={p.id} className={`rounded-xl border transition-all ${isCompact ? 'p-2' : 'p-3'} ${p.id === currentPlayer.id ? 'bg-slate-50 dark:bg-slate-800 border-teal-500/30 shadow-lg' : 'bg-transparent border-slate-100 dark:border-slate-800/50'}`}>
+                                            <div className="flex justify-between items-center mb-1.5">
+                                                <div className="flex items-center gap-2">
+                                                    <div className={`rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-slate-700 dark:text-white overflow-hidden ring-1 ring-slate-300 dark:ring-slate-600 ${isCompact ? 'w-6 h-6 text-[9px]' : 'w-8 h-8 text-[10px]'}`}>
+                                                        {p.avatar.startsWith('data:') ? <img src={p.avatar} className="w-full h-full object-cover" /> : p.name[0]}
+                                                    </div>
+                                                    <div className="leading-tight">
+                                                        <div className={`font-bold text-slate-700 dark:text-slate-200 ${isCompact ? 'text-[10px]' : 'text-xs'}`}>{p.name}</div>
+                                                        <div className="text-[9px] text-slate-400 dark:text-slate-500">{p.mbti}</div>
+                                                    </div>
+                                                </div>
+                                                <div className={`font-bold text-amber-500 ${isCompact ? 'text-xs' : 'text-sm'}`}>{total}</div>
+                                            </div>
+                                            <div className="flex gap-1 text-[9px] text-slate-500">
+                                                <div className="flex-1 bg-slate-100 dark:bg-slate-900/40 rounded px-1.5 py-0.5 flex justify-between"><span>信</span><span className="text-blue-500 dark:text-blue-400">{p.trustScore}</span></div>
+                                                <div className="flex-1 bg-slate-100 dark:bg-slate-900/40 rounded px-1.5 py-0.5 flex justify-between"><span>觉</span><span className="text-purple-500 dark:text-purple-400">{p.insightScore}</span></div>
+                                                <div className="flex-1 bg-slate-100 dark:bg-slate-900/40 rounded px-1.5 py-0.5 flex justify-between"><span>表</span><span className="text-orange-500 dark:text-orange-400">{p.expressionScore}</span></div>
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                            <div className="flex-1 bg-slate-50/50 dark:bg-slate-950/50 border-t border-slate-200 dark:border-slate-800 p-3 overflow-y-auto custom-scrollbar text-[10px] space-y-1.5 min-h-[150px]">
+                                {gameState.logs.slice(-30).map(l => (
+                                    <div key={l.id} className="text-slate-500 dark:text-slate-400 leading-snug mb-1.5 border-b border-slate-200 dark:border-slate-900/50 pb-1">
+                                        <span className="text-teal-600 dark:text-teal-500 font-bold mr-1">{l.author || '•'}</span>
+                                        {l.text}
+                                        {l.taskDetails && <div className="text-[9px] text-slate-400 dark:text-slate-600 mt-0.5 italic line-clamp-2">{l.taskDetails}</div>}
+                                    </div>
+                                ))}
+                            </div>
                         </div>
-                        <div className="flex-1 bg-slate-50/50 dark:bg-slate-950/50 border-t border-slate-200 dark:border-slate-800 p-3 overflow-y-auto custom-scrollbar text-[10px] space-y-1.5 min-h-[150px]">
-                            {gameState.logs.slice(-30).map(l => (
-                                <div key={l.id} className="text-slate-500 dark:text-slate-400 leading-snug mb-1.5 border-b border-slate-200 dark:border-slate-900/50 pb-1">
-                                    <span className="text-teal-600 dark:text-teal-500 font-bold mr-1">{l.author || '•'}</span>
-                                    {l.text}
-                                    {l.taskDetails && <div className="text-[9px] text-slate-400 dark:text-slate-600 mt-0.5 italic line-clamp-2">{l.taskDetails}</div>}
-                                </div>
+                    ) : (
+                        <div className="flex flex-col items-center gap-4 py-4">
+                            {gameState.players.map(p => (
+                                <div key={p.id} className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-[10px] border ${p.id === currentPlayer.id ? 'border-teal-500 text-teal-500' : 'border-slate-300 dark:border-slate-700 text-slate-400'}`}>{p.name[0]}</div>
                             ))}
                         </div>
-                    </div>
-                ) : (
-                     <div className="flex flex-col items-center gap-4 py-4">
-                        {gameState.players.map(p => (
-                             <div key={p.id} className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-[10px] border ${p.id === currentPlayer.id ? 'border-teal-500 text-teal-500' : 'border-slate-300 dark:border-slate-700 text-slate-400'}`}>{p.name[0]}</div>
-                        ))}
-                    </div>
-                )}
-            </div>
-            {showConfig && <AIConfigModal onClose={() => setShowConfig(false)} />}
-        </main>
-    </div>
-  );
+                    )}
+                </div>
+                {showConfig && <AIConfigModal onClose={() => setShowConfig(false)} />}
+            </main>
+        </div>
+    );
 }
 
 export default App;
