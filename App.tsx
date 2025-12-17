@@ -10,7 +10,7 @@ import {
 } from "./services/geminiService";
 import { speak } from './utils/tts';
 import { startSpeechRecognition, stopSpeechRecognition, isSpeechRecognitionSupported } from './utils/speechRecognition';
-import { Map as MapIcon, LogOut, Music, VideoOff, Dices, ChevronRight, ChevronLeft, BrainCircuit, Heart, Lightbulb, Mic, CircleHelp, X, Timer, CheckCircle, SkipForward, Users, RefreshCw, Star, Play, Power, Compass, Footprints, Loader, Zap, Repeat, Divide, Copy, Move, UserPlus, UsersRound, Settings, Flag, Radio, Sun, Moon, Volume2, Eye } from 'lucide-react';
+import { Map as MapIcon, LogOut, Music, VideoOff, Dices, ChevronRight, ChevronLeft, BrainCircuit, Heart, Lightbulb, Mic, CircleHelp, X, Timer, CheckCircle, SkipForward, Users, RefreshCw, Star, Play, Power, Compass, Footprints, Loader, Zap, Repeat, Divide, Copy, Move, UserPlus, UsersRound, Settings, Flag, Radio, Sun, Moon, Volume2, Eye, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AIConfigModal from './components/AIConfigModal';
 import LZString from 'lz-string';
@@ -371,6 +371,8 @@ function App() {
     const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
     const [visualEvidence, setVisualEvidence] = useState<string[]>([]);
     const [isCameraActive, setIsCameraActive] = useState(false);
+    const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
+    const [selectedVideoDeviceId, setSelectedVideoDeviceId] = useState<string>("");
 
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
@@ -834,16 +836,64 @@ function App() {
         addLog(`结伴同行，请选择任意功能格降落！`, 'system');
     };
 
+    const activateCamera = async (deviceId?: string) => {
+        const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+        if (currentPlayer.isBot) return;
+
+        // Stop current stream if switching
+        if (cameraStream) {
+            cameraStream.getTracks().forEach(track => track.stop());
+        }
+
+        try {
+            const constraints: MediaStreamConstraints = {
+                video: {
+                    width: 480,
+                    height: 360,
+                    deviceId: deviceId ? { exact: deviceId } : undefined
+                }
+            };
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            setCameraStream(stream);
+            setIsCameraActive(true);
+
+            // Fetch devices now that we have permission
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const cameras = devices.filter(d => d.kind === 'videoinput');
+            setVideoDevices(cameras);
+            if (!deviceId && cameras.length > 0) {
+                // Find current device ID from stream
+                const currentTrack = stream.getVideoTracks()[0];
+                const settings = currentTrack.getSettings();
+                if (settings.deviceId) setSelectedVideoDeviceId(settings.deviceId);
+            }
+        } catch (e) {
+            console.warn("Camera access denied or unavailable", e);
+            setIsCameraActive(false);
+        }
+    };
+
+    const handleSwitchCamera = async () => {
+        if (videoDevices.length <= 1) return;
+        const currentIndex = videoDevices.findIndex(d => d.deviceId === selectedVideoDeviceId);
+        const nextIndex = (currentIndex + 1) % videoDevices.length;
+        const nextDevice = videoDevices[nextIndex];
+        setSelectedVideoDeviceId(nextDevice.deviceId);
+        await activateCamera(nextDevice.deviceId);
+    };
+
     const handleSelectCategory = (category: 'standard' | 'truth' | 'dare' | 'deep') => {
         const cached = gameState.pregeneratedTasks?.[category];
         if (cached) {
             setGameState(prev => ({ ...prev, subPhase: 'VIEWING_TASK', selectedTask: cached }));
+            activateCamera();
         } else {
             setGameState(prev => ({ ...prev, subPhase: 'VIEWING_TASK', selectedTask: null }));
             const tile = gameState.currentTile;
             if (tile) {
                 generateAllTaskOptions(tile.functionId, gameState.players, gameState.players[gameState.currentPlayerIndex], gameState.logs).then(tasks => {
                     setGameState(prev => ({ ...prev, selectedTask: tasks[category], pregeneratedTasks: tasks }));
+                    activateCamera();
                 });
             }
         }
@@ -888,17 +938,6 @@ function App() {
         setVisualEvidence([]); // Reset visual evidence for new task
 
         if (!currentPlayer.isBot) {
-            // Start Camera for Vision Analysis (Multimodal)
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 } });
-                setCameraStream(stream);
-                setIsCameraActive(true);
-                if (videoRef.current) videoRef.current.srcObject = stream;
-            } catch (e) {
-                console.warn("Camera access denied or unavailable", e);
-                setIsCameraActive(false);
-            }
-
             if (isSpeechRecognitionSupported()) {
                 startSpeechRecognition(
                     (text) => setCurrentSpeechText(prev => prev + " " + text),
@@ -1394,10 +1433,10 @@ function App() {
                     {/* Dice & Interactions */}
                     <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-20">
                         <div className="relative w-full h-full max-w-4xl max-h-[800px]">
-                            <div className="absolute bottom-20 right-8 pointer-events-auto transition-all duration-300">
+                            <div className={`absolute bottom-20 right-8 pointer-events-auto transition-all duration-300 ${gameState.gameMode === GameMode.MBTI_16 ? 'translate-x-24' : ''}`}>
                                 {/* Host Manual Dice Input */}
                                 {isManualMode && gameState.subPhase === 'IDLE' && gameState.remainingSteps === 0 && (
-                                    <div className="mb-6 p-4 bg-slate-800/80 rounded-2xl border border-amber-500/30 backdrop-blur">
+                                    <div className="mb-6 p-4 bg-slate-800/80 rounded-2xl border border-amber-500/30 backdrop-blur shadow-xl">
                                         <h3 className="text-amber-400 font-bold mb-3 text-sm uppercase tracking-wider">主持人控点</h3>
                                         <div className="flex gap-2 justify-center">
                                             {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
@@ -1416,7 +1455,7 @@ function App() {
                                 {gameState.subPhase === 'IDLE' && !currentPlayer.isBot && gameState.remainingSteps === 0 && (
                                     <button
                                         onClick={() => handleStartTurn()}
-                                        disabled={isManualMode || gameState.movementState !== 'IDLE'} // Disable random roll if manual mode is on (host must click above, or disable mode)
+                                        disabled={isManualMode || gameState.movementState !== 'IDLE'}
                                         className={`group relative w-24 h-24 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center shadow-2xl transition hover:scale-105 active:scale-95 ${isManualMode ? 'opacity-50 cursor-not-allowed' : ''}`}
                                     >
                                         <div className="absolute inset-0 rounded-full border border-teal-500/30 animate-ping opacity-20"></div>
@@ -1426,7 +1465,12 @@ function App() {
                                         </div>
                                     </button>
                                 )}
-                                {gameState.movementState === 'ROLLING' && (<div className="absolute inset-0 flex items-center justify-center -translate-y-12"><Dice3D value={gameState.diceValue} rolling={true} /></div>)}
+
+                                {gameState.movementState === 'ROLLING' && (
+                                    <div className="absolute inset-0 flex items-center justify-center -translate-y-12">
+                                        <Dice3D value={gameState.diceValue} rolling={true} />
+                                    </div>
+                                )}
                             </div>
 
                             {/* Modifiers & Tasks (Reused) */}
@@ -1467,110 +1511,100 @@ function App() {
                         </div>
                     </div>
 
-                    {/* Task Modal (Reused) */}
                     <AnimatePresence>
                         {(gameState.subPhase === 'VIEWING_TASK' || gameState.subPhase === 'TASK_EXECUTION') && (
-                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-md p-4">
-                                <div className={`w-full ${gameState.subPhase === 'TASK_EXECUTION' ? 'max-w-4xl' : 'max-w-xl'} bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden flex flex-col max-h-[90vh] transition-all duration-500`}>
-                                    {!gameState.selectedTask ? (
-                                        <div className="p-12 flex flex-col items-center justify-center space-y-4"><div className="w-16 h-16 rounded-full border-4 border-teal-500 border-t-transparent animate-spin"></div></div>
-                                    ) : (
-                                        <>
-                                            <div className={`p-8 ${TASK_CATEGORIES_CONFIG[gameState.selectedTask.category].color} bg-opacity-20 text-center relative`}>
-                                                <div className="text-6xl mb-4">{TASK_CATEGORIES_CONFIG[gameState.selectedTask.category].icon}</div>
-                                                <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">{gameState.selectedTask.title}</h2>
-                                                <div className="flex justify-center gap-3">
-                                                    <span className="px-3 py-1 bg-black/10 dark:bg-black/20 rounded-full text-xs text-slate-600 dark:text-white/90">⏱ {gameState.selectedTask.durationSeconds}秒</span>
-                                                    <span className="px-3 py-1 bg-black/10 dark:bg-black/20 rounded-full text-xs text-slate-600 dark:text-white/90">✨ {gameState.selectedTask.scoreType}</span>
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4 overflow-y-auto">
+                                <div className="flex gap-6 items-center w-full max-w-6xl justify-center">
+                                    {/* Task Card: Width stays constant */}
+                                    <div className="w-[480px] bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden flex flex-col transition-all duration-300">
+                                        {!gameState.selectedTask ? (
+                                            <div className="p-12 flex flex-col items-center justify-center space-y-4"><div className="w-16 h-16 rounded-full border-4 border-teal-500 border-t-transparent animate-spin"></div></div>
+                                        ) : (
+                                            <>
+                                                <div className={`p-8 ${TASK_CATEGORIES_CONFIG[gameState.selectedTask.category].color} bg-opacity-20 text-center relative`}>
+                                                    <div className="text-5xl mb-3">{TASK_CATEGORIES_CONFIG[gameState.selectedTask.category].icon}</div>
+                                                    <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-2">{gameState.selectedTask.title}</h2>
+                                                    <div className="flex justify-center gap-2">
+                                                        <span className="px-2 py-0.5 bg-black/10 dark:bg-black/20 rounded-full text-[10px] text-slate-600 dark:text-white/90">⏱ {gameState.selectedTask.durationSeconds}s</span>
+                                                        <span className="px-2 py-0.5 bg-black/10 dark:bg-black/20 rounded-full text-[10px] text-slate-600 dark:text-white/90">✨ {gameState.selectedTask.scoreType}</span>
+                                                    </div>
+                                                    <button onClick={() => setGameState(prev => ({ ...prev, subPhase: 'SELECTING_CARD' }))} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:text-white/50 dark:hover:text-white"><X size={18} /></button>
                                                 </div>
-                                                <button onClick={() => setGameState(prev => ({ ...prev, subPhase: 'SELECTING_CARD' }))} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:text-white/50 dark:hover:text-white"><X size={20} /></button>
-                                            </div>
-                                            <div className="p-8 flex-1 flex flex-col min-h-0">
-                                                <p className="text-lg text-slate-600 dark:text-slate-300 leading-relaxed text-center mb-8 flex-shrink-0 flex items-center justify-center italic">
-                                                    {gameState.selectedTask.description}
-                                                </p>
+                                                <div className="p-6 flex-1 flex flex-col min-h-0">
+                                                    <p className="text-md text-slate-600 dark:text-slate-300 leading-relaxed text-center mb-6 flex-shrink-0 italic">
+                                                        "{gameState.selectedTask.description}"
+                                                    </p>
+                                                    {gameState.helperId && (<div className="mb-4 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-500/30 p-2 rounded-lg flex items-center gap-3 justify-center text-indigo-700 dark:text-indigo-200 text-xs"><Users size={14} /> <span>共振伙伴: <strong>{gameState.players.find(p => p.id === gameState.helperId)?.name}</strong></span></div>)}
 
-                                                {gameState.helperId && (<div className="mb-6 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-500/30 p-3 rounded-lg flex items-center gap-3 justify-center text-indigo-700 dark:text-indigo-200 text-sm"><Users size={16} /> <span>共振伙伴: <strong>{gameState.players.find(p => p.id === gameState.helperId)?.name}</strong></span></div>)}
-
-                                                {gameState.subPhase === 'VIEWING_TASK' ? (
-                                                    <div className="space-y-3">
-                                                        <div className="px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 rounded-xl text-[10px] text-amber-700 dark:text-amber-300 italic text-center animate-pulse">
-                                                            小贴士: 请面向镜头，让 AI 船长感受你的状态，这有助于生成更准确的深度分析。
-                                                        </div>
-                                                        <button onClick={handleStartTask} className="w-full py-3.5 bg-gradient-to-r from-teal-600 to-blue-600 hover:brightness-110 rounded-xl font-bold text-white shadow-lg transition text-lg">开始挑战</button>
-                                                        <div className="flex gap-3">
-                                                            <button onClick={handleReselect} disabled={gameState.hasReselected} className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 disabled:opacity-50 rounded-xl text-slate-500 dark:text-slate-300 text-sm font-bold flex items-center justify-center gap-2 transition-all"><RefreshCw size={14} /> 灵感重置</button>
-                                                            <button onClick={handleAskForHelp} className="flex-1 py-3 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/50 dark:hover:bg-indigo-900 rounded-xl text-indigo-600 dark:text-indigo-300 text-sm font-bold flex items-center justify-center gap-2 border border-indigo-200 dark:border-indigo-500/30 transition-all"><Users size={14} /> 寻求连接 ({3 - gameState.sharedHelpUsedCount})</button>
-                                                            <button onClick={handleSkip} className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-slate-500 dark:text-slate-400 text-sm font-bold flex items-center justify-center gap-2 transition-all"><SkipForward size={14} /> 跳过 (-{currentPlayer.skipUsedCount})</button>
-                                                        </div>
-                                                    </div>
-                                                ) : (
-                                                    <div className="flex flex-1 overflow-hidden">
-                                                        {/* Left: Task & Input */}
-                                                        <div className="flex-1 p-0 flex flex-col border-r border-slate-100 dark:border-white/5 pr-4">
-                                                            <div className="flex-1 w-full bg-slate-50 dark:bg-black/20 rounded-2xl p-6 mb-6 border border-slate-200 dark:border-white/10 overflow-y-auto relative min-h-[200px]">
-                                                                {isListening && (
-                                                                    <div className="absolute top-4 right-4 flex items-center gap-2 text-red-500 animate-pulse font-bold text-sm z-20">
-                                                                        <Mic size={16} /> 录音中...
-                                                                    </div>
-                                                                )}
-                                                                <textarea
-                                                                    className="w-full h-full bg-transparent resize-none outline-none text-slate-700 dark:text-slate-200 text-xl leading-relaxed placeholder:text-slate-400 font-medium"
-                                                                    placeholder={isListening ? "正在将你的声音转化成灵魂语言..." : "请开始你的表达..."}
-                                                                    value={currentSpeechText}
-                                                                    onChange={(e) => setCurrentSpeechText(e.target.value)}
-                                                                />
+                                                    {gameState.subPhase === 'VIEWING_TASK' ? (
+                                                        <div className="space-y-4 pt-2">
+                                                            <button onClick={handleStartTask} className="w-full py-4 bg-gradient-to-r from-teal-600 to-blue-600 hover:brightness-110 rounded-2xl font-bold text-white shadow-lg transition-all text-lg flex items-center justify-center gap-2 group">开始挑战 <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" /></button>
+                                                            <div className="grid grid-cols-3 gap-2">
+                                                                <button onClick={handleReselect} disabled={gameState.hasReselected} className="py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 disabled:opacity-50 rounded-xl text-slate-500 dark:text-slate-300 text-[10px] font-bold flex flex-col items-center justify-center gap-1 transition-all"><RefreshCw size={14} /> 重选</button>
+                                                                <button onClick={handleAskForHelp} className="py-2.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/50 dark:hover:bg-indigo-900 rounded-xl text-indigo-600 dark:text-indigo-300 text-[10px] font-bold flex flex-col items-center justify-center gap-1 border border-indigo-200 dark:border-indigo-500/30 transition-all"><Users size={14} /> 寻求帮助 ({3 - gameState.sharedHelpUsedCount})</button>
+                                                                <button onClick={handleSkip} className="py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-slate-500 dark:text-slate-400 text-[10px] font-bold flex flex-col items-center justify-center gap-1 transition-all"><SkipForward size={14} /> 跳过 (-{currentPlayer.skipUsedCount})</button>
                                                             </div>
-
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex flex-1 flex-col overflow-hidden">
+                                                            <div className="flex-1 w-full bg-slate-50 dark:bg-black/20 rounded-2xl p-5 mb-4 border border-slate-200 dark:border-white/10 overflow-y-auto relative min-h-[200px]">
+                                                                {isListening && <div className="absolute top-3 right-3 flex items-center gap-1.5 text-red-500 animate-pulse font-bold text-[10px] z-20"><div className="w-1.5 h-1.5 bg-red-500 rounded-full" /> 录音中</div>}
+                                                                <textarea className="w-full h-full bg-transparent resize-none outline-none text-slate-700 dark:text-slate-200 text-lg leading-relaxed placeholder:text-slate-400 font-medium" placeholder={isListening ? "正在将你的声音转化成灵魂语言..." : "请开始你的表达..."} value={currentSpeechText} onChange={(e) => setCurrentSpeechText(e.target.value)} />
+                                                            </div>
                                                             <div className="flex gap-4">
-                                                                <div className="flex-1 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center overflow-hidden relative border-2 border-slate-200 dark:border-slate-700 h-20">
+                                                                <div className="flex-1 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center overflow-hidden border-2 border-slate-200 dark:border-slate-700 h-16">
                                                                     <canvas ref={canvasRef} className="hidden" />
-                                                                    <span className="text-5xl font-mono font-black text-slate-800 dark:text-white">{taskTimer}s</span>
+                                                                    <span className="text-3xl font-mono font-black text-slate-800 dark:text-white">{taskTimer}s</span>
                                                                 </div>
-                                                                <button
-                                                                    onClick={() => handleTaskDone()}
-                                                                    className="flex-[2] px-8 bg-teal-600 hover:bg-teal-500 text-white rounded-xl font-bold shadow-lg transition flex items-center justify-center gap-3 text-lg"
-                                                                >
-                                                                    <CheckCircle /> 提交表现
-                                                                </button>
+                                                                <button onClick={() => handleTaskDone()} className="flex-[2] px-6 bg-teal-600 hover:bg-teal-500 text-white rounded-xl font-bold shadow-lg transition-all flex items-center justify-center gap-2 text-md">同步航行状态</button>
                                                             </div>
                                                         </div>
+                                                    )}
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
 
-                                                        {/* Right: Camera Feed (The "AI Observation Deck") */}
-                                                        {isCameraActive && (
-                                                            <div className="w-2/5 bg-slate-900 rounded-2xl flex flex-col relative group overflow-hidden">
-                                                                <video
-                                                                    ref={videoRef}
-                                                                    autoPlay
-                                                                    playsInline
-                                                                    muted
-                                                                    className="flex-1 w-full object-cover grayscale-[0.2] brightness-90 group-hover:grayscale-0 group-hover:brightness-100 transition-all duration-700"
-                                                                />
-
-                                                                {/* AI Scanning UI Overlay */}
-                                                                <div className="absolute top-4 left-4 right-4 flex justify-between items-start z-30">
-                                                                    <div className="px-2 py-1 bg-teal-500 text-white text-[10px] font-bold rounded flex items-center gap-1.5 backdrop-blur-md">
-                                                                        <div className="w-1.5 h-1.5 bg-white rounded-full animate-ping"></div>
-                                                                        AI 视觉同步中
-                                                                    </div>
-                                                                    <div className="w-8 h-8 rounded border-t-2 border-r-2 border-teal-400 opacity-60"></div>
-                                                                </div>
-                                                                <div className="absolute bottom-16 left-4 opacity-60">
-                                                                    <div className="w-8 h-8 rounded border-b-2 border-l-2 border-teal-400"></div>
-                                                                </div>
-
-                                                                <div className="p-4 bg-black/60 backdrop-blur-sm border-t border-white/10 text-[10px] text-slate-400 flex-shrink-0">
-                                                                    <div className="flex items-center gap-2 mb-1 text-teal-400 font-bold uppercase tracking-widest leading-none">
-                                                                        <Eye size={12} strokeWidth={3} /> Multimodal Sensor
-                                                                    </div>
-                                                                    正在捕获非语言信息及情感波动...
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )}
+                                    {/* Sidebar Camera: Always present during VIEWING and EXECUTION if active */}
+                                    {isCameraActive && (
+                                        <motion.div initial={{ x: 30, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="w-72 bg-slate-900 rounded-3xl border border-slate-700 shadow-2xl overflow-hidden flex flex-col h-[520px] relative">
+                                            <div className="p-3 bg-slate-800 border-b border-slate-700 flex justify-between items-center">
+                                                <div className="flex items-center gap-2"><div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div><span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">AI Observation</span></div>
+                                                <div className="flex items-center gap-2">
+                                                    {videoDevices.length > 1 && (
+                                                        <button
+                                                            onClick={handleSwitchCamera}
+                                                            className="p-1.5 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-teal-400 transition"
+                                                            title="切换摄像头"
+                                                        >
+                                                            <Repeat size={14} />
+                                                        </button>
+                                                    )}
+                                                    <Eye size={12} className="text-teal-400" />
+                                                </div>
                                             </div>
-                                        </>
+                                            <div className="flex-1 bg-black relative flex items-center justify-center overflow-hidden">
+                                                <video
+                                                    ref={videoRef}
+                                                    autoPlay
+                                                    playsInline
+                                                    muted
+                                                    className="absolute inset-0 w-full h-full object-cover"
+                                                    onLoadedMetadata={(e) => (e.currentTarget.play())}
+                                                />
+                                                <div className="absolute inset-0 pointer-events-none border-[15px] border-transparent">
+                                                    <div className="absolute top-0 left-0 w-6 h-6 border-t border-l border-teal-500/40"></div>
+                                                    <div className="absolute top-0 right-0 w-6 h-6 border-t border-r border-teal-500/40"></div>
+                                                    <div className="absolute bottom-0 left-0 w-6 h-6 border-b border-l border-teal-500/40"></div>
+                                                    <div className="absolute bottom-0 right-0 w-6 h-6 border-b border-r border-teal-500/40"></div>
+                                                    <motion.div animate={{ top: ['5%', '95%', '5%'] }} transition={{ duration: 3, repeat: Infinity, ease: "linear" }} className="absolute left-2 right-2 h-px bg-teal-500/20 blur-[1px] z-10" />
+                                                </div>
+                                            </div>
+                                            <div className="p-4 bg-slate-800/90 backdrop-blur-md">
+                                                <div className="flex items-center gap-2 mb-2"><BrainCircuit size={16} className="text-teal-400" /><h4 className="text-[10px] font-bold text-white uppercase tracking-wider">正在智能分析</h4></div>
+                                                <p className="text-[9px] text-slate-400 leading-relaxed italic">正在理解你的非语言信息及情感波动，这能让 AI 船长更深层次地洞察你的真实人格。</p>
+                                            </div>
+                                        </motion.div>
                                     )}
                                 </div>
                             </motion.div>
