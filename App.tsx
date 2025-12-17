@@ -430,7 +430,8 @@ function App() {
         if (gameState.phase !== 'PLAYING') return;
 
         const currentPlayer = gameState.players[gameState.currentPlayerIndex];
-        if (!currentPlayer || !currentPlayer.isBot && isManualMode) return; // If manual mode is on, human players don't auto-roll
+        // STRICT: Only Bots get automation. Humans must play manually.
+        if (!currentPlayer || !currentPlayer.isBot) return;
 
         let timeoutId: NodeJS.Timeout;
 

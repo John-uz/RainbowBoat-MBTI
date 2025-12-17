@@ -375,18 +375,9 @@ const GameReport: React.FC<Props> = ({ players, report, onReturnHome, startTime,
                             <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                     {sortedPlayers.map((p) => {
-                                        // Generate Per-Player Data
-                                        // Filter report to only include Group + This Player
-                                        const personalData = {
-                                            players: [p], // Only this player
-                                            report: {
-                                                groupAnalysis: report.groupAnalysis, // Keep Group
-                                                playerAnalysis: { [p.id]: report.playerAnalysis[p.id] } // Only their analysis
-                                            },
-                                            startTime,
-                                            gameMode
-                                        };
-                                        const personalUrl = `${window.location.origin}${window.location.pathname}?share_data=${LZString.compressToEncodedURIComponent(JSON.stringify(personalData))}`;
+                                        // Generate Per-Player Text Data (Not URL)
+                                        // User requested: "Just text content, not link"
+                                        const personalText = `🌈 彩虹船 - 航行档案\n\n【群体画像】\n${report.groupAnalysis}\n\n【${p.name} 的专属分析】\n${report.playerAnalysis[p.id] || "暂无数据"}\n\n[总分]: ${p.trustScore + p.insightScore + p.expressionScore}\n(信任:${p.trustScore} | 觉察:${p.insightScore} | 表现:${p.expressionScore})`;
 
                                         return (
                                             <div key={p.id} className="bg-slate-900 rounded-2xl p-6 border border-slate-700 flex flex-col items-center gap-4 hover:border-purple-500 transition-colors group">
@@ -401,7 +392,7 @@ const GameReport: React.FC<Props> = ({ players, report, onReturnHome, startTime,
                                                 </div>
 
                                                 <div className="p-3 bg-white rounded-xl shadow-inner mt-2">
-                                                    <QRCodeCanvas value={personalUrl} size={160} level={"M"} includeMargin={false} />
+                                                    <QRCodeCanvas value={personalText} size={180} level={"M"} includeMargin={false} />
                                                 </div>
 
                                                 <p className="text-xs text-slate-500 text-center">
@@ -416,7 +407,7 @@ const GameReport: React.FC<Props> = ({ players, report, onReturnHome, startTime,
                     </div>
                 )}
             </div>
-        </div>
+        </div >
     );
 };
 
