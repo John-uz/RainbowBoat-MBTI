@@ -665,7 +665,6 @@ function App() {
                 movementState: 'IDLE',
                 activeModifier: 'NORMAL',
                 activeSpecialAbility: 'NONE',
-                activeModifier: 'NORMAL',
                 helperId: null,
                 scoreTargetPlayerId: null
             }));
@@ -1028,6 +1027,14 @@ function App() {
         setGameState(prev => ({ ...prev, players: finalPlayers, phase: 'ANALYSIS' }));
         const report = await generateProfessionalReport(finalPlayers, gameState.snapshots);
         setReportData(report);
+        if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.currentTime = 0;
+        }
+        setIsMusicPlaying(false);
+    };
+
+    const stopMusic = () => {
         if (audioRef.current) {
             audioRef.current.pause();
             audioRef.current.currentTime = 0;
