@@ -1,5 +1,5 @@
 
-name: Deploy to GitHub Pages
+name: Deploy to GitHub and Gitee
 
 on:
   push:
@@ -15,6 +15,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -33,16 +35,17 @@ jobs:
           folder: dist
           branch: gh-pages
 
-      - name: Sync to Gitee
-        uses: Yikun/gitee-mirror-action@v0.12
-        with:
-          src: github/John-uz
-          dst: gitee/JohnF33
-          dst_key: ${{ secrets.GITEE_PRIVATE_KEY }}
-          dst_token: ${{ secrets.GITEE_TOKEN }}
-          static_list: "RainbowBoat-MBTI"
-          force_update: true
-          debug: true
+      - name: Sync to Gitee (Manual Push Mode)
+        env:
+          DST_KEY: ${{ secrets.GITEE_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$DST_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan gitee.com >> ~/.ssh/known_hosts
+          git remote add gitee git@gitee.com:JohnF33/RainbowBoat-MBTI.git
+          git push -f gitee main:main
+          git push -f gitee gh-pages:gh-pages
 
       - name: Reload Gitee Pages
         uses: yanglbme/gitee-pages-action@main
