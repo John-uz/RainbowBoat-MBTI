@@ -37,7 +37,7 @@ jobs:
         uses: Yikun/gitee-mirror-action@v0.12
         with:
           src: github/John-uz
-          dst: gitee/gzfen
+          dst: gitee/JohnF33
           dst_key: ${{ secrets.GITEE_PRIVATE_KEY }}
           dst_token: ${{ secrets.GITEE_TOKEN }}
           static_list: "RainbowBoat-MBTI"
@@ -47,7 +47,7 @@ jobs:
       - name: Reload Gitee Pages
         uses: yanglbme/gitee-pages-action@main
         with:
-          gitee-username: gzfen
+          gitee-username: JohnF33
           gitee-password: ${{ secrets.GITEE_PASSWORD }}
-          gitee-repo: gzfen/RainbowBoat-MBTI
-          branch: main
+          gitee-repo: JohnF33/RainbowBoat-MBTI
+          branch: gh-pages
