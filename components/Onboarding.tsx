@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { MBTI_TYPES, MBTI_GROUPS, GameMode } from '../types';
 import { analyzePersonality, MBTIAnalysisResult } from '../services/geminiService';
 import { Anchor, Loader2, ArrowRight, Users, LayoutGrid, Plus, Trash2, User, Sparkles, Trophy, Camera, CircleHelp, Settings, Check, BookOpen, Sun, Moon, X, Monitor } from 'lucide-react';
+import { motion } from 'framer-motion';
 import AIConfigModal from './AIConfigModal';
 
 interface Props {
@@ -347,14 +348,19 @@ const Onboarding: React.FC<Props> = ({ onComplete, isDarkMode, toggleTheme, init
                 </div>
                 <button onClick={handleFinalStart} disabled={!isSetupValid()} className="w-full mt-8 py-3.5 bg-gradient-to-r from-teal-600 to-blue-600 hover:from-teal-500 hover:to-blue-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-bold text-white text-lg transition shadow-lg hover:shadow-teal-500/20 flex items-center justify-center gap-2">踏上彩虹船 <ArrowRight size={20} /></button>
 
-                <div className="flex justify-center">
-                    <button
-                        onClick={() => onBackToHub && onBackToHub()}
-                        className="flex items-center gap-2 mt-4 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition text-sm font-medium group"
+                <div className="flex justify-center mt-8">
+                    <motion.button
+                        whileHover={{ scale: 1.05, y: -2 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => {
+                            console.log("Anchor clicked - returning to hub");
+                            if (onBackToHub) onBackToHub();
+                        }}
+                        className="flex items-center gap-2 px-6 py-2.5 text-slate-400 hover:text-teal-600 dark:text-slate-500 dark:hover:text-teal-400 transition-all duration-300 text-sm font-bold group bg-slate-100/50 dark:bg-slate-800/30 hover:bg-white dark:hover:bg-slate-800 rounded-full border border-transparent hover:border-teal-500/30 shadow-sm hover:shadow-md"
                     >
-                        <Anchor size={14} className="group-hover:rotate-12 transition-transform" />
+                        <Anchor size={16} className="group-hover:rotate-[20deg] group-hover:scale-110 transition-transform duration-300" />
                         重返码头
-                    </button>
+                    </motion.button>
                 </div>
             </div>
 

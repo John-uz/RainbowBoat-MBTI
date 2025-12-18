@@ -1263,7 +1263,7 @@ function App() {
             turn: 1,
             targetScore: 40,
             logs: [],
-            phase: 'ONBOARDING',
+            phase: 'HUB',
             subPhase: 'IDLE',
             currentTile: null,
             selectedTask: null,
