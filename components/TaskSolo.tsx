@@ -88,7 +88,7 @@ const TaskSolo: React.FC<Props> = ({ onBack }) => {
             startAudioMonitoring((vol) => setMicVolume(vol));
             if (isSpeechRecognitionSupported()) {
                 setIsListening(true);
-                startSpeechRecognition((text) => setTranscription(prev => prev + " " + text));
+                startSpeechRecognition((text) => setTranscription(prev => prev + " " + text), () => setIsListening(false));
             }
         } else {
             stopAudioMonitoring();
@@ -205,8 +205,8 @@ const TaskSolo: React.FC<Props> = ({ onBack }) => {
                                 <div className="flex flex-col items-center gap-2 min-w-[70px]">
                                     <div
                                         className={`w-12 h-12 rounded-full flex items-center justify-center text-xs font-black transition-all duration-500 border-2 ${isCurrent ? 'bg-teal-500 border-white scale-110 shadow-[0_0_20px_rgba(20,184,166,0.5)]' :
-                                                isCompleted ? 'bg-slate-800 border-teal-500/50 text-teal-400' :
-                                                    'bg-slate-900 border-slate-800 text-slate-600'
+                                            isCompleted ? 'bg-slate-800 border-teal-500/50 text-teal-400' :
+                                                'bg-slate-900 border-slate-800 text-slate-600'
                                             }`}
                                     >
                                         {func}
