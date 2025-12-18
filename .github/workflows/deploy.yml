@@ -34,7 +34,7 @@ jobs:
           branch: gh-pages
 
       - name: Sync to Gitee
-        uses: Yikun/gitee-mirror-action@v0.0.2
+        uses: Yikun/gitee-mirror-action@v0.12
         with:
           src: github/John-uz
           dst: gitee/gzfen
