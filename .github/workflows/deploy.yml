@@ -35,7 +35,7 @@ jobs:
           folder: dist
           branch: gh-pages
 
-      - name: Sync to Gitee (Manual Push Mode)
+      - name: Sync Source Code to Gitee
         env:
           DST_KEY: ${{ secrets.GITEE_PRIVATE_KEY }}
         run: |
@@ -45,7 +45,19 @@ jobs:
           ssh-keyscan gitee.com >> ~/.ssh/known_hosts
           git remote add gitee git@gitee.com:JohnF33/RainbowBoat-MBTI.git
           git push -f gitee main:main
-          git push -f gitee gh-pages:gh-pages
+
+      - name: Sync Pages to Gitee
+        env:
+          DST_KEY: ${{ secrets.GITEE_PRIVATE_KEY }}
+        run: |
+          cd dist
+          git init
+          git config user.name "GitHub Action"
+          git config user.email "action@github.com"
+          git add .
+          git commit -m "Auto-deploy from GitHub"
+          git remote add gitee git@gitee.com:JohnF33/RainbowBoat-MBTI.git
+          git push -f gitee master:gh-pages
 
       - name: Reload Gitee Pages
         uses: yanglbme/gitee-pages-action@main
