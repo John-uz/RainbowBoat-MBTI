@@ -10,9 +10,11 @@ import {
 } from "./services/geminiService";
 import { speak } from './utils/tts';
 import { startSpeechRecognition, stopSpeechRecognition, isSpeechRecognitionSupported } from './utils/speechRecognition';
-import { Map as MapIcon, LogOut, Music, VideoOff, Dices, ChevronRight, ChevronLeft, BrainCircuit, Heart, Lightbulb, Mic, CircleHelp, X, Timer, CheckCircle, SkipForward, Users, RefreshCw, Star, Play, Power, Compass, Footprints, Loader, Zap, Repeat, Divide, Copy, Move, UserPlus, UsersRound, Settings, Flag, Radio, Sun, Moon, Volume2, Eye, ArrowRight } from 'lucide-react';
+import { Map as MapIcon, LogOut, Music, VideoOff, Dices, ChevronRight, ChevronLeft, BrainCircuit, Heart, Lightbulb, Mic, CircleHelp, X, Timer, CheckCircle, SkipForward, Users, RefreshCw, Star, Play, Power, Compass, Footprints, Loader, Zap, Repeat, Divide, Copy, Move, UserPlus, UsersRound, Settings, Flag, Radio, Sun, Moon, Volume2, Eye, ArrowRight, Ship } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AIConfigModal from './components/AIConfigModal';
+import MBTIHub from './components/MBTIHub';
+import TaskSolo from './components/TaskSolo';
 import LZString from 'lz-string';
 import { startAudioMonitoring, stopAudioMonitoring } from './utils/audioAnalyzer';
 
@@ -319,7 +321,7 @@ function App() {
         turn: 1,
         targetScore: 40,
         logs: [],
-        phase: 'ONBOARDING',
+        phase: 'HUB',
         subPhase: 'IDLE',
         currentTile: null,
         selectedTask: null,
@@ -341,6 +343,8 @@ function App() {
         currentReviewerId: null,
         accumulatedRating: 0
     });
+
+    const [isMobile, setIsMobile] = useState(false);
 
     const [isMusicPlaying, setIsMusicPlaying] = useState(false);
     const [taskTimer, setTaskTimer] = useState(0);
@@ -364,6 +368,7 @@ function App() {
 
     // Host Tools
     const [isManualMode, setIsManualMode] = useState(false);
+    const [isQuickTestMode, setIsQuickTestMode] = useState(false);
 
     // Multimodal Vision State
     const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -373,6 +378,29 @@ function App() {
     const [isCameraActive, setIsCameraActive] = useState(false);
     const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
     const [selectedVideoDeviceId, setSelectedVideoDeviceId] = useState<string>("");
+
+    useEffect(() => {
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth < 1024);
+        };
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
+
+    // [Smart Move] For Mobile: Auto-move if only one option exists
+    useEffect(() => {
+        if (!isMobile || gameState.phase !== 'PLAYING' || gameState.movementState !== 'IDLE' || gameState.remainingSteps === 0) return;
+
+        const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+        if (currentPlayer && !currentPlayer.isBot && validMoves.length === 1) {
+            // Auto click the only valid tile after a short delay
+            const timer = setTimeout(() => {
+                handleTileClick(validMoves[0]);
+            }, 800);
+            return () => clearTimeout(timer);
+        }
+    }, [isMobile, validMoves, gameState.phase, gameState.movementState, gameState.remainingSteps]);
 
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
@@ -679,6 +707,19 @@ function App() {
         if (audioRef.current) {
             audioRef.current.volume = 0.2;
             audioRef.current.play().catch(e => console.warn("Autoplay prevented:", e));
+        }
+    };
+
+    const handleHubSelect = (mode: 'test' | 'tasks' | 'party') => {
+        if (mode === 'test') {
+            setIsQuickTestMode(true);
+            setGameState(prev => ({ ...prev, phase: 'ONBOARDING' }));
+        } else if (mode === 'tasks') {
+            setIsQuickTestMode(false);
+            setGameState(prev => ({ ...prev, phase: 'SOLO_TASKS' }));
+        } else {
+            setIsQuickTestMode(false);
+            setGameState(prev => ({ ...prev, phase: 'ONBOARDING' }));
         }
     };
 
@@ -1223,57 +1264,11 @@ function App() {
         setValidMoves([]);
         setReportData(null);
         setSharedReviewData(null); // Clear shared data
+        setIsQuickTestMode(false);
         stopMusic();
     };
 
     // --- RENDER ---
-
-    if (gameState.phase === 'ONBOARDING') {
-        return (
-            <Onboarding
-                onComplete={startLoading}
-                isDarkMode={isDarkMode}
-                toggleTheme={toggleTheme}
-            />
-        );
-    }
-
-    // ... (LOADING and ANALYSIS phases render the same)
-    if (gameState.phase === 'LOADING') {
-        return (
-            <div className="h-screen w-full flex flex-col items-center justify-center text-slate-800 dark:text-white relative overflow-hidden font-sans transition-colors duration-300">
-                {/* Background provided by body CSS */}
-                <div className="z-10 flex flex-col items-center w-full max-w-4xl px-8 text-center bg-white/10 dark:bg-black/20 backdrop-blur-md rounded-3xl p-16 shadow-2xl border border-white/10">
-                    <motion.h1
-                        initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-                        className="text-8xl font-bold tracking-tight mb-4 text-transparent bg-clip-text bg-[linear-gradient(to_right,#ef4444,#f97316,#eab308,#22c55e,#3b82f6,#a855f7)] drop-shadow-lg"
-                    >
-                        彩虹船
-                    </motion.h1>
-                    <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="text-3xl text-slate-200 mb-12 font-light italic">
-                        “驶向海洋之心，领略生命之多彩”
-                    </motion.p>
-
-                    {/* Mic Check Section - Now Integrated as Ambient Wave */}
-                    <MicCheck />
-
-                    <div className="w-full h-4 bg-slate-700 rounded-full overflow-hidden mb-12 shadow-inner border border-slate-600 relative z-20">
-                        <motion.div className="h-full bg-gradient-to-r from-teal-400 to-blue-500 shadow-[0_0_15px_rgba(45,212,191,0.5)]" initial={{ width: 0 }} animate={{ width: `${loadingProgress}%` }} />
-                    </div>
-
-                    {showStartBtn && (
-                        <motion.button
-                            initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-                            onClick={handleEnterGame}
-                            className="mt-8 px-16 py-6 bg-white text-slate-900 rounded-full font-bold text-3xl shadow-[0_0_40px_rgba(20,184,166,0.6)] hover:scale-105 hover:bg-teal-50 hover:text-teal-900 transition-all duration-300 flex items-center gap-3"
-                        >
-                            <Play size={32} fill="currentColor" /> 启 航
-                        </motion.button>
-                    )}
-                </div>
-            </div>
-        );
-    }
 
     if (sharedReviewData) {
         return (
@@ -1287,6 +1282,56 @@ function App() {
                     setSharedReviewData(null);
                 }}
             />
+        );
+    }
+
+    if (gameState.phase === 'HUB') {
+        return (
+            <div className={`h-screen flex flex-col transition-colors duration-300 font-sans ${isDarkMode ? 'dark bg-slate-900 text-white' : 'bg-slate-50 text-slate-900'}`}>
+                <header className="h-16 flex items-center justify-between px-6 border-b border-slate-200 dark:border-white/5 shrink-0">
+                    <div className="flex items-center gap-2 font-black text-xl tracking-tighter italic">
+                        <Ship className="text-blue-500" /> RAINBOW BOAT
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <button onClick={toggleTheme} className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 transition">
+                            {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+                        </button>
+                    </div>
+                </header>
+                <main className="flex-1 overflow-hidden relative">
+                    <MBTIHub onSelectMode={handleHubSelect} />
+                </main>
+            </div>
+        );
+    }
+
+    if (gameState.phase === 'SOLO_TASKS') {
+        return <TaskSolo onBack={() => setGameState(prev => ({ ...prev, phase: 'HUB' }))} />;
+    }
+
+    if (gameState.phase === 'ONBOARDING') {
+        return (
+            <Onboarding
+                onComplete={startLoading}
+                isDarkMode={isDarkMode}
+                toggleTheme={toggleTheme}
+                initialStep={isQuickTestMode ? 'quiz' : 'setup'}
+                isSoloTest={isQuickTestMode}
+                onBackToHub={resetGame}
+            />
+        );
+    }
+
+    if (gameState.phase === 'LOADING') {
+        return (
+            <div className="h-screen w-full flex flex-col items-center justify-center text-slate-800 dark:text-white relative overflow-hidden font-sans transition-colors duration-300">
+                <div className="z-10 flex flex-col items-center w-full max-w-4xl px-8 text-center bg-white/10 dark:bg-black/20 backdrop-blur-md rounded-3xl p-16 shadow-2xl border border-white/10">
+                    <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-8xl font-bold tracking-tight mb-4 text-transparent bg-clip-text bg-[linear-gradient(to_right,#ef4444,#f97316,#eab308,#22c55e,#3b82f6,#a855f7)] drop-shadow-lg">彩虹船</motion.h1>
+                    <MicCheck />
+                    <div className="w-full h-4 bg-slate-700 rounded-full overflow-hidden mb-12 mt-8 relative z-20"><motion.div className="h-full bg-gradient-to-r from-teal-400 to-blue-500" initial={{ width: 0 }} animate={{ width: `${loadingProgress}%` }} /></div>
+                    {showStartBtn && (<motion.button initial={{ scale: 0.8 }} animate={{ scale: 1 }} onClick={handleEnterGame} className="mt-8 px-16 py-6 bg-white text-slate-900 rounded-full font-bold text-3xl shadow-2xl flex items-center gap-3"><Play size={32} fill="currentColor" /> 启 航</motion.button>)}
+                </div>
+            </div>
         );
     }
 
@@ -1405,357 +1450,362 @@ function App() {
             </header>
 
             <main className="flex-1 flex overflow-hidden relative">
-                {/* Transparent background for main content to show ocean bg */}
-                <div className="flex-1 relative bg-transparent flex flex-col transition-all duration-300">
-                    <div className="flex-1 flex items-center justify-center overflow-hidden cursor-grab active:cursor-grabbing">
-                        <GameBoard
-                            players={gameState.players}
-                            currentPlayerId={currentPlayer.id}
-                            boardLayout={board}
-                            validMoves={validMoves}
-                            onTileClick={handleTileClick}
-                            gameMode={gameState.gameMode}
-                            visibilityRadius={gameState.sightRange} // Using sightRange instead of diceValue
-                        />
-                    </div>
-
-                    {/* ... (Rest of existing UI components) ... */}
-                    <AnimatePresence>
-                        {(gameState.remainingSteps > 0 && gameState.movementState !== 'ROLLING') && (
-                            <motion.div initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 1.5, opacity: 0 }} className="absolute inset-0 pointer-events-none flex items-center justify-center z-10">
-                                <div className="text-[10rem] font-bold text-slate-900/10 dark:text-white/20 drop-shadow-lg select-none">
-                                    {gameState.remainingSteps}
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-
-                    {/* Dice & Interactions */}
-                    <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-20">
-                        <div className="relative w-full h-full max-w-4xl max-h-[800px]">
-                            <div className={`absolute bottom-20 right-8 pointer-events-auto transition-all duration-300 ${gameState.gameMode === GameMode.MBTI_16 ? 'translate-x-24' : ''}`}>
-                                {/* Host Manual Dice Input */}
-                                {isManualMode && gameState.subPhase === 'IDLE' && gameState.remainingSteps === 0 && (
-                                    <div className="mb-6 p-4 bg-slate-800/80 rounded-2xl border border-amber-500/30 backdrop-blur shadow-xl">
-                                        <h3 className="text-amber-400 font-bold mb-3 text-sm uppercase tracking-wider">主持人控点</h3>
-                                        <div className="flex gap-2 justify-center">
-                                            {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
-                                                <button
-                                                    key={n}
-                                                    onClick={() => handleStartTurn(n)}
-                                                    className="w-12 h-12 rounded-xl bg-slate-700 hover:bg-amber-500 text-white font-bold text-xl transition shadow-lg border border-slate-600"
-                                                >
-                                                    {n}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {gameState.subPhase === 'IDLE' && !currentPlayer.isBot && gameState.remainingSteps === 0 && (
-                                    <button
-                                        onClick={() => handleStartTurn()}
-                                        disabled={isManualMode || gameState.movementState !== 'IDLE'}
-                                        className={`group relative w-24 h-24 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center shadow-2xl transition hover:scale-105 active:scale-95 ${isManualMode ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                    >
-                                        <div className="absolute inset-0 rounded-full border border-teal-500/30 animate-ping opacity-20"></div>
-                                        <div className="flex flex-col items-center">
-                                            <Compass className="text-teal-500 group-hover:text-teal-600 dark:group-hover:text-white transition mb-1" size={28} />
-                                            <span className="text-[10px] text-teal-600/80 dark:text-teal-500/80 font-bold uppercase tracking-widest">启程</span>
-                                        </div>
-                                    </button>
-                                )}
-
-                                {gameState.movementState === 'ROLLING' && (
-                                    <div className="absolute inset-0 flex items-center justify-center -translate-y-12">
-                                        <Dice3D value={gameState.diceValue} rolling={true} />
-                                    </div>
-                                )}
+                {/* Original Game UI Wrapper */}
+                {(gameState.phase === 'PLAYING' || gameState.phase === 'SETUP') && (
+                    <div className="flex-1 flex overflow-hidden relative">
+                        {/* Game Board Content */}
+                        <div className={`flex-1 relative bg-transparent flex flex-col transition-all duration-300 ${isMobile ? 'h-[60vh]' : ''}`}>
+                            <div className="flex-1 flex items-center justify-center overflow-hidden cursor-grab active:cursor-grabbing">
+                                <GameBoard
+                                    players={gameState.players}
+                                    currentPlayerId={currentPlayer.id}
+                                    boardLayout={board}
+                                    validMoves={validMoves}
+                                    onTileClick={handleTileClick}
+                                    gameMode={gameState.gameMode}
+                                    visibilityRadius={gameState.sightRange} // Using sightRange instead of diceValue
+                                />
                             </div>
 
-                            {/* Modifiers & Tasks (Reused) */}
+                            {/* ... (Rest of existing UI components) ... */}
                             <AnimatePresence>
-                                {gameState.movementState === 'IDLE' && (gameState.activeModifier !== 'NORMAL' || gameState.activeSpecialAbility !== 'NONE') && gameState.subPhase === 'SELECTING_CARD' && (
-                                    <motion.div initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 2, opacity: 0 }} className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                        <div className="bg-white/90 dark:bg-black/80 backdrop-blur-md p-6 rounded-3xl border-2 border-amber-500 text-center shadow-[0_0_50px_rgba(245,158,11,0.5)] text-slate-800 dark:text-white">
-                                            <div className="text-6xl mb-2">
-                                                {gameState.activeModifier === 'DOUBLE' && '⚡ x2'} {gameState.activeModifier === 'HALF' && '📉 ÷2'} {gameState.activeModifier === 'CLONE' && '👯'} {gameState.activeModifier === 'TRANSFER' && '↔️'}
-                                                {gameState.activeSpecialAbility === 'FREEDOM' && '🚀'} {gameState.activeSpecialAbility === 'SUBSTITUTE' && '🎭'} {gameState.activeSpecialAbility === 'COMPANION' && '🤝'}
-                                            </div>
-                                            <div className="text-2xl font-bold text-amber-500 dark:text-amber-400">
-                                                {gameState.activeModifier === 'DOUBLE' && '能量激化'} {gameState.activeModifier === 'HALF' && '迷雾重重'} {gameState.activeModifier === 'CLONE' && '命运克隆'} {gameState.activeModifier === 'TRANSFER' && '乾坤挪移'}
-                                                {gameState.activeSpecialAbility === 'FREEDOM' && '自由之门'} {gameState.activeSpecialAbility === 'SUBSTITUTE' && '寻找替身'} {gameState.activeSpecialAbility === 'COMPANION' && '结伴同行'}
-                                            </div>
+                                {(gameState.remainingSteps > 0 && gameState.movementState !== 'ROLLING') && (
+                                    <motion.div initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 1.5, opacity: 0 }} className="absolute inset-0 pointer-events-none flex items-center justify-center z-10">
+                                        <div className="text-[10rem] font-bold text-slate-900/10 dark:text-white/20 drop-shadow-lg select-none">
+                                            {gameState.remainingSteps}
                                         </div>
                                     </motion.div>
                                 )}
                             </AnimatePresence>
 
-                            <AnimatePresence>
-                                {gameState.subPhase === 'SELECTING_CARD' && (
-                                    <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.8, opacity: 0 }} className="absolute inset-0 flex items-center justify-center pointer-events-auto">
-                                        <div className="grid grid-cols-2 gap-6 p-8 bg-white/90 dark:bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-slate-200 dark:border-slate-700 shadow-2xl">
-                                            {(['standard', 'truth', 'dare', 'deep'] as const).map((cat) => {
-                                                const config = TASK_CATEGORIES_CONFIG[cat];
-                                                return (
-                                                    <button key={cat} onClick={() => handleSelectCategory(cat)} className={`w-40 h-48 rounded-2xl flex flex-col items-center justify-center gap-4 transition-all hover:-translate-y-2 hover:shadow-xl border ${config.color} bg-opacity-20 hover:bg-opacity-30 group`}>
-                                                        <div className="text-5xl group-hover:scale-110 transition">{config.icon}</div>
-                                                        <div className="text-center"><div className="font-bold text-slate-800 dark:text-white">{config.name}</div><div className="text-[10px] text-slate-500 dark:text-white/60">x{config.multiplier} 倍能量</div></div>
-                                                    </button>
-                                                )
-                                            })}
-                                        </div>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                        </div>
-                    </div>
-
-                    <AnimatePresence>
-                        {(gameState.subPhase === 'VIEWING_TASK' || gameState.subPhase === 'TASK_EXECUTION') && (
-                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4 overflow-y-auto">
-                                <div className="flex gap-6 items-center w-full max-w-6xl justify-center">
-                                    {/* Task Card: Width stays constant */}
-                                    <div className="w-[480px] bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden flex flex-col transition-all duration-300">
-                                        {!gameState.selectedTask ? (
-                                            <div className="p-12 flex flex-col items-center justify-center space-y-4"><div className="w-16 h-16 rounded-full border-4 border-teal-500 border-t-transparent animate-spin"></div></div>
-                                        ) : (
-                                            <>
-                                                <div className={`p-8 ${TASK_CATEGORIES_CONFIG[gameState.selectedTask.category].color} bg-opacity-20 text-center relative`}>
-                                                    <div className="text-5xl mb-3">{TASK_CATEGORIES_CONFIG[gameState.selectedTask.category].icon}</div>
-                                                    <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-2">{gameState.selectedTask.title}</h2>
-                                                    <div className="flex justify-center gap-2">
-                                                        <span className="px-2 py-0.5 bg-black/10 dark:bg-black/20 rounded-full text-[10px] text-slate-600 dark:text-white/90">⏱ {gameState.selectedTask.durationSeconds}s</span>
-                                                        <span className="px-2 py-0.5 bg-black/10 dark:bg-black/20 rounded-full text-[10px] text-slate-600 dark:text-white/90">✨ {gameState.selectedTask.scoreType}</span>
-                                                    </div>
-                                                    <button onClick={() => setGameState(prev => ({ ...prev, subPhase: 'SELECTING_CARD' }))} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:text-white/50 dark:hover:text-white"><X size={18} /></button>
+                            {/* Dice & Interactions */}
+                            <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-20">
+                                <div className="relative w-full h-full max-w-4xl max-h-[800px]">
+                                    <div className={`absolute bottom-20 right-8 pointer-events-auto transition-all duration-300 ${gameState.gameMode === GameMode.MBTI_16 ? 'translate-x-24' : ''}`}>
+                                        {/* Host Manual Dice Input */}
+                                        {isManualMode && gameState.subPhase === 'IDLE' && gameState.remainingSteps === 0 && (
+                                            <div className="mb-6 p-4 bg-slate-800/80 rounded-2xl border border-amber-500/30 backdrop-blur shadow-xl">
+                                                <h3 className="text-amber-400 font-bold mb-3 text-sm uppercase tracking-wider">主持人控点</h3>
+                                                <div className="flex gap-2 justify-center">
+                                                    {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
+                                                        <button
+                                                            key={n}
+                                                            onClick={() => handleStartTurn(n)}
+                                                            className="w-12 h-12 rounded-xl bg-slate-700 hover:bg-amber-500 text-white font-bold text-xl transition shadow-lg border border-slate-600"
+                                                        >
+                                                            {n}
+                                                        </button>
+                                                    ))}
                                                 </div>
-                                                <div className="p-6 flex-1 flex flex-col min-h-0">
-                                                    <p className="text-md text-slate-600 dark:text-slate-300 leading-relaxed text-center mb-6 flex-shrink-0 italic">
-                                                        "{gameState.selectedTask.description}"
-                                                    </p>
-                                                    {gameState.helperId && (<div className="mb-4 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-500/30 p-2 rounded-lg flex items-center gap-3 justify-center text-indigo-700 dark:text-indigo-200 text-xs"><Users size={14} /> <span>共振伙伴: <strong>{gameState.players.find(p => p.id === gameState.helperId)?.name}</strong></span></div>)}
+                                            </div>
+                                        )}
 
-                                                    {gameState.subPhase === 'VIEWING_TASK' ? (
-                                                        <div className="space-y-4 pt-2">
-                                                            <button onClick={handleStartTask} className="w-full py-4 bg-gradient-to-r from-teal-600 to-blue-600 hover:brightness-110 rounded-2xl font-bold text-white shadow-lg transition-all text-lg flex items-center justify-center gap-2 group">开始挑战 <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" /></button>
-                                                            <div className="grid grid-cols-3 gap-2">
-                                                                <button onClick={handleReselect} disabled={gameState.hasReselected} className="py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 disabled:opacity-50 rounded-xl text-slate-500 dark:text-slate-300 text-[10px] font-bold flex flex-col items-center justify-center gap-1 transition-all"><RefreshCw size={14} /> 重选</button>
-                                                                <button onClick={handleAskForHelp} className="py-2.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/50 dark:hover:bg-indigo-900 rounded-xl text-indigo-600 dark:text-indigo-300 text-[10px] font-bold flex flex-col items-center justify-center gap-1 border border-indigo-200 dark:border-indigo-500/30 transition-all"><Users size={14} /> 寻求帮助 ({3 - gameState.sharedHelpUsedCount})</button>
-                                                                <button onClick={handleSkip} className="py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-slate-500 dark:text-slate-400 text-[10px] font-bold flex flex-col items-center justify-center gap-1 transition-all"><SkipForward size={14} /> 跳过 (-{currentPlayer.skipUsedCount})</button>
-                                                            </div>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="flex flex-1 flex-col overflow-hidden">
-                                                            <div className="flex-1 w-full bg-slate-50 dark:bg-black/20 rounded-2xl p-5 mb-4 border border-slate-200 dark:border-white/10 overflow-y-auto relative min-h-[200px]">
-                                                                {isListening && <div className="absolute top-3 right-3 flex items-center gap-1.5 text-red-500 animate-pulse font-bold text-[10px] z-20"><div className="w-1.5 h-1.5 bg-red-500 rounded-full" /> 录音中</div>}
-                                                                <textarea className="w-full h-full bg-transparent resize-none outline-none text-slate-700 dark:text-slate-200 text-lg leading-relaxed placeholder:text-slate-400 font-medium" placeholder={isListening ? "正在将你的声音转化成灵魂语言..." : "请开始你的表达..."} value={currentSpeechText} onChange={(e) => setCurrentSpeechText(e.target.value)} />
-                                                            </div>
-                                                            <div className="flex gap-4">
-                                                                <div className="flex-1 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center overflow-hidden border-2 border-slate-200 dark:border-slate-700 h-16">
-                                                                    <canvas ref={canvasRef} className="hidden" />
-                                                                    <span className="text-3xl font-mono font-black text-slate-800 dark:text-white">{taskTimer}s</span>
-                                                                </div>
-                                                                <button onClick={() => handleTaskDone()} className="flex-[2] px-6 bg-teal-600 hover:bg-teal-500 text-white rounded-xl font-bold shadow-lg transition-all flex items-center justify-center gap-2 text-md">同步航行状态</button>
-                                                            </div>
-                                                        </div>
-                                                    )}
+                                        {gameState.subPhase === 'IDLE' && !currentPlayer.isBot && gameState.remainingSteps === 0 && (
+                                            <button
+                                                onClick={() => handleStartTurn()}
+                                                disabled={isManualMode || gameState.movementState !== 'IDLE'}
+                                                className={`group relative w-24 h-24 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center shadow-2xl transition hover:scale-105 active:scale-95 ${isManualMode ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                            >
+                                                <div className="absolute inset-0 rounded-full border border-teal-500/30 animate-ping opacity-20"></div>
+                                                <div className="flex flex-col items-center">
+                                                    <Compass className="text-teal-500 group-hover:text-teal-600 dark:group-hover:text-white transition mb-1" size={28} />
+                                                    <span className="text-[10px] text-teal-600/80 dark:text-teal-500/80 font-bold uppercase tracking-widest">启程</span>
                                                 </div>
-                                            </>
+                                            </button>
+                                        )}
+
+                                        {gameState.movementState === 'ROLLING' && (
+                                            <div className="absolute inset-0 flex items-center justify-center -translate-y-12">
+                                                <Dice3D value={gameState.diceValue} rolling={true} />
+                                            </div>
                                         )}
                                     </div>
 
-                                    {/* Sidebar Camera: Always present during VIEWING and EXECUTION if active */}
-                                    {isCameraActive && (
-                                        <motion.div initial={{ x: 30, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="w-72 bg-slate-900 rounded-3xl border border-slate-700 shadow-2xl overflow-hidden flex flex-col h-[520px] relative">
-                                            <div className="p-3 bg-slate-800 border-b border-slate-700 flex justify-between items-center">
-                                                <div className="flex items-center gap-2"><div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div><span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">AI Observation</span></div>
-                                                <div className="flex items-center gap-2">
-                                                    {videoDevices.length > 1 && (
-                                                        <button
-                                                            onClick={handleSwitchCamera}
-                                                            className="p-1.5 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-teal-400 transition"
-                                                            title="切换摄像头"
-                                                        >
-                                                            <Repeat size={14} />
-                                                        </button>
-                                                    )}
-                                                    <Eye size={12} className="text-teal-400" />
+                                    {/* Modifiers & Tasks (Reused) */}
+                                    <AnimatePresence>
+                                        {gameState.movementState === 'IDLE' && (gameState.activeModifier !== 'NORMAL' || gameState.activeSpecialAbility !== 'NONE') && gameState.subPhase === 'SELECTING_CARD' && (
+                                            <motion.div initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 2, opacity: 0 }} className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                                <div className="bg-white/90 dark:bg-black/80 backdrop-blur-md p-6 rounded-3xl border-2 border-amber-500 text-center shadow-[0_0_50px_rgba(245,158,11,0.5)] text-slate-800 dark:text-white">
+                                                    <div className="text-6xl mb-2">
+                                                        {gameState.activeModifier === 'DOUBLE' && '⚡ x2'} {gameState.activeModifier === 'HALF' && '📉 ÷2'} {gameState.activeModifier === 'CLONE' && '👯'} {gameState.activeModifier === 'TRANSFER' && '↔️'}
+                                                        {gameState.activeSpecialAbility === 'FREEDOM' && '🚀'} {gameState.activeSpecialAbility === 'SUBSTITUTE' && '🎭'} {gameState.activeSpecialAbility === 'COMPANION' && '🤝'}
+                                                    </div>
+                                                    <div className="text-2xl font-bold text-amber-500 dark:text-amber-400">
+                                                        {gameState.activeModifier === 'DOUBLE' && '能量激化'} {gameState.activeModifier === 'HALF' && '迷雾重重'} {gameState.activeModifier === 'CLONE' && '命运克隆'} {gameState.activeModifier === 'TRANSFER' && '乾坤挪移'}
+                                                        {gameState.activeSpecialAbility === 'FREEDOM' && '自由之门'} {gameState.activeSpecialAbility === 'SUBSTITUTE' && '寻找替身'} {gameState.activeSpecialAbility === 'COMPANION' && '结伴同行'}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="flex-1 bg-black relative flex items-center justify-center overflow-hidden">
-                                                <video
-                                                    ref={videoRef}
-                                                    autoPlay
-                                                    playsInline
-                                                    muted
-                                                    className="absolute inset-0 w-full h-full object-cover"
-                                                    onLoadedMetadata={(e) => (e.currentTarget.play())}
-                                                />
-                                                <div className="absolute inset-0 pointer-events-none border-[15px] border-transparent">
-                                                    <div className="absolute top-0 left-0 w-6 h-6 border-t border-l border-teal-500/40"></div>
-                                                    <div className="absolute top-0 right-0 w-6 h-6 border-t border-r border-teal-500/40"></div>
-                                                    <div className="absolute bottom-0 left-0 w-6 h-6 border-b border-l border-teal-500/40"></div>
-                                                    <div className="absolute bottom-0 right-0 w-6 h-6 border-b border-r border-teal-500/40"></div>
-                                                    <motion.div animate={{ top: ['5%', '95%', '5%'] }} transition={{ duration: 3, repeat: Infinity, ease: "linear" }} className="absolute left-2 right-2 h-px bg-teal-500/20 blur-[1px] z-10" />
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+
+                                    <AnimatePresence>
+                                        {gameState.subPhase === 'SELECTING_CARD' && (
+                                            <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.8, opacity: 0 }} className="absolute inset-0 flex items-center justify-center pointer-events-auto">
+                                                <div className="grid grid-cols-2 gap-6 p-8 bg-white/90 dark:bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-slate-200 dark:border-slate-700 shadow-2xl">
+                                                    {(['standard', 'truth', 'dare', 'deep'] as const).map((cat) => {
+                                                        const config = TASK_CATEGORIES_CONFIG[cat];
+                                                        return (
+                                                            <button key={cat} onClick={() => handleSelectCategory(cat)} className={`w-40 h-48 rounded-2xl flex flex-col items-center justify-center gap-4 transition-all hover:-translate-y-2 hover:shadow-xl border ${config.color} bg-opacity-20 hover:bg-opacity-30 group`}>
+                                                                <div className="text-5xl group-hover:scale-110 transition">{config.icon}</div>
+                                                                <div className="text-center"><div className="font-bold text-slate-800 dark:text-white">{config.name}</div><div className="text-[10px] text-slate-500 dark:text-white/60">x{config.multiplier} 倍能量</div></div>
+                                                            </button>
+                                                        )
+                                                    })}
                                                 </div>
-                                            </div>
-                                            <div className="p-4 bg-slate-800/90 backdrop-blur-md">
-                                                <div className="flex items-center gap-2 mb-2"><BrainCircuit size={16} className="text-teal-400" /><h4 className="text-[10px] font-bold text-white uppercase tracking-wider">正在智能分析</h4></div>
-                                                <p className="text-[9px] text-slate-400 leading-relaxed italic">正在理解你的非语言信息及情感波动，这能让 AI 船长更深层次地洞察你的真实人格。</p>
-                                            </div>
-                                        </motion.div>
-                                    )}
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
                                 </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-
-                    <AnimatePresence>
-                        {gameState.subPhase === 'PEER_REVIEW' && currentReviewer && (
-                            <PeerReviewModal
-                                reviewer={currentReviewer}
-                                actor={currentPlayer}
-                                hasHighEnergyBonus={highEnergyBonus}
-                                onSubmit={handlePeerScoreSubmit}
-                            />
-                        )}
-
-                        {/* Mic Volume Meter (During Task) */}
-                        {gameState.subPhase === 'TASK_EXECUTION' && isListening && (
-                            <div className="absolute top-24 right-6 flex flex-col items-center gap-2">
-                                <div className="w-4 h-32 bg-slate-800 rounded-full overflow-hidden border border-slate-600 relative">
-                                    <div
-                                        className="absolute bottom-0 w-full transition-all duration-100 bg-gradient-to-t from-green-500 via-yellow-400 to-red-500"
-                                        style={{ height: `${Math.min(100, micVolume * 200)}%` }} // Boost visual
-                                    />
-                                    {/* Marker line for threshold */}
-                                    <div className="absolute bottom-[40%] w-full h-[2px] bg-white opacity-50"></div>
-                                </div>
-                                <Volume2 size={16} className={micVolume > 0.4 ? "text-red-500 animate-bounce" : "text-slate-500"} />
-                                {highEnergyBonus && <Zap size={16} className="text-yellow-400 fill-yellow-400 animate-pulse" />}
                             </div>
-                        )}</AnimatePresence>
 
-                    <AnimatePresence>
-                        {(gameState.subPhase === 'SELECTING_SCORE_TARGET' || gameState.subPhase === 'SELECTING_SUBSTITUTE' || gameState.subPhase === 'SELECTING_COMPANION') && (
-                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-                                <div className="w-full max-w-sm bg-white dark:bg-slate-800 p-6 rounded-2xl text-center border-2 border-amber-500/50 shadow-2xl">
-                                    <h3 className="font-bold text-amber-500 dark:text-amber-400 mb-2 text-xl">
-                                        {gameState.subPhase === 'SELECTING_SCORE_TARGET' && (gameState.activeModifier === 'CLONE' ? '👯 选择克隆对象' : '↔️ 选择转移对象')}
-                                        {gameState.subPhase === 'SELECTING_SUBSTITUTE' && '🎭 寻找替身'}
-                                        {gameState.subPhase === 'SELECTING_COMPANION' && '🤝 结伴同行'}
-                                    </h3>
-                                    <div className="grid grid-cols-2 gap-3 max-h-60 overflow-y-auto mt-4">
-                                        {gameState.players.filter(p => p.id !== currentPlayer.id).map(p => (
-                                            <button key={p.id} onClick={() => {
-                                                if (gameState.subPhase === 'SELECTING_SCORE_TARGET') handleScoreTargetSelect(p.id);
-                                                if (gameState.subPhase === 'SELECTING_SUBSTITUTE') handleSubstituteSelect(p.id);
-                                                if (gameState.subPhase === 'SELECTING_COMPANION') handleCompanionSelect(p.id);
-                                            }} className="p-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 rounded-xl flex flex-col items-center gap-2 border border-transparent hover:border-amber-500 transition">
-                                                <div className="w-10 h-10 rounded-full bg-slate-300 dark:bg-slate-600 overflow-hidden">
-                                                    {p.avatar.startsWith('data:') ? <img src={p.avatar} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center font-bold text-slate-700 dark:text-white">{p.name[0]}</div>}
-                                                </div>
-                                                <span className="text-sm font-bold text-slate-800 dark:text-white">{p.name}</span>
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                            <AnimatePresence>
+                                {(gameState.subPhase === 'VIEWING_TASK' || gameState.subPhase === 'TASK_EXECUTION') && (
+                                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4 overflow-y-auto">
+                                        <div className="flex gap-6 items-center w-full max-w-6xl justify-center">
+                                            {/* Task Card: Responsive Width */}
+                                            <div className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden flex flex-col transition-all duration-300">
+                                                {!gameState.selectedTask ? (
+                                                    <div className="p-12 flex flex-col items-center justify-center space-y-4"><div className="w-16 h-16 rounded-full border-4 border-teal-500 border-t-transparent animate-spin"></div></div>
+                                                ) : (
+                                                    <>
+                                                        <div className={`p-8 ${TASK_CATEGORIES_CONFIG[gameState.selectedTask.category].color} bg-opacity-20 text-center relative`}>
+                                                            <div className="text-5xl mb-3">{TASK_CATEGORIES_CONFIG[gameState.selectedTask.category].icon}</div>
+                                                            <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-2">{gameState.selectedTask.title}</h2>
+                                                            <div className="flex justify-center gap-2">
+                                                                <span className="px-2 py-0.5 bg-black/10 dark:bg-black/20 rounded-full text-[10px] text-slate-600 dark:text-white/90">⏱ {gameState.selectedTask.durationSeconds}s</span>
+                                                                <span className="px-2 py-0.5 bg-black/10 dark:bg-black/20 rounded-full text-[10px] text-slate-600 dark:text-white/90">✨ {gameState.selectedTask.scoreType}</span>
+                                                            </div>
+                                                            <button onClick={() => setGameState(prev => ({ ...prev, subPhase: 'SELECTING_CARD' }))} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:text-white/50 dark:hover:text-white"><X size={18} /></button>
+                                                        </div>
+                                                        <div className="p-6 flex-1 flex flex-col min-h-0">
+                                                            <p className="text-md text-slate-600 dark:text-slate-300 leading-relaxed text-center mb-6 flex-shrink-0 italic">
+                                                                "{gameState.selectedTask.description}"
+                                                            </p>
+                                                            {gameState.helperId && (<div className="mb-4 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-500/30 p-2 rounded-lg flex items-center gap-3 justify-center text-indigo-700 dark:text-indigo-200 text-xs"><Users size={14} /> <span>共振伙伴: <strong>{gameState.players.find(p => p.id === gameState.helperId)?.name}</strong></span></div>)}
 
-                    {/* Choosing Helper Modal */}
-                    <AnimatePresence>
-                        {gameState.subPhase === 'CHOOSING_HELPER' && (
-                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-                                <div className="w-full max-w-sm bg-white dark:bg-slate-800 p-6 rounded-2xl text-center">
-                                    <h3 className="font-bold text-slate-800 dark:text-white mb-4">选择共振伙伴</h3>
-                                    <div className="grid grid-cols-2 gap-3 max-h-60 overflow-y-auto">
-                                        {gameState.players.filter(p => p.id !== currentPlayer.id).map(p => (
-                                            <button key={p.id} onClick={() => handleChooseHelper(p.id)} className="p-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 rounded-xl flex flex-col items-center gap-2">
-                                                <div className="w-8 h-8 rounded-full bg-slate-300 dark:bg-slate-600 overflow-hidden">
-                                                    {p.avatar.startsWith('data:') ? <img src={p.avatar} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center font-bold text-slate-700 dark:text-white">{p.name[0]}</div>}
-                                                </div>
-                                                <span className="text-xs text-slate-800 dark:text-white">{p.name}</span>
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                                                            {gameState.subPhase === 'VIEWING_TASK' ? (
+                                                                <div className="space-y-4 pt-2">
+                                                                    <button onClick={handleStartTask} className="w-full py-4 bg-gradient-to-r from-teal-600 to-blue-600 hover:brightness-110 rounded-2xl font-bold text-white shadow-lg transition-all text-lg flex items-center justify-center gap-2 group">开始挑战 <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" /></button>
+                                                                    <div className="grid grid-cols-3 gap-2">
+                                                                        <button onClick={handleReselect} disabled={gameState.hasReselected} className="py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 disabled:opacity-50 rounded-xl text-slate-500 dark:text-slate-300 text-[10px] font-bold flex flex-col items-center justify-center gap-1 transition-all"><RefreshCw size={14} /> 重选</button>
+                                                                        <button onClick={handleAskForHelp} className="py-2.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/50 dark:hover:bg-indigo-900 rounded-xl text-indigo-600 dark:text-indigo-300 text-[10px] font-bold flex flex-col items-center justify-center gap-1 border border-indigo-200 dark:border-indigo-500/30 transition-all"><Users size={14} /> 寻求帮助 ({3 - gameState.sharedHelpUsedCount})</button>
+                                                                        <button onClick={handleSkip} className="py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-slate-500 dark:text-slate-400 text-[10px] font-bold flex flex-col items-center justify-center gap-1 transition-all"><SkipForward size={14} /> 跳过 (-{currentPlayer.skipUsedCount})</button>
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="flex flex-1 flex-col overflow-hidden">
+                                                                    <div className="flex-1 w-full bg-slate-50 dark:bg-black/20 rounded-2xl p-5 mb-4 border border-slate-200 dark:border-white/10 overflow-y-auto relative min-h-[200px]">
+                                                                        {isListening && <div className="absolute top-3 right-3 flex items-center gap-1.5 text-red-500 animate-pulse font-bold text-[10px] z-20"><div className="w-1.5 h-1.5 bg-red-500 rounded-full" /> 录音中</div>}
+                                                                        <textarea className="w-full h-full bg-transparent resize-none outline-none text-slate-700 dark:text-slate-200 text-lg leading-relaxed placeholder:text-slate-400 font-medium" placeholder={isListening ? "正在将你的声音转化成灵魂语言..." : "请开始你的表达..."} value={currentSpeechText} onChange={(e) => setCurrentSpeechText(e.target.value)} />
+                                                                    </div>
+                                                                    <div className="flex gap-4">
+                                                                        <div className="flex-1 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center overflow-hidden border-2 border-slate-200 dark:border-slate-700 h-16">
+                                                                            <canvas ref={canvasRef} className="hidden" />
+                                                                            <span className="text-3xl font-mono font-black text-slate-800 dark:text-white">{taskTimer}s</span>
+                                                                        </div>
+                                                                        <button onClick={() => handleTaskDone()} className="flex-[2] px-6 bg-teal-600 hover:bg-teal-500 text-white rounded-xl font-bold shadow-lg transition-all flex items-center justify-center gap-2 text-md">同步航行状态</button>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
 
-                    {/* Player Avatar (Bottom Left - replaces Video) */}
-                    <div className="absolute bottom-6 left-6 z-40">
-                        <div className="relative group w-32 h-32">
-                            <div className="w-full h-full rounded-full overflow-hidden border-2 border-slate-200 dark:border-slate-700 shadow-2xl bg-white dark:bg-black flex items-center justify-center">
-                                {currentPlayer.avatar.startsWith('data:') ? (
-                                    <img src={currentPlayer.avatar} className="w-full h-full object-cover" />
-                                ) : (
-                                    <div className="text-4xl font-bold text-slate-400 dark:text-slate-500">{currentPlayer.name[0]}</div>
+                                            {/* Sidebar Camera: Always present during VIEWING and EXECUTION if active */}
+                                            {isCameraActive && (
+                                                <motion.div initial={{ x: 30, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="w-72 bg-slate-900 rounded-3xl border border-slate-700 shadow-2xl overflow-hidden flex flex-col h-[520px] relative">
+                                                    <div className="p-3 bg-slate-800 border-b border-slate-700 flex justify-between items-center">
+                                                        <div className="flex items-center gap-2"><div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div><span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">AI Observation</span></div>
+                                                        <div className="flex items-center gap-2">
+                                                            {videoDevices.length > 1 && (
+                                                                <button
+                                                                    onClick={handleSwitchCamera}
+                                                                    className="p-1.5 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-teal-400 transition"
+                                                                    title="切换摄像头"
+                                                                >
+                                                                    <Repeat size={14} />
+                                                                </button>
+                                                            )}
+                                                            <Eye size={12} className="text-teal-400" />
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex-1 bg-black relative flex items-center justify-center overflow-hidden">
+                                                        <video
+                                                            ref={videoRef}
+                                                            autoPlay
+                                                            playsInline
+                                                            muted
+                                                            className="absolute inset-0 w-full h-full object-cover"
+                                                            onLoadedMetadata={(e) => (e.currentTarget.play())}
+                                                        />
+                                                        <div className="absolute inset-0 pointer-events-none border-[15px] border-transparent">
+                                                            <div className="absolute top-0 left-0 w-6 h-6 border-t border-l border-teal-500/40"></div>
+                                                            <div className="absolute top-0 right-0 w-6 h-6 border-t border-r border-teal-500/40"></div>
+                                                            <div className="absolute bottom-0 left-0 w-6 h-6 border-b border-l border-teal-500/40"></div>
+                                                            <div className="absolute bottom-0 right-0 w-6 h-6 border-b border-r border-teal-500/40"></div>
+                                                            <motion.div animate={{ top: ['5%', '95%', '5%'] }} transition={{ duration: 3, repeat: Infinity, ease: "linear" }} className="absolute left-2 right-2 h-px bg-teal-500/20 blur-[1px] z-10" />
+                                                        </div>
+                                                    </div>
+                                                    <div className="p-4 bg-slate-800/90 backdrop-blur-md">
+                                                        <div className="flex items-center gap-2 mb-2"><BrainCircuit size={16} className="text-teal-400" /><h4 className="text-[10px] font-bold text-white uppercase tracking-wider">正在智能分析</h4></div>
+                                                        <p className="text-[9px] text-slate-400 leading-relaxed italic">正在理解你的非语言信息及情感波动，这能让 AI 船长更深层次地洞察你的真实人格。</p>
+                                                    </div>
+                                                </motion.div>
+                                            )}
+                                        </div>
+                                    </motion.div>
                                 )}
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                            </AnimatePresence>
 
-                {/* Sidebar (Right) */}
-                <div className={`bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border-l border-slate-200 dark:border-white/5 flex flex-col transition-all duration-300 z-20 shadow-xl ${isSidebarMinimized ? 'w-16' : 'w-64'}`}>
-                    <div className="h-16 flex items-center justify-between px-4 border-b border-slate-200 dark:border-white/5 shrink-0">
-                        {!isSidebarMinimized && <span className="font-bold text-slate-400 text-xs uppercase tracking-widest">当前能量场</span>}
-                        <button onClick={() => setIsSidebarMinimized(!isSidebarMinimized)} className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-white transition"><ChevronRight size={16} /></button>
-                    </div>
-                    {!isSidebarMinimized ? (
-                        <div className="flex-1 flex flex-col overflow-hidden">
-                            <div
-                                className={`overflow-y-auto custom-scrollbar p-3 transition-all duration-300 ${gameState.players.length > 6 ? 'space-y-1.5' : 'space-y-3'}`}
-                                style={{ maxHeight: '65%' }}
-                            >
-                                {[...gameState.players].sort((a, b) => (b.trustScore + b.insightScore + b.expressionScore) - (a.trustScore + a.insightScore + a.expressionScore)).map((p) => {
-                                    const total = p.trustScore + p.insightScore + p.expressionScore;
-                                    const isCompact = gameState.players.length > 6;
-                                    return (
-                                        <div key={p.id} className={`rounded-xl border transition-all ${isCompact ? 'p-2' : 'p-3'} ${p.id === currentPlayer.id ? 'bg-slate-50 dark:bg-slate-800 border-teal-500/30 shadow-lg' : 'bg-transparent border-slate-100 dark:border-slate-800/50'}`}>
-                                            <div className="flex justify-between items-center mb-1.5">
-                                                <div className="flex items-center gap-2">
-                                                    <div className={`rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-slate-700 dark:text-white overflow-hidden ring-1 ring-slate-300 dark:ring-slate-600 ${isCompact ? 'w-6 h-6 text-[9px]' : 'w-8 h-8 text-[10px]'}`}>
-                                                        {p.avatar.startsWith('data:') ? <img src={p.avatar} className="w-full h-full object-cover" /> : p.name[0]}
-                                                    </div>
-                                                    <div className="leading-tight">
-                                                        <div className={`font-bold text-slate-700 dark:text-slate-200 ${isCompact ? 'text-[10px]' : 'text-xs'}`}>{p.name}</div>
-                                                        <div className="text-[9px] text-slate-400 dark:text-slate-500">{p.mbti}</div>
-                                                    </div>
-                                                </div>
-                                                <div className={`font-bold text-amber-500 ${isCompact ? 'text-xs' : 'text-sm'}`}>{total}</div>
-                                            </div>
-                                            <div className="flex gap-1 text-[9px] text-slate-500">
-                                                <div className="flex-1 bg-slate-100 dark:bg-slate-900/40 rounded px-1.5 py-0.5 flex justify-between"><span>信</span><span className="text-blue-500 dark:text-blue-400">{p.trustScore}</span></div>
-                                                <div className="flex-1 bg-slate-100 dark:bg-slate-900/40 rounded px-1.5 py-0.5 flex justify-between"><span>觉</span><span className="text-purple-500 dark:text-purple-400">{p.insightScore}</span></div>
-                                                <div className="flex-1 bg-slate-100 dark:bg-slate-900/40 rounded px-1.5 py-0.5 flex justify-between"><span>表</span><span className="text-orange-500 dark:text-orange-400">{p.expressionScore}</span></div>
+                            <AnimatePresence>
+                                {gameState.subPhase === 'PEER_REVIEW' && currentReviewer && (
+                                    <PeerReviewModal
+                                        reviewer={currentReviewer}
+                                        actor={currentPlayer}
+                                        hasHighEnergyBonus={highEnergyBonus}
+                                        onSubmit={handlePeerScoreSubmit}
+                                    />
+                                )}
+
+                                {/* Mic Volume Meter (During Task) */}
+                                {gameState.subPhase === 'TASK_EXECUTION' && isListening && (
+                                    <div className="absolute top-24 right-6 flex flex-col items-center gap-2">
+                                        <div className="w-4 h-32 bg-slate-800 rounded-full overflow-hidden border border-slate-600 relative">
+                                            <div
+                                                className="absolute bottom-0 w-full transition-all duration-100 bg-gradient-to-t from-green-500 via-yellow-400 to-red-500"
+                                                style={{ height: `${Math.min(100, micVolume * 200)}%` }} // Boost visual
+                                            />
+                                            {/* Marker line for threshold */}
+                                            <div className="absolute bottom-[40%] w-full h-[2px] bg-white opacity-50"></div>
+                                        </div>
+                                        <Volume2 size={16} className={micVolume > 0.4 ? "text-red-500 animate-bounce" : "text-slate-500"} />
+                                        {highEnergyBonus && <Zap size={16} className="text-yellow-400 fill-yellow-400 animate-pulse" />}
+                                    </div>
+                                )}</AnimatePresence>
+
+                            <AnimatePresence>
+                                {(gameState.subPhase === 'SELECTING_SCORE_TARGET' || gameState.subPhase === 'SELECTING_SUBSTITUTE' || gameState.subPhase === 'SELECTING_COMPANION') && (
+                                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                                        <div className="w-full max-w-sm bg-white dark:bg-slate-800 p-6 rounded-2xl text-center border-2 border-amber-500/50 shadow-2xl">
+                                            <h3 className="font-bold text-amber-500 dark:text-amber-400 mb-2 text-xl">
+                                                {gameState.subPhase === 'SELECTING_SCORE_TARGET' && (gameState.activeModifier === 'CLONE' ? '👯 选择克隆对象' : '↔️ 选择转移对象')}
+                                                {gameState.subPhase === 'SELECTING_SUBSTITUTE' && '🎭 寻找替身'}
+                                                {gameState.subPhase === 'SELECTING_COMPANION' && '🤝 结伴同行'}
+                                            </h3>
+                                            <div className="grid grid-cols-2 gap-3 max-h-60 overflow-y-auto mt-4">
+                                                {gameState.players.filter(p => p.id !== currentPlayer.id).map(p => (
+                                                    <button key={p.id} onClick={() => {
+                                                        if (gameState.subPhase === 'SELECTING_SCORE_TARGET') handleScoreTargetSelect(p.id);
+                                                        if (gameState.subPhase === 'SELECTING_SUBSTITUTE') handleSubstituteSelect(p.id);
+                                                        if (gameState.subPhase === 'SELECTING_COMPANION') handleCompanionSelect(p.id);
+                                                    }} className="p-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 rounded-xl flex flex-col items-center gap-2 border border-transparent hover:border-amber-500 transition">
+                                                        <div className="w-10 h-10 rounded-full bg-slate-300 dark:bg-slate-600 overflow-hidden">
+                                                            {p.avatar.startsWith('data:') ? <img src={p.avatar} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center font-bold text-slate-700 dark:text-white">{p.name[0]}</div>}
+                                                        </div>
+                                                        <span className="text-sm font-bold text-slate-800 dark:text-white">{p.name}</span>
+                                                    </button>
+                                                ))}
                                             </div>
                                         </div>
-                                    )
-                                })}
-                            </div>
-                            <div className="flex-1 bg-slate-50/50 dark:bg-slate-950/50 border-t border-slate-200 dark:border-slate-800 p-3 overflow-y-auto custom-scrollbar text-[10px] space-y-1.5 min-h-[150px]">
-                                {gameState.logs.slice(-30).map(l => (
-                                    <div key={l.id} className="text-slate-500 dark:text-slate-400 leading-snug mb-1.5 border-b border-slate-200 dark:border-slate-900/50 pb-1">
-                                        <span className="text-teal-600 dark:text-teal-500 font-bold mr-1">{l.author || '•'}</span>
-                                        {l.text}
-                                        {l.taskDetails && <div className="text-[9px] text-slate-400 dark:text-slate-600 mt-0.5 italic line-clamp-2">{l.taskDetails}</div>}
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+
+                            {/* Choosing Helper Modal */}
+                            <AnimatePresence>
+                                {gameState.subPhase === 'CHOOSING_HELPER' && (
+                                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                                        <div className="w-full max-w-sm bg-white dark:bg-slate-800 p-6 rounded-2xl text-center">
+                                            <h3 className="font-bold text-slate-800 dark:text-white mb-4">选择共振伙伴</h3>
+                                            <div className="grid grid-cols-2 gap-3 max-h-60 overflow-y-auto">
+                                                {gameState.players.filter(p => p.id !== currentPlayer.id).map(p => (
+                                                    <button key={p.id} onClick={() => handleChooseHelper(p.id)} className="p-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 rounded-xl flex flex-col items-center gap-2">
+                                                        <div className="w-8 h-8 rounded-full bg-slate-300 dark:bg-slate-600 overflow-hidden">
+                                                            {p.avatar.startsWith('data:') ? <img src={p.avatar} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center font-bold text-slate-700 dark:text-white">{p.name[0]}</div>}
+                                                        </div>
+                                                        <span className="text-xs text-slate-800 dark:text-white">{p.name}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+
+                            {/* Player Avatar (Bottom Left - replaces Video) */}
+                            <div className="absolute bottom-6 left-6 z-40">
+                                <div className="relative group w-32 h-32">
+                                    <div className="w-full h-full rounded-full overflow-hidden border-2 border-slate-200 dark:border-slate-700 shadow-2xl bg-white dark:bg-black flex items-center justify-center">
+                                        {currentPlayer.avatar.startsWith('data:') ? (
+                                            <img src={currentPlayer.avatar} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <div className="text-4xl font-bold text-slate-400 dark:text-slate-500">{currentPlayer.name[0]}</div>
+                                        )}
                                     </div>
-                                ))}
+                                </div>
                             </div>
                         </div>
-                    ) : (
-                        <div className="flex flex-col items-center gap-4 py-4">
-                            {gameState.players.map(p => (
-                                <div key={p.id} className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-[10px] border ${p.id === currentPlayer.id ? 'border-teal-500 text-teal-500' : 'border-slate-300 dark:border-slate-700 text-slate-400'}`}>{p.name[0]}</div>
-                            ))}
+
+                        {/* Sidebar (Right) */}
+                        <div className={`bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border-l border-slate-200 dark:border-white/5 flex flex-col transition-all duration-300 z-20 shadow-xl ${isSidebarMinimized ? 'w-16' : 'w-64'}`}>
+                            <div className="h-16 flex items-center justify-between px-4 border-b border-slate-200 dark:border-white/5 shrink-0">
+                                {!isSidebarMinimized && <span className="font-bold text-slate-400 text-xs uppercase tracking-widest">当前能量场</span>}
+                                <button onClick={() => setIsSidebarMinimized(!isSidebarMinimized)} className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-white transition"><ChevronRight size={16} /></button>
+                            </div>
+                            {!isSidebarMinimized ? (
+                                <div className="flex-1 flex flex-col overflow-hidden">
+                                    <div
+                                        className={`overflow-y-auto custom-scrollbar p-3 transition-all duration-300 ${gameState.players.length > 6 ? 'space-y-1.5' : 'space-y-3'}`}
+                                        style={{ maxHeight: '65%' }}
+                                    >
+                                        {[...gameState.players].sort((a, b) => (b.trustScore + b.insightScore + b.expressionScore) - (a.trustScore + a.insightScore + a.expressionScore)).map((p) => {
+                                            const total = p.trustScore + p.insightScore + p.expressionScore;
+                                            const isCompact = gameState.players.length > 6;
+                                            return (
+                                                <div key={p.id} className={`rounded-xl border transition-all ${isCompact ? 'p-2' : 'p-3'} ${p.id === currentPlayer.id ? 'bg-slate-50 dark:bg-slate-800 border-teal-500/30 shadow-lg' : 'bg-transparent border-slate-100 dark:border-slate-800/50'}`}>
+                                                    <div className="flex justify-between items-center mb-1.5">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className={`rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-slate-700 dark:text-white overflow-hidden ring-1 ring-slate-300 dark:ring-slate-600 ${isCompact ? 'w-6 h-6 text-[9px]' : 'w-8 h-8 text-[10px]'}`}>
+                                                                {p.avatar.startsWith('data:') ? <img src={p.avatar} className="w-full h-full object-cover" /> : p.name[0]}
+                                                            </div>
+                                                            <div className="leading-tight">
+                                                                <div className={`font-bold text-slate-700 dark:text-slate-200 ${isCompact ? 'text-[10px]' : 'text-xs'}`}>{p.name}</div>
+                                                                <div className="text-[9px] text-slate-400 dark:text-slate-500">{p.mbti}</div>
+                                                            </div>
+                                                        </div>
+                                                        <div className={`font-bold text-amber-500 ${isCompact ? 'text-xs' : 'text-sm'}`}>{total}</div>
+                                                    </div>
+                                                    <div className="flex gap-1 text-[9px] text-slate-500">
+                                                        <div className="flex-1 bg-slate-100 dark:bg-slate-900/40 rounded px-1.5 py-0.5 flex justify-between"><span>信</span><span className="text-blue-500 dark:text-blue-400">{p.trustScore}</span></div>
+                                                        <div className="flex-1 bg-slate-100 dark:bg-slate-900/40 rounded px-1.5 py-0.5 flex justify-between"><span>觉</span><span className="text-purple-500 dark:text-purple-400">{p.insightScore}</span></div>
+                                                        <div className="flex-1 bg-slate-100 dark:bg-slate-900/40 rounded px-1.5 py-0.5 flex justify-between"><span>表</span><span className="text-orange-500 dark:text-orange-400">{p.expressionScore}</span></div>
+                                                    </div>
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+                                    <div className="flex-1 bg-slate-50/50 dark:bg-slate-950/50 border-t border-slate-200 dark:border-slate-800 p-3 overflow-y-auto custom-scrollbar text-[10px] space-y-1.5 min-h-[150px]">
+                                        {gameState.logs.slice(-30).map(l => (
+                                            <div key={l.id} className="text-slate-500 dark:text-slate-400 leading-snug mb-1.5 border-b border-slate-200 dark:border-slate-900/50 pb-1">
+                                                <span className="text-teal-600 dark:text-teal-500 font-bold mr-1">{l.author || '•'}</span>
+                                                {l.text}
+                                                {l.taskDetails && <div className="text-[9px] text-slate-400 dark:text-slate-600 mt-0.5 italic line-clamp-2">{l.taskDetails}</div>}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center gap-4 py-4">
+                                    {gameState.players.map(p => (
+                                        <div key={p.id} className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-[10px] border ${p.id === currentPlayer.id ? 'border-teal-500 text-teal-500' : 'border-slate-300 dark:border-slate-700 text-slate-400'}`}>{p.name[0]}</div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
-                    )}
-                </div>
+                    </div>
+                )}
                 {showConfig && <AIConfigModal onClose={() => setShowConfig(false)} />}
             </main>
         </div>

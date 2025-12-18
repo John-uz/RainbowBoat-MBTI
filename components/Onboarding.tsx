@@ -9,6 +9,9 @@ interface Props {
     onComplete: (players: { name: string, mbti: string, avatarImage?: string }[], mode: GameMode, botCount: number, targetScore: number) => void;
     isDarkMode: boolean;
     toggleTheme: () => void;
+    initialStep?: 'setup' | 'quiz';
+    isSoloTest?: boolean;
+    onBackToHub?: () => void;
 }
 
 const QUESTIONS = [
@@ -97,8 +100,8 @@ const CaptainManualModal: React.FC<{ onClose: () => void }> = ({ onClose }) => (
     </div>
 );
 
-const Onboarding: React.FC<Props> = ({ onComplete, isDarkMode, toggleTheme }) => {
-    const [step, setStep] = useState<'setup' | 'quiz' | 'analyzing' | 'results'>('setup');
+const Onboarding: React.FC<Props> = ({ onComplete, isDarkMode, toggleTheme, initialStep = 'setup', isSoloTest = false, onBackToHub }) => {
+    const [step, setStep] = useState<'setup' | 'quiz' | 'analyzing' | 'results'>(initialStep);
     const [humanPlayers, setHumanPlayers] = useState<{ id: string, name: string, mbti: string, avatarImage?: string }[]>([
         { id: 'p1', name: '', mbti: '' }
     ]);
@@ -199,7 +202,12 @@ const Onboarding: React.FC<Props> = ({ onComplete, isDarkMode, toggleTheme }) =>
                         </div>
                     ))}
                 </div>
-                <div className="flex gap-4 mt-10"><button onClick={() => setStep('setup')} className="flex-1 py-3 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-slate-700/50 rounded-xl">取消</button><button onClick={handleQuizSubmit} className="flex-1 py-3 bg-teal-600 rounded-xl font-bold text-white hover:bg-teal-500 shadow-lg shadow-teal-500/20">生成画像</button></div>
+                <div className="flex gap-4 mt-10">
+                    <button onClick={() => isSoloTest ? (onBackToHub && onBackToHub()) : setStep('setup')} className="flex-1 py-3 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-slate-700/50 rounded-xl">
+                        {isSoloTest ? '返回主页' : '取消'}
+                    </button>
+                    <button onClick={handleQuizSubmit} className="flex-1 py-3 bg-teal-600 rounded-xl font-bold text-white hover:bg-teal-500 shadow-lg shadow-teal-500/20">生成画像</button>
+                </div>
             </div>
         </div>
     );
@@ -232,8 +240,15 @@ const Onboarding: React.FC<Props> = ({ onComplete, isDarkMode, toggleTheme }) =>
                     ))}
                 </div>
 
-                <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700 text-center">
-                    <button onClick={() => setStep('setup')} className="text-slate-500 hover:text-slate-800 dark:hover:text-white text-sm">都不准？手动选择</button>
+                <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700 text-center flex flex-col gap-3">
+                    {isSoloTest && (
+                        <button onClick={() => onBackToHub && onBackToHub()} className="w-full py-3 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-white rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-600 transition">
+                            完成测试，返回主页
+                        </button>
+                    )}
+                    <button onClick={() => setStep('setup')} className="text-slate-500 hover:text-slate-800 dark:hover:text-white text-sm">
+                        {isSoloTest ? '都不准？去游戏手动选择' : '都不准？手动选择'}
+                    </button>
                 </div>
             </div>
         </div>

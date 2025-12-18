@@ -1,5 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { Player, TaskOption, GameMode, TASK_CATEGORIES_CONFIG, LogEntry, MBTI_CHARACTERS } from "../types";
+import { MBTI_SAMPLES } from "./mbtiStaticData";
 
 // --- AI CONFIGURATION INTERFACES ---
 
@@ -222,15 +223,15 @@ const DEFAULT_REPORT_PROMPT = `
 [输出要求 - 关键!]
 返回纯 JSON 对象：
 {
-    "groupAnalysis": "150-200字的团体动力学分析。请使用\\n进行分段。包含：\\n- 整体氛围\\n- 互动亮点\\n- 谁是团宠/主导者",
-        "playerAnalysis": {
-        "在此填入玩家ID": "针对该玩家的深度点评。请务必包含以下段落（使用\\n换行）：\\n1. 🌟 **高光时刻**：[内容]\\n2. 💡 **盲点觉察**：[内容]\\n3. 🌈 **彩虹寄语**：[内容]"
+    "groupAnalysis": "150-200字的团体动力学分析。需包含整体氛围、互动亮点、人格组间的化学反应。",
+    "playerAnalysis": {
+        "在此填入玩家ID": "针对该玩家的深度点评（150字左右）。\n包含：\n1. 🌟 **高光时刻**：基于游戏日志，分析其如何发挥了[最佳状态]中的优势（如功能栈调用）。\n2. 💡 **盲点觉察**：识别游戏中可能出现的[压力反应]或[成长领域]对应行为。\n3. 🌈 **彩虹寄语**：基于其人格特点，给出专属的成长建议。"
     }
 }
 注意：
-1. ** 必须包含所有玩家 ID ** 作为 key，绝对不要遗漏任何一人(包括 Bot)。
-2. 请在文本中使用 emoji 和 换行符(\\n) 来排版，使其在手机上阅读舒适。
-3. playerAnalysis 的 Key 必须严格匹配输入数据中的 "ID"(例如 "user-0", "bot-1")。
+1. ** 必须包含所有玩家 ID ** 作为 key。
+2. 请在文本内部使用 emoji 和 换行符(\\n) 来排版。
+3. 语言风格要融合专业性与人文关怀（参考：他人眼中的印象与真实内在的平衡）。
 `.trim();
 
 const DEFAULT_CONFIG: AIConfig = {
@@ -603,6 +604,11 @@ export const analyzePersonality = async (answers: { q: string, val: number }[]):
     }
 };
 
+
+import { LOCAL_TASKS, getTasksByFunction } from "./taskLibrary";
+
+// ... existing code ...
+
 export const generateAllTaskOptions = async (
     functionId: string,
     players: Player[],
@@ -610,6 +616,17 @@ export const generateAllTaskOptions = async (
     historyLogs: LogEntry[] = []
 ): Promise<Record<string, TaskOption>> => {
     const context = buildGameContext(players, historyLogs);
+
+    // [Few-Shot Example Injection]
+    // Get 2 relevant tasks from local library to guide the AI
+    const relevantLocalTasks = LOCAL_TASKS
+        .filter(t => t.functionId === functionId)
+        .sort(() => Math.random() - 0.5)
+        .slice(0, 2);
+
+    const examplesPrompt = relevantLocalTasks.length > 0
+        ? `\n[高质量任务范本 (请参考其调性和趣味性)]:\n${relevantLocalTasks.map(t => `- ${t.title}: ${t.description}`).join('\n')}\n`
+        : "";
 
     // Inject Specific MBTI Profile Data for the Current Player
     const playerProfile = MBTI_PROFILE_DATA[currentPlayer.mbti]
@@ -629,6 +646,7 @@ export const generateAllTaskOptions = async (
                 请设计温暖、治愈、建立深度信任（关系导向）的任务。不要过于宗教化，但要体现牺牲、包容、无条件的爱的主题。
             `;
         } else {
+            // For MBTI Character tiles, we can also pick examples from the dominant/aux functions of that type
             tileContext = `
                 [特殊场景]
                 玩家处于“${functionId}”人格格，代表人物是“${mbtiCharacter}”。
@@ -643,6 +661,7 @@ export const generateAllTaskOptions = async (
         当前行动玩家: ${currentPlayer.name} (类型: ${currentPlayer.mbti}).
         ${tileContext}
         ${playerProfile}
+        ${examplesPrompt}
         
         ${context}
         ${getRelevantKnowledge([currentPlayer])}
@@ -671,23 +690,78 @@ export const generateAllTaskOptions = async (
         return result;
 
     } catch (e) {
-        console.warn("Falling back to Static Data");
-        // Fallback Logic
-        const fallback: Record<string, TaskOption> = {};
-        ['standard', 'truth', 'dare', 'deep'].forEach(cat => {
-            // @ts-ignore
-            const config = TASK_CATEGORIES_CONFIG[cat];
-            fallback[cat] = {
-                // @ts-ignore
-                category: cat,
-                title: "静默模式",
-                description: "暂无 AI 可被调用，请玩家自行决定一个挑战。",
+        console.warn("Falling back to Static Data from Local Library");
+        // Fallback Logic: Use our robust local library instead of generic placeholders
+        const localTasks = getTasksByFunction(functionId, 4);
+        const result: Record<string, TaskOption> = {};
+
+        ['standard', 'truth', 'dare', 'deep'].forEach((cat, i) => {
+            const task = localTasks[i] || {
+                title: "随机挑战",
+                description: "请向大家分享一个你认为最能代表你性格的小故事。",
                 scoreType: "expression",
-                durationSeconds: 60,
+                durationSeconds: 60
+            };
+            const config = TASK_CATEGORIES_CONFIG[cat as keyof typeof TASK_CATEGORIES_CONFIG];
+            result[cat] = {
+                category: cat as any,
+                title: task.title,
+                description: task.description,
+                scoreType: task.scoreType as any,
+                durationSeconds: task.durationSeconds,
                 multiplier: config.multiplier
             };
         });
-        return fallback;
+        return result;
+    }
+};
+
+export const analyzeSoloExecution = async (
+    player: Player,
+    task: TaskOption,
+    transcription: string,
+    visualObservation?: string
+): Promise<{ feedback: string, scores: { trust: number, insight: number, expression: number } }> => {
+    const system = `
+    你是一位资深的荣格心理学导师。
+    玩家正在进行“人格功能进阶挑战”，目标是锻炼其 ${player.mbti} 的认知功能。
+    
+    [任务内容]
+    标题: ${task.title}
+    描述: ${task.description}
+    主要锻炼方向: ${task.scoreType}
+
+    [玩家表现]
+    表达文本: "${transcription || '（未检测到有效表达）'}"
+    ${visualObservation ? `AI 观测到的神态: "${visualObservation}"` : ''}
+
+    [任务要求]
+    1. 根据玩家的表达内容和神态，给出一段 80 字以内的温情且具洞察力的“灵魂点评”。
+    2. 基于任务目标，给玩家的三个维度（信、觉、表）打分（0-5分）。
+    3. 如果玩家没有说话，打分应偏低。
+
+    [返回格式]
+    纯 JSON 对象:
+    {
+      "feedback": "点评文字...",
+      "scores": { "trust": 3, "insight": 4, "expression": 2 }
+    }
+    `.trim();
+
+    const user = "请评估此次表现并给出反馈。";
+
+    try {
+        const res = await unifiedAICall(user, system);
+        const parsed = JSON.parse(extractJSON(res));
+        return {
+            feedback: parsed.feedback || "你的表达如晨雾般轻盈，虽然模糊但充满灵性。继续探索你的内心世界吧。",
+            scores: parsed.scores || { trust: 3, insight: 3, expression: 3 }
+        };
+    } catch (e) {
+        return {
+            feedback: "时空信号略微不稳定，但你的心跳已经引起了共鸣。这次尝试本身就是一次伟大的航行。",
+            scores: { trust: 3, insight: 3, expression: 3 }
+        };
     }
 };
 
@@ -747,9 +821,21 @@ export const generateProfessionalReport = async (
 
     } catch (e) {
         console.error("Report Generation Fail", e);
+
+        // Use MBTI_SAMPLES as a robust fallback
+        const finalPlayerAnalysis: Record<string, string> = {};
+        players.forEach(p => {
+            const sample = MBTI_SAMPLES[p.mbti];
+            if (sample) {
+                finalPlayerAnalysis[p.id] = `（AI 船长可能打了个盹，此时为你连接了备用报告协议...）\n\n🌟 **高光时刻**：你在航行中展现了 ${p.mbti} 的核心特质：${sample.bestState}\n\n💡 **盲点觉察**：在复杂的社交场域中，请留意可能的防御机制：${sample.growth}\n\n🌈 **彩虹寄语**：他人眼中的你往往是“${sample.othersSee}”。保持这份独特性，你的航线由你掌控。`;
+            } else {
+                finalPlayerAnalysis[p.id] = "在这次旅程中表现出了独特的人格韧性！虽然信号中断，但你的光芒无法被掩盖。";
+            }
+        });
+
         return {
-            groupAnalysis: "由于网络时空乱流，AI 深度报告生成中断。虽然文字暂时缺席，但你们在航行中建立的连接是真实且可贵的。",
-            playerAnalysis: Object.fromEntries(players.map(p => [p.id, "在这次旅程中表现出了独特的人格韧性！"]))
+            groupAnalysis: "由于网络时空乱流，AI 船长暂时进入了“冬眠状态”。虽然深度对齐报告未能即时生成，但你们在航行中建立的连接已经超越了文字。此刻的沉默，或许正是感悟的契机。",
+            playerAnalysis: finalPlayerAnalysis
         };
     }
 };
