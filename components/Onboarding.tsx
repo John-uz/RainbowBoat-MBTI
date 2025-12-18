@@ -12,6 +12,7 @@ interface Props {
     initialStep?: 'setup' | 'quiz';
     isSoloTest?: boolean;
     onBackToHub?: () => void;
+    onShowQuickReport?: (player: { name: string, mbti: string }, results: MBTIAnalysisResult[]) => void;
 }
 
 const QUESTIONS = [
@@ -100,7 +101,7 @@ const CaptainManualModal: React.FC<{ onClose: () => void }> = ({ onClose }) => (
     </div>
 );
 
-const Onboarding: React.FC<Props> = ({ onComplete, isDarkMode, toggleTheme, initialStep = 'setup', isSoloTest = false, onBackToHub }) => {
+const Onboarding: React.FC<Props> = ({ onComplete, isDarkMode, toggleTheme, initialStep = 'setup', isSoloTest = false, onBackToHub, onShowQuickReport }) => {
     const [step, setStep] = useState<'setup' | 'quiz' | 'analyzing' | 'results'>(initialStep);
     const [humanPlayers, setHumanPlayers] = useState<{ id: string, name: string, mbti: string, avatarImage?: string }[]>([
         { id: 'p1', name: '', mbti: '' }
@@ -242,9 +243,17 @@ const Onboarding: React.FC<Props> = ({ onComplete, isDarkMode, toggleTheme, init
 
                 <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700 text-center flex flex-col gap-3">
                     {isSoloTest && (
-                        <button onClick={() => onBackToHub && onBackToHub()} className="w-full py-3 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-white rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-600 transition">
-                            完成测试，返回主页
-                        </button>
+                        <>
+                            <button
+                                onClick={() => onShowQuickReport && onShowQuickReport(humanPlayers[currentPlayerConfigIndex], analysisResults)}
+                                className="w-full py-4 bg-gradient-to-r from-teal-600 to-indigo-600 text-white rounded-xl font-bold hover:brightness-110 shadow-lg shadow-teal-500/20 flex items-center justify-center gap-2 transition"
+                            >
+                                <Sparkles size={20} /> 查看深度解析报告
+                            </button>
+                            <button onClick={() => onBackToHub && onBackToHub()} className="w-full py-3 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-white rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-600 transition">
+                                完成测试，返回主页
+                            </button>
+                        </>
                     )}
                     <button onClick={() => setStep('setup')} className="text-slate-500 hover:text-slate-800 dark:hover:text-white text-sm">
                         {isSoloTest ? '都不准？去游戏手动选择' : '都不准？手动选择'}

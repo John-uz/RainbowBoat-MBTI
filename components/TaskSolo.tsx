@@ -48,7 +48,7 @@ const TaskSolo: React.FC<Props> = ({ onBack }) => {
         isBot: false,
         avatar: 'user',
         trustScore: 0, insightScore: 0, expressionScore: 0, totalRatingGiven: 0,
-        position: 0, previousPosition: null, stackIndex: currentFunctionIndex, skipUsedCount: 0, color: '#teal'
+        position: 0, previousPosition: null, stackIndex: currentFunctionIndex, skipUsedCount: 0, color: 'teal'
     };
 
     const fetchTasks = async (funcId: string, type: string) => {

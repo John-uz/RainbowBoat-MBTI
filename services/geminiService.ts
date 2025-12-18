@@ -839,3 +839,45 @@ export const generateProfessionalReport = async (
         };
     }
 };
+
+/**
+ * New: Generates a deep report specifically for a single player after a quick test.
+ */
+export const generateQuickReport = async (
+    player: { name: string, mbti: string },
+    analysisResults: MBTIAnalysisResult[]
+): Promise<{ groupAnalysis: string, playerAnalysis: Record<string, string> }> => {
+    const resultsSummary = analysisResults.map(r => `${r.type} (${r.percentage}%): ${r.reason}`).join('\n');
+
+    const system = `
+你是一位资深的人格分析专家。基于玩家 "${player.name}" 的初始测评结果，生成一份富有洞见、温暖且专业的深度报告。
+请结合荣格八维和 MBTI 核心理论进行解读。
+
+[测试结果数据]:
+${resultsSummary}
+`.trim();
+
+    const user = `请为玩家 "${player.name}"（最匹配类型为 ${player.mbti}）生成一份深度解读报告。包含：核心优势、潜在挑战、及给其的“航海建议”。`;
+
+    try {
+        const text = await unifiedAICall(user, system);
+        // AI response is expected as a single analysis text, but our GameReport component expects Record<ID, string>
+        // We'll wrap it to match the expected format
+        return {
+            groupAnalysis: `这是一份专门为 ${player.name} 准备的“心灵航路图”。由于是快速测评，请将此作为探索自我的参考起点。`,
+            playerAnalysis: {
+                [player.mbti]: text // We use MBTI as key here for simplified identification in report mapping
+            }
+        };
+    } catch (e) {
+        const sample = MBTI_SAMPLES[player.mbti];
+        return {
+            groupAnalysis: "深度分析引擎暂时休眠，已连接至人格原型档案库。",
+            playerAnalysis: {
+                [player.mbti]: sample
+                    ? `【核心解析】\n${sample.type} 的你，在他人眼中通常是：${sample.othersSee}\n\n【最佳状态】\n${sample.bestState}\n\n【成长指引】\n${sample.growth}`
+                    : "你是海面上最独特的一朵浪花，即使 AI 暂时无法解析，你的存在本身就是奇迹。"
+            }
+        };
+    }
+};

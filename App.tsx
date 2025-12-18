@@ -6,7 +6,9 @@ import GameReport from './components/GameReport';
 import {
     generateAllTaskOptions,
     generateProfessionalReport,
-    analyzeVisualAspect
+    analyzeVisualAspect,
+    generateQuickReport,
+    MBTIAnalysisResult
 } from "./services/geminiService";
 import { speak } from './utils/tts';
 import { startSpeechRecognition, stopSpeechRecognition, isSpeechRecognitionSupported } from './utils/speechRecognition';
@@ -1220,6 +1222,31 @@ function App() {
         setIsMusicPlaying(false);
     };
 
+    const handleShowQuickReport = async (playerData: { name: string, mbti: string }, results: MBTIAnalysisResult[]) => {
+        // Create a dummy player for the report UI
+        const dummyPlayer: Player = {
+            id: 'solo-player',
+            name: playerData.name,
+            mbti: playerData.mbti,
+            isBot: false,
+            avatar: 'user',
+            trustScore: 0, insightScore: 0, expressionScore: 0, totalRatingGiven: 0,
+            position: 0, previousPosition: null, stackIndex: 0, skipUsedCount: 0,
+            color: 'teal'
+        };
+
+        setGameState(prev => ({
+            ...prev,
+            players: [dummyPlayer],
+            phase: 'ANALYSIS',
+            currentPlayerIndex: 0,
+            startTime: Date.now()
+        }));
+
+        const report = await generateQuickReport(playerData, results);
+        setReportData(report);
+    };
+
     const stopMusic = () => {
         if (audioRef.current) {
             audioRef.current.pause();
@@ -1318,6 +1345,7 @@ function App() {
                 initialStep={isQuickTestMode ? 'quiz' : 'setup'}
                 isSoloTest={isQuickTestMode}
                 onBackToHub={resetGame}
+                onShowQuickReport={handleShowQuickReport}
             />
         );
     }
