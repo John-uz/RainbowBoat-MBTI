@@ -619,7 +619,14 @@ function App() {
     const addLog = (text: string, type: 'system' | 'chat' | 'action' = 'system', author?: string, taskDetails?: string) => {
         const entry = { id: Date.now().toString() + Math.random(), text, type, author, timestamp: Date.now(), taskDetails };
         setGameState(prev => ({ ...prev, logs: [...prev.logs, entry] }));
-        if (author && author !== 'system') speak(text, author);
+
+        // Only speak if the author is a bot
+        if (author && author !== 'system') {
+            const player = gameState.players.find(p => p.name === author);
+            if (player && player.isBot) {
+                speak(text, author);
+            }
+        }
     };
 
     const snapshotLog = (text: string) => {

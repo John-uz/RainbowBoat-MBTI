@@ -121,7 +121,7 @@ const TaskSolo: React.FC<Props> = ({ onBack }) => {
         setTimer(task.durationSeconds);
         setTranscription("");
         setPhase('EXECUTING');
-        speak(`开始挑战：${task.title}。${task.description}`, "船长");
+        // speak(`开始挑战：${task.title}。${task.description}`, "船长");
     };
 
     const handleCompleteTask = async () => {
@@ -141,7 +141,7 @@ const TaskSolo: React.FC<Props> = ({ onBack }) => {
         const result = await analyzeSoloExecution(mockPlayer, currentTask!, transcription, visualObservation);
         setAiResult(result);
         setLoading(false);
-        speak(result.feedback, "船长");
+        // speak(result.feedback, "船长");
     };
 
     const nextLevel = () => {

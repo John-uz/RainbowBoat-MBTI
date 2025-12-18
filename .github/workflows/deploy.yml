@@ -32,3 +32,22 @@ jobs:
         with:
           folder: dist
           branch: gh-pages
+
+      - name: Sync to Gitee
+        uses: Yikun/gitee-mirror-action@v0.0.2
+        with:
+          src: github/John-uz
+          dst: gitee/gzfen
+          dst_key: ${{ secrets.GITEE_PRIVATE_KEY }}
+          dst_token: ${{ secrets.GITEE_TOKEN }}
+          static_list: "RainbowBoat-MBTI"
+          force_update: true
+          debug: true
+
+      - name: Reload Gitee Pages
+        uses: yanglbme/gitee-pages-action@main
+        with:
+          gitee-username: gzfen
+          gitee-password: ${{ secrets.GITEE_PASSWORD }}
+          gitee-repo: gzfen/RainbowBoat-MBTI
+          branch: main
