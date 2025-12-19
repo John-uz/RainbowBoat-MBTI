@@ -1321,7 +1321,7 @@ function App() {
 
     if (gameState.phase === 'HUB') {
         return (
-            <div className={`min-h-screen flex flex-col transition-colors duration-300 font-sans ${isDarkMode ? 'dark bg-slate-900 text-white' : 'bg-slate-50 text-slate-900'}`}>
+            <div className={`min-h-screen flex flex-col transition-colors duration-300 font-sans ${isDarkMode ? 'dark bg-slate-900 text-white' : 'bg-stone-50 text-slate-800'}`}>
                 <header className="h-16 flex items-center justify-between px-6 border-b border-slate-200 dark:border-white/5 shrink-0">
                     <div className="flex items-center gap-2 font-black text-xl tracking-tighter italic">
                         <Ship className="text-blue-500" /> RAINBOW BOAT
@@ -1389,7 +1389,7 @@ function App() {
     const playerStack = MBTI_STACKS[currentPlayer.mbti] || [];
 
     return (
-        <div className="min-h-screen w-full text-slate-800 dark:text-slate-200 font-sans flex flex-col overflow-x-hidden relative selection:bg-teal-500/30 transition-colors duration-300">
+        <div className={`min-h-screen w-full text-slate-800 dark:text-slate-200 font-sans flex flex-col overflow-x-hidden relative selection:bg-teal-500/30 transition-colors duration-300 ${isMobile ? 'overflow-y-auto' : ''}`}>
 
             {/* Top Bar - Transparent with blur */}
             <header className="h-16 bg-white/80 dark:bg-slate-900/60 backdrop-blur border-b border-slate-200 dark:border-white/5 flex items-center justify-between px-6 shrink-0 z-30 transition-colors duration-300">
@@ -1597,7 +1597,7 @@ function App() {
                             <AnimatePresence>
                                 {(gameState.subPhase === 'VIEWING_TASK' || gameState.subPhase === 'TASK_EXECUTION') && (
                                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4 overflow-y-auto">
-                                        <div className="flex gap-6 items-center w-full max-w-6xl justify-center">
+                                        <div className={`flex ${isMobile ? 'flex-col' : 'flex-row'} gap-6 items-center w-full max-w-6xl justify-center`}>
                                             {/* Task Card: Responsive Width */}
                                             <div className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden flex flex-col transition-all duration-300">
                                                 {!gameState.selectedTask ? (
@@ -1649,7 +1649,7 @@ function App() {
                                             </div>
 
                                             {/* Sidebar Camera: Always present during VIEWING and EXECUTION if active */}
-                                            {isCameraActive && (
+                                            {isCameraActive && !isMobile && (
                                                 <motion.div initial={{ x: 30, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="w-72 bg-slate-900 rounded-3xl border border-slate-700 shadow-2xl overflow-hidden flex flex-col h-[520px] relative">
                                                     <div className="p-3 bg-slate-800 border-b border-slate-700 flex justify-between items-center">
                                                         <div className="flex items-center gap-2"><div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div><span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">AI Observation</span></div>

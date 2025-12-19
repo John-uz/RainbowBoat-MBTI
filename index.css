@@ -16,6 +16,10 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     scroll-padding-top: 2rem;
+    /* Enable momentum scrolling on iOS */
+    -webkit-overflow-scrolling: touch;
+    /* Improve touch responsiveness */
+    touch-action: manipulation;
   }
 }
 
@@ -34,8 +38,14 @@
   }
 
   * {
-    /* Potential GPU acceleration for fixed/absolute elements */
+    /* Enable momentum scrolling on iOS */
     -webkit-overflow-scrolling: touch;
+  }
+
+  /* Allow vertical scrolling on mobile */
+  body {
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
   }
 }
 
