@@ -1,20 +1,19 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, RefreshCw, BrainCircuit, Sparkles, Trophy, Mic, Video, VideoOff, Timer, CheckCircle, X, Volume2, Camera, Star, ArrowRight, Zap, Target, Layers } from 'lucide-react';
-import { LOCAL_TASKS } from '../services/taskLibrary';
+import { ArrowLeft, RefreshCw, BrainCircuit, Sparkles, Mic, Video, VideoOff, CheckCircle, Star, ArrowRight, Target, Layers, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
 import { generateAllTaskOptions, analyzeSoloExecution, analyzeVisualAspect } from '../services/geminiService';
-import { Player, TaskOption, GameMode, TASK_CATEGORIES_CONFIG, MBTI_STACKS, JUNG_FUNCTIONS, MBTI_TYPES } from '../types';
-import { speak } from '../utils/tts';
+import { Player, TaskOption, TASK_CATEGORIES_CONFIG, MBTI_STACKS, JUNG_FUNCTIONS, MBTI_TYPES } from '../types';
 import { startSpeechRecognition, stopSpeechRecognition, isSpeechRecognitionSupported } from '../utils/speechRecognition';
 import { startAudioMonitoring, stopAudioMonitoring } from '../utils/audioAnalyzer';
 
 interface Props {
     onBack: () => void;
     isMobile: boolean;
+    isDarkMode: boolean;
 }
 
-const TaskSolo: React.FC<Props> = ({ onBack, isMobile }) => {
+const TaskSolo: React.FC<Props> = ({ onBack, isMobile, isDarkMode }) => {
     const [selectedType, setSelectedType] = useState<string>('INTJ');
     const [currentFunctionIndex, setCurrentFunctionIndex] = useState(0);
     const [tasks, setTasks] = useState<Record<string, TaskOption> | null>(null);
@@ -28,11 +27,16 @@ const TaskSolo: React.FC<Props> = ({ onBack, isMobile }) => {
     const [isListening, setIsListening] = useState(false);
     const [micVolume, setMicVolume] = useState(0);
 
+    // Completed tasks tracking
+    const [completedTasks, setCompletedTasks] = useState<Set<string>>(new Set());
+
+    // Mobile Carousel State
+    const [carouselIndex, setCarouselIndex] = useState(0);
+
     // Camera States
     const [isCameraEnabled, setIsCameraEnabled] = useState(false);
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const [visualEvidence, setVisualEvidence] = useState<string>("");
 
     // Feedback State
     const [aiResult, setAiResult] = useState<{ feedback: string, scores: { trust: number, insight: number, expression: number } } | null>(null);
@@ -56,6 +60,8 @@ const TaskSolo: React.FC<Props> = ({ onBack, isMobile }) => {
         setLoading(true);
         setCurrentTask(null);
         setPhase('SELECTING');
+        setCompletedTasks(new Set());
+        setCarouselIndex(0);
         try {
             const res = await generateAllTaskOptions(funcId, [mockPlayer], { ...mockPlayer, mbti: type });
             setTasks(res);
@@ -122,12 +128,16 @@ const TaskSolo: React.FC<Props> = ({ onBack, isMobile }) => {
         setTimer(task.durationSeconds);
         setTranscription("");
         setPhase('EXECUTING');
-        // speak(`开始挑战：${task.title}。${task.description}`, "船长");
     };
 
     const handleCompleteTask = async () => {
         setPhase('FEEDBACK');
         setLoading(true);
+
+        // Mark task as completed
+        if (currentTask) {
+            setCompletedTasks(prev => new Set([...prev, currentTask.category]));
+        }
 
         let visualObservation = "";
         if (isCameraEnabled && videoRef.current && canvasRef.current && currentTask) {
@@ -142,7 +152,13 @@ const TaskSolo: React.FC<Props> = ({ onBack, isMobile }) => {
         const result = await analyzeSoloExecution(mockPlayer, currentTask!, transcription, visualObservation);
         setAiResult(result);
         setLoading(false);
-        // speak(result.feedback, "船长");
+    };
+
+    const retryCurrentFunction = () => {
+        setAiResult(null);
+        setCurrentTask(null);
+        setPhase('SELECTING');
+        setCarouselIndex(0);
     };
 
     const nextLevel = () => {
@@ -150,290 +166,378 @@ const TaskSolo: React.FC<Props> = ({ onBack, isMobile }) => {
         setCurrentFunctionIndex(nextIdx);
         setAiResult(null);
         setCurrentTask(null);
+        setCompletedTasks(new Set());
         setPhase('SELECTING');
+        setCarouselIndex(0);
     };
 
+    const taskList = tasks ? Object.entries(tasks) : [];
+    const availableTasks = taskList.filter(([cat]) => !completedTasks.has(cat));
+
     return (
-        <div className={`min-h-screen bg-slate-950 text-white p-6 flex flex-col relative gpu-accelerated ${isMobile ? 'overflow-y-auto' : 'overflow-hidden'}`}>
+        <div className="h-screen bg-stone-50 dark:bg-slate-950 text-slate-800 dark:text-white flex flex-col overflow-hidden transition-colors duration-300">
             {/* Background Glow */}
-            <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-blue-500/10 rounded-full blur-[120px] pointer-events-none" />
-            <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-500/10 rounded-full blur-[120px] pointer-events-none" />
+            <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-blue-500/5 dark:bg-blue-500/10 rounded-full blur-[120px] pointer-events-none" />
+            <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-500/5 dark:bg-purple-500/10 rounded-full blur-[120px] pointer-events-none" />
 
-            <div className={`max-w-6xl mx-auto w-full flex-1 flex flex-col relative z-10 ${isMobile ? 'gap-4' : ''}`}>
-                <header className="flex items-center justify-between mb-8 shrink-0">
-                    <button onClick={onBack} className="flex items-center gap-2 text-slate-400 hover:text-white transition group">
-                        <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" /> 返回 Hub
-                    </button>
+            {/* Header */}
+            <header className="shrink-0 flex items-center justify-between p-4 md:p-6 relative z-10">
+                <button onClick={onBack} className="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-teal-600 dark:hover:text-white transition group font-medium">
+                    <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
+                    <span className={isMobile ? 'hidden' : ''}>返回 Hub</span>
+                </button>
 
-                    <div className="flex items-center gap-4 bg-slate-900/50 p-1.5 rounded-2xl border border-slate-800">
-                        <div className="flex items-center gap-2 px-3">
-                            <Layers size={16} className="text-teal-400" />
-                            <select
-                                value={selectedType}
-                                onChange={(e) => {
-                                    setSelectedType(e.target.value);
-                                    setCurrentFunctionIndex(0);
-                                }}
-                                className="bg-transparent text-sm font-bold outline-none cursor-pointer"
-                            >
-                                {MBTI_TYPES.map(t => (
-                                    <option key={t} value={t} className="bg-slate-900">{t}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="h-6 w-px bg-slate-800" />
-                        <button
-                            onClick={() => setIsCameraEnabled(!isCameraEnabled)}
-                            className={`p-2 rounded-xl transition-all ${isCameraEnabled ? 'bg-teal-500/20 text-teal-400 border border-teal-500/30' : 'bg-slate-800 text-slate-500 hover:bg-slate-700'}`}
-                            title={isCameraEnabled ? "关闭观测舱" : "开启观测舱"}
+                <div className="flex items-center gap-2 md:gap-4 bg-white dark:bg-slate-900/50 p-1.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                    <div className="flex items-center gap-2 px-2 md:px-3">
+                        <Layers size={14} className="text-teal-500 dark:text-teal-400" />
+                        <select
+                            value={selectedType}
+                            onChange={(e) => {
+                                setSelectedType(e.target.value);
+                                setCurrentFunctionIndex(0);
+                            }}
+                            className="bg-transparent text-sm font-black outline-none cursor-pointer text-slate-700 dark:text-slate-200"
                         >
-                            {isCameraEnabled ? <Video size={18} /> : <VideoOff size={18} />}
-                        </button>
-                        <button onClick={() => fetchTasks(currentFunction, selectedType)} className="p-2 hover:bg-slate-800 rounded-xl transition" title="刷新挑战">
-                            <RefreshCw size={18} className={loading && phase === 'SELECTING' ? 'animate-spin' : ''} />
-                        </button>
+                            {MBTI_TYPES.map(t => (
+                                <option key={t} value={t} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">{t}</option>
+                            ))}
+                        </select>
                     </div>
-                </header>
-
-                {/* Level Progress Bar */}
-                <div className="flex items-center gap-2 mb-10 overflow-x-auto no-scrollbar pb-2">
-                    {stack.map((func, idx) => {
-                        const isCurrent = idx === currentFunctionIndex;
-                        const isCompleted = idx < currentFunctionIndex;
-                        const info = JUNG_FUNCTIONS.find(f => f.id === func);
-                        return (
-                            <React.Fragment key={func}>
-                                <div className="flex flex-col items-center gap-2 min-w-[70px]">
-                                    <div
-                                        className={`w-12 h-12 rounded-full flex items-center justify-center text-xs font-black transition-all duration-500 border-2 ${isCurrent ? 'bg-teal-500 border-white scale-110 shadow-[0_0_20px_rgba(20,184,166,0.5)]' :
-                                            isCompleted ? 'bg-slate-800 border-teal-500/50 text-teal-400' :
-                                                'bg-slate-900 border-slate-800 text-slate-600'
-                                            }`}
-                                    >
-                                        {func}
-                                    </div>
-                                    <span className={`text-[10px] font-bold ${isCurrent ? 'text-teal-400' : 'text-slate-600'}`}>{info?.name.slice(-2)}</span>
-                                </div>
-                                {idx < stack.length - 1 && (
-                                    <div className={`h-px w-8 ${idx < currentFunctionIndex ? 'bg-teal-500/50' : 'bg-slate-800'}`} />
-                                )}
-                            </React.Fragment>
-                        );
-                    })}
+                    {!isMobile && (
+                        <>
+                            <div className="h-5 w-px bg-slate-200 dark:bg-slate-800" />
+                            <button
+                                onClick={() => setIsCameraEnabled(!isCameraEnabled)}
+                                className={`p-1.5 rounded-lg transition-all ${isCameraEnabled ? 'bg-teal-500/10 dark:bg-teal-500/20 text-teal-600 dark:text-teal-400' : 'bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+                            >
+                                {isCameraEnabled ? <Video size={16} /> : <VideoOff size={16} />}
+                            </button>
+                        </>
+                    )}
+                    <button onClick={() => fetchTasks(currentFunction, selectedType)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition text-slate-400 dark:text-slate-500">
+                        <RefreshCw size={16} className={loading && phase === 'SELECTING' ? 'animate-spin' : ''} />
+                    </button>
                 </div>
+            </header>
 
-                <div className="flex-1 flex flex-col items-center justify-center min-h-0">
-                    <AnimatePresence mode="wait">
-                        {phase === 'SELECTING' && (
-                            <motion.div
-                                key="selecting"
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, scale: 0.95 }}
-                                className="w-full"
+            {/* Level Progress */}
+            <div className="shrink-0 flex items-center justify-center gap-1 md:gap-2 px-4 pb-4 overflow-x-auto no-scrollbar relative z-10 transition-all">
+                {stack.map((func, idx) => {
+                    const isCurrent = idx === currentFunctionIndex;
+                    const isCompleted = idx < currentFunctionIndex;
+                    return (
+                        <div key={func} className="flex items-center gap-1 md:gap-2">
+                            <div
+                                className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center text-[10px] md:text-xs font-black transition-all ${isCurrent ? 'bg-teal-500 text-white scale-110 shadow-lg shadow-teal-500/30' :
+                                    isCompleted ? 'bg-teal-50 dark:bg-slate-800 text-teal-600 dark:text-teal-400 border border-teal-200 dark:border-teal-500/30' :
+                                        'bg-white dark:bg-slate-900 text-slate-300 dark:text-slate-700 border border-slate-200 dark:border-slate-800'
+                                    }`}
                             >
-                                <div className="text-center mb-8">
-                                    <span className="px-4 py-1.5 bg-teal-500/10 border border-teal-500/20 rounded-full text-teal-400 text-xs font-bold tracking-widest uppercase mb-4 inline-block">
-                                        LEVEL {currentFunctionIndex + 1}: {functionInfo?.name} 开发
-                                    </span>
-                                    <h2 className="text-3xl font-black mb-2">选择你的进阶挑战</h2>
-                                    <p className="text-slate-400">针对你的 {currentFunction} 功能进行深度训练</p>
-                                </div>
+                                {func}
+                            </div>
+                            {idx < stack.length - 1 && (
+                                <div className={`w-4 md:w-6 h-px ${idx < currentFunctionIndex ? 'bg-teal-500/50' : 'bg-slate-200 dark:bg-slate-800'}`} />
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-5xl mx-auto">
-                                    {loading ? (
-                                        Array.from({ length: 4 }).map((_, i) => (
-                                            <div key={i} className="h-44 bg-slate-900/50 rounded-3xl border border-slate-800 animate-pulse" />
-                                        ))
-                                    ) : (
-                                        tasks && Object.entries(tasks).map(([cat, task]) => {
-                                            const config = TASK_CATEGORIES_CONFIG[cat as keyof typeof TASK_CATEGORIES_CONFIG];
-                                            return (
-                                                <motion.button
-                                                    key={cat}
-                                                    whileHover={{ scale: 1.02, y: -4 }}
-                                                    onClick={() => handleStartChallenge(task)}
-                                                    className={`p-6 rounded-3xl border ${config.color} bg-opacity-5 hover:bg-opacity-10 text-left transition-all group relative overflow-hidden`}
+            {/* Main Content */}
+            <main className="flex-1 flex flex-col items-center justify-center px-4 overflow-hidden relative z-10">
+                <AnimatePresence mode="wait">
+                    {phase === 'SELECTING' && (
+                        <motion.div
+                            key="selecting"
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="w-full max-w-4xl flex flex-col items-center"
+                        >
+                            {/* Title */}
+                            <div className="text-center mb-6">
+                                <span className="px-3 py-1 bg-teal-500/10 dark:bg-teal-500/10 border border-teal-200 dark:border-teal-500/20 rounded-full text-teal-600 dark:text-teal-400 text-[10px] md:text-xs font-black tracking-widest uppercase mb-2 inline-block">
+                                    LEVEL {currentFunctionIndex + 1}: {functionInfo?.name}
+                                </span>
+                                <h2 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-black text-slate-800 dark:text-white`}>选择进阶挑战</h2>
+                            </div>
+
+                            {loading ? (
+                                <div className={`${isMobile ? 'flex flex-col' : 'grid grid-cols-2'} gap-4 w-full h-[60vh]`}>
+                                    {Array.from({ length: 4 }).map((_, i) => (
+                                        <div key={i} className="flex-1 bg-white dark:bg-slate-900/50 rounded-3xl border border-slate-100 dark:border-slate-800 animate-pulse" />
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="w-full flex-1 flex flex-col justify-center">
+                                    {isMobile ? (
+                                        /* Mobile: Carousel - Center Single Card */
+                                        <div className="w-full relative px-10">
+                                            <div className="overflow-hidden py-10">
+                                                <motion.div
+                                                    className="flex"
+                                                    animate={{ x: `-${carouselIndex * 100}%` }}
+                                                    transition={{ type: 'spring', stiffness: 200, damping: 25 }}
                                                 >
-                                                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                                                        <div className="text-8xl">{config.icon}</div>
-                                                    </div>
-                                                    <div className="relative z-10">
-                                                        <div className="flex items-center gap-3 mb-4">
-                                                            <div className="text-3xl">{config.icon}</div>
-                                                            <div className="px-2 py-0.5 bg-white/10 rounded text-[10px] font-bold uppercase tracking-widest">{config.name}</div>
-                                                        </div>
-                                                        <h3 className="text-xl font-bold mb-2 group-hover:text-teal-400 transition-colors">{task.title}</h3>
-                                                        <p className="text-slate-400 text-sm line-clamp-2 leading-relaxed">{task.description}</p>
-                                                    </div>
-                                                </motion.button>
-                                            );
-                                        })
-                                    )}
-                                </div>
-                            </motion.div>
-                        )}
+                                                    {taskList.map(([cat, task]) => {
+                                                        const config = TASK_CATEGORIES_CONFIG[cat as keyof typeof TASK_CATEGORIES_CONFIG];
+                                                        const isCompleted = completedTasks.has(cat);
+                                                        return (
+                                                            <div key={cat} className="w-full shrink-0 px-4">
+                                                                <button
+                                                                    onClick={() => !isCompleted && handleStartChallenge(task)}
+                                                                    disabled={isCompleted}
+                                                                    className={`w-full aspect-[4/5] p-8 rounded-[3rem] border-4 ${isCompleted ? 'border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40' : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 shadow-2xl'} text-left transition-all relative overflow-hidden flex flex-col justify-between`}
+                                                                >
+                                                                    <div className={`absolute inset-0 bg-white/60 dark:bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center z-10 transition-opacity duration-500 ${isCompleted ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                                                                        <div className="w-16 h-16 rounded-full bg-teal-500 text-white flex items-center justify-center mb-4 shadow-lg shadow-teal-500/20">
+                                                                            <CheckCircle size={32} />
+                                                                        </div>
+                                                                        <span className="text-teal-600 dark:text-teal-400 font-black tracking-widest text-[10px]">已征服该领域</span>
+                                                                    </div>
 
-                        {phase === 'EXECUTING' && currentTask && (
-                            <motion.div
-                                key="executing"
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                className="w-full flex flex-col lg:flex-row gap-8 items-stretch max-w-6xl"
-                            >
-                                {/* Left Side: Task Info */}
-                                <div className="flex-1 bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-[2.5rem] p-8 md:p-12 flex flex-col shadow-2xl">
-                                    <div className="flex justify-between items-start mb-8">
-                                        <div>
-                                            <h2 className="text-3xl font-black mb-2 text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-blue-500">
-                                                正在挑战：{currentTask.title}
-                                            </h2>
-                                            <div className="flex gap-3">
-                                                <span className="px-3 py-1 bg-white/5 rounded-full text-xs font-bold text-slate-400 flex items-center gap-1.5">
-                                                    <Target size={14} className="text-teal-400" /> {functionInfo?.name}
-                                                </span>
-                                                <span className="px-3 py-1 bg-white/5 rounded-full text-xs font-bold text-slate-400 flex items-center gap-1.5">
-                                                    <Sparkles size={14} className="text-amber-400" /> {currentTask.scoreType}
-                                                </span>
+                                                                    <div className="relative z-10">
+                                                                        <div className="text-5xl mb-6">{config.icon}</div>
+                                                                        <div className="px-3 py-1 bg-slate-100 dark:bg-white/10 rounded-full text-[10px] font-black uppercase text-slate-500 dark:text-slate-300 tracking-[0.2em] mb-4 inline-block">{config.name}</div>
+                                                                        <h3 className="text-2xl font-black mb-3 text-slate-800 dark:text-white leading-tight">{task.title}</h3>
+                                                                        <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed font-bold opacity-80">{task.description}</p>
+                                                                    </div>
+
+                                                                    <div className="relative z-10 flex items-center gap-2 text-teal-500 font-black text-xs">
+                                                                        START CHALLENGE <ArrowRight size={14} />
+                                                                    </div>
+                                                                </button>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </motion.div>
                                             </div>
-                                        </div>
-                                        <div className="w-20 h-20 rounded-2xl bg-slate-800 border-2 border-teal-500/30 flex flex-col items-center justify-center">
-                                            <span className="text-xs font-bold text-teal-400 uppercase">倒计时</span>
-                                            <span className="text-2xl font-black">{timer}s</span>
-                                        </div>
-                                    </div>
 
-                                    <p className="text-2xl text-slate-200 leading-relaxed italic mb-12 text-center md:text-left">
-                                        "{currentTask.description}"
-                                    </p>
+                                            {/* Navigation Buttons */}
+                                            <button
+                                                onClick={() => setCarouselIndex(Math.max(0, carouselIndex - 1))}
+                                                className={`absolute left-0 top-1/2 -translate-y-1/2 p-3 z-20 bg-white dark:bg-slate-800 rounded-full shadow-xl border border-slate-100 dark:border-slate-700 transition-all ${carouselIndex === 0 ? 'opacity-0 scale-50' : 'opacity-100 scale-100'}`}
+                                            >
+                                                <ChevronLeft size={24} />
+                                            </button>
+                                            <button
+                                                onClick={() => setCarouselIndex(Math.min(taskList.length - 1, carouselIndex + 1))}
+                                                className={`absolute right-0 top-1/2 -translate-y-1/2 p-3 z-20 bg-white dark:bg-slate-800 rounded-full shadow-xl border border-slate-100 dark:border-slate-700 transition-all ${carouselIndex === taskList.length - 1 ? 'opacity-0 scale-50' : 'opacity-100 scale-100'}`}
+                                            >
+                                                <ChevronRight size={24} />
+                                            </button>
 
-                                    <div className="flex-1 flex flex-col gap-6">
-                                        <div className="relative flex-1 bg-black/40 border border-slate-800 rounded-3xl p-6 min-h-[200px]">
-                                            {isListening && <div className="absolute top-4 right-4 flex items-center gap-2 text-red-500 animate-pulse text-xs font-bold"><div className="w-2 h-2 bg-red-500 rounded-full" /> 录制中</div>}
-                                            <textarea
-                                                className="w-full h-full bg-transparent resize-none outline-none text-xl leading-relaxed placeholder:text-slate-700 font-medium"
-                                                placeholder="请开始你的表达，系统将实时转录..."
-                                                value={transcription}
-                                                onChange={(e) => setTranscription(e.target.value)}
-                                            />
-
-                                            {/* Audio Visualizer logic (Simplified bars) */}
-                                            <div className="absolute bottom-6 left-6 right-6 h-8 flex items-end gap-1 pointer-events-none">
-                                                {Array.from({ length: 40 }).map((_, i) => (
-                                                    <div key={i} className="flex-1 bg-teal-500/20 rounded-t-sm" style={{ height: `${Math.random() * micVolume * 100}%` }} />
+                                            <div className="flex justify-center gap-2 mt-2">
+                                                {taskList.map((_, i) => (
+                                                    <div key={i} className={`h-1.5 rounded-full transition-all duration-300 ${i === carouselIndex ? 'w-8 bg-teal-500' : 'w-1.5 bg-slate-200 dark:bg-slate-800'}`} />
                                                 ))}
                                             </div>
                                         </div>
+                                    ) : (
+                                        /* Desktop: 2x2 Grid - Strict Single Screen */
+                                        <div className="grid grid-cols-2 gap-8 w-full max-w-5xl mx-auto h-[60vh]">
+                                            {taskList.map(([cat, task]) => {
+                                                const config = TASK_CATEGORIES_CONFIG[cat as keyof typeof TASK_CATEGORIES_CONFIG];
+                                                const isCompleted = completedTasks.has(cat);
+                                                return (
+                                                    <motion.button
+                                                        key={cat}
+                                                        whileHover={isCompleted ? {} : { scale: 1.02, y: -8, boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.15)' }}
+                                                        onClick={() => !isCompleted && handleStartChallenge(task)}
+                                                        disabled={isCompleted}
+                                                        className={`p-10 rounded-[3.5rem] border-2 bg-white dark:bg-slate-900/50 text-left transition-all group relative overflow-hidden flex flex-col justify-between ${isCompleted ? 'border-slate-100 dark:border-slate-800 opacity-40 grayscale' : 'border-slate-200 dark:border-slate-800 hover:border-teal-500/50 shadow-lg hover:shadow-2xl active:scale-95'}`}
+                                                    >
+                                                        {isCompleted && (
+                                                            <div className="absolute inset-0 bg-white/40 dark:bg-slate-950/60 backdrop-blur-sm flex flex-col items-center justify-center z-20">
+                                                                <div className="w-16 h-16 rounded-full bg-teal-500 text-white flex items-center justify-center mb-2">
+                                                                    <CheckCircle size={32} />
+                                                                </div>
+                                                                <span className="text-teal-600 dark:text-teal-400 font-black tracking-widest text-xs">已完成</span>
+                                                            </div>
+                                                        )}
 
-                                        <button
-                                            onClick={handleCompleteTask}
-                                            className="w-full py-5 bg-gradient-to-r from-teal-500 to-blue-600 rounded-2xl font-black text-white text-xl shadow-lg hover:shadow-teal-500/20 transition-all flex items-center justify-center gap-3"
-                                        >
-                                            完成挑战 <ArrowRight size={24} />
-                                        </button>
+                                                        <div className="relative z-10">
+                                                            <div className="flex items-center gap-4 mb-6">
+                                                                <div className="text-5xl group-hover:scale-125 transition-transform duration-500">{config.icon}</div>
+                                                                <div className="px-3.5 py-1.5 bg-slate-100 dark:bg-white/5 rounded-full text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400 font-mono shadow-inner">{config.name}</div>
+                                                            </div>
+                                                            <h3 className="text-3xl font-black mb-4 text-slate-800 dark:text-white group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors leading-tight">{task.title}</h3>
+                                                            <p className="text-slate-500 dark:text-slate-400 text-lg leading-relaxed font-bold opacity-80 group-hover:opacity-100 transition-opacity line-clamp-3">{task.description}</p>
+                                                        </div>
+
+                                                        <div className="relative z-10 flex items-center gap-2 text-teal-500 font-black text-xs opacity-0 group-hover:opacity-100 transition-all translate-y-4 group-hover:translate-y-0">
+                                                            START CHALLENGE <ArrowRight size={18} />
+                                                        </div>
+
+                                                        {/* Abstract background shape */}
+                                                        <div className={`absolute -bottom-12 -right-12 w-48 h-48 rounded-full bg-gradient-to-br ${isCompleted ? 'from-slate-100 to-slate-200' : 'from-teal-500/5 to-blue-500/5'} blur-2xl group-hover:scale-150 transition-transform duration-700 pointer-events-none`} />
+                                                    </motion.button>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                        </motion.div>
+                    )}
+
+                    {phase === 'EXECUTING' && currentTask && (
+                        <motion.div
+                            key="executing"
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden p-6 md:p-10"
+                        >
+                            <div className="relative z-10">
+                                <div className="flex justify-between items-start mb-4 md:mb-6">
+                                    <div>
+                                        <h2 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-black mb-2 text-transparent bg-clip-text bg-gradient-to-r from-teal-500 to-blue-600`}>
+                                            {currentTask.title}
+                                        </h2>
+                                        <div className="flex gap-2 flex-wrap">
+                                            <span className="px-3 py-1 bg-teal-50 dark:bg-teal-900/20 rounded-full text-[10px] font-black text-teal-600 dark:text-teal-400 flex items-center gap-1.5 border border-teal-100 dark:border-teal-500/20">
+                                                <Target size={12} /> {functionInfo?.name}
+                                            </span>
+                                            <span className="px-3 py-1 bg-amber-50 dark:bg-amber-900/20 rounded-full text-[10px] font-black text-amber-600 dark:text-amber-400 flex items-center gap-1.5 border border-amber-100 dark:border-amber-500/20">
+                                                <Sparkles size={12} /> {currentTask.scoreType}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 flex flex-col items-center justify-center shadow-inner">
+                                        <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase">倒计时</span>
+                                        <span className="text-xl md:text-2xl font-black text-slate-700 dark:text-slate-200">{timer}s</span>
                                     </div>
                                 </div>
 
-                                {/* Right Side: Observation Ward (Optional) */}
-                                {isCameraEnabled && (
-                                    <div className="w-full md:w-80 flex flex-col gap-6">
-                                        <div className="aspect-square md:aspect-auto md:flex-1 bg-black rounded-[2.5rem] border border-slate-800 overflow-hidden relative group">
-                                            <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-                                            <div className="absolute inset-0 pointer-events-none border-[20px] border-transparent">
-                                                <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-teal-500/50"></div>
-                                                <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-teal-500/50"></div>
-                                                <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-teal-500/50"></div>
-                                                <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-teal-500/50"></div>
-                                            </div>
-                                            <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent">
-                                                <div className="flex items-center gap-2 text-teal-400 font-bold text-xs uppercase tracking-widest">
-                                                    <BrainCircuit size={14} /> AI 观测舱已开启
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="bg-slate-900/50 p-6 rounded-3xl border border-slate-800 text-xs text-slate-500 italic leading-relaxed">
-                                            AI 船长正在通过摄像头观察你的神态波动，这能帮助它更深层次地洞察你的认知功能活跃度。
+                                <p className={`${isMobile ? 'text-base' : 'text-lg'} text-slate-600 dark:text-slate-300 leading-relaxed italic mb-6 font-medium`}>
+                                    "{currentTask.description}"
+                                </p>
+
+                                <div className="flex-1 flex flex-col gap-4 min-h-0">
+                                    <div className="relative flex-1 bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 min-h-[120px] md:min-h-[150px] shadow-inner">
+                                        {isListening && <div className="absolute top-4 right-4 flex items-center gap-1.5 text-red-500 animate-pulse text-[10px] font-black uppercase"><div className="w-1.5 h-1.5 bg-red-500 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.5)]" /> 正在录制</div>}
+                                        <textarea
+                                            className="w-full h-full bg-transparent resize-none outline-none text-base md:text-lg leading-relaxed placeholder:text-slate-300 dark:placeholder:text-slate-800 font-bold text-slate-700 dark:text-slate-200"
+                                            placeholder="请开始表达..."
+                                            value={transcription}
+                                            onChange={(e) => setTranscription(e.target.value)}
+                                        />
+                                        <div className="absolute bottom-4 left-4 right-4 h-8 flex items-end gap-1 pointer-events-none">
+                                            {Array.from({ length: 40 }).map((_, i) => (
+                                                <div key={i} className="flex-1 bg-teal-500/30 dark:bg-teal-500/20 rounded-t-full transition-all duration-150" style={{ height: `${Math.random() * micVolume * 100}%` }} />
+                                            ))}
                                         </div>
                                     </div>
-                                )}
-                            </motion.div>
-                        )}
 
-                        {phase === 'FEEDBACK' && (
-                            <motion.div
-                                key="feedback"
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                className="w-full max-w-3xl"
-                            >
-                                {loading ? (
-                                    <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] p-16 flex flex-col items-center justify-center text-center">
-                                        <div className="w-20 h-20 mb-8 relative">
-                                            <div className="absolute inset-0 border-4 border-teal-500/20 rounded-full"></div>
-                                            <div className="absolute inset-0 border-4 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
-                                        </div>
-                                        <h2 className="text-2xl font-bold mb-2">正在灵魂对齐...</h2>
-                                        <p className="text-slate-500">AI 船长正在分析你的认知功能深度</p>
+                                    <button
+                                        onClick={handleCompleteTask}
+                                        className="w-full py-4 md:py-5 bg-gradient-to-r from-teal-500 to-blue-600 hover:from-teal-600 hover:to-blue-700 rounded-2xl font-black text-white shadow-xl shadow-teal-500/20 transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3 text-lg"
+                                    >
+                                        完成挑战 <ArrowRight size={22} className="group-hover:translate-x-1 transition-transform" />
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Camera (Desktop Only) */}
+                            {isCameraEnabled && !isMobile && (
+                                <div className="absolute top-10 right-10 w-48 h-36 rounded-2xl border-2 border-white dark:border-slate-800 shadow-2xl overflow-hidden group">
+                                    <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" />
+                                    <div className="absolute inset-0 bg-teal-500/10 pointer-events-none" />
+                                    <div className="absolute bottom-2 left-2 flex items-center gap-1.5 text-white font-black text-[8px] uppercase tracking-widest drop-shadow-md">
+                                        <BrainCircuit size={10} /> AI 观测舱
                                     </div>
-                                ) : aiResult && (
-                                    <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] overflow-hidden shadow-2xl">
-                                        <div className="p-10 bg-gradient-to-br from-teal-500/20 to-blue-500/20 border-b border-slate-800 text-center relative">
-                                            <div className="flex justify-center mb-6">
-                                                <div className="w-20 h-20 bg-teal-500 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(20,184,166,0.5)]">
-                                                    <CheckCircle size={40} className="text-white" />
+                                </div>
+                            )}
+                        </motion.div>
+                    )}
+
+                    {phase === 'FEEDBACK' && (
+                        <motion.div
+                            key="feedback"
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="w-full max-w-2xl overflow-hidden rounded-[3rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl"
+                        >
+                            {loading ? (
+                                <div className="p-16 flex flex-col items-center justify-center text-center">
+                                    <div className="w-16 h-16 mb-8 relative">
+                                        <div className="absolute inset-0 border-4 border-teal-500/10 rounded-full"></div>
+                                        <div className="absolute inset-0 border-4 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
+                                    </div>
+                                    <h2 className="text-2xl font-black mb-2 text-slate-800 dark:text-white">船长深度解析中...</h2>
+                                    <p className="text-slate-500 dark:text-slate-400 font-medium">正在对你的认知功能表达进行人格共振分析</p>
+                                </div>
+                            ) : aiResult && (
+                                <div className="flex flex-col">
+                                    <div className={`${isMobile ? 'p-8' : 'p-12'} bg-gradient-to-br from-teal-500/5 to-blue-500/5 dark:from-teal-500/10 dark:to-blue-500/10 border-b border-slate-100 dark:border-slate-800 text-center relative overflow-hidden`}>
+                                        <div className="flex justify-center mb-6">
+                                            <div className="w-16 h-16 bg-white dark:bg-slate-800 rounded-3xl rotate-12 flex items-center justify-center shadow-xl border border-slate-100 dark:border-slate-700 scale-110">
+                                                <div className="-rotate-12 bg-teal-500 rounded-xl p-2.5">
+                                                    <CheckCircle size={24} className="text-white" />
                                                 </div>
                                             </div>
-                                            <h2 className="text-3xl font-black mb-1">完成进阶挑战！</h2>
-                                            <p className="text-teal-400 font-bold uppercase tracking-widest text-sm">COGNITIVE EVOLUTION ACHIEVED</p>
+                                        </div>
+                                        <h2 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-black mb-2 text-slate-800 dark:text-white tracking-tight`}>挑战大获成功！</h2>
+                                        <p className="text-teal-600 dark:text-teal-400 font-black uppercase tracking-[0.3em] text-[10px]">Cognitive Evolution Achieved</p>
+                                    </div>
+
+                                    <div className={`${isMobile ? 'p-6' : 'p-10'}`}>
+                                        {/* Scores */}
+                                        <div className="grid grid-cols-3 gap-4 mb-8">
+                                            {[
+                                                { label: '信', score: aiResult.scores.trust, color: 'text-teal-500', fill: '#14b8a6' },
+                                                { label: '觉', score: aiResult.scores.insight, color: 'text-purple-500', fill: '#a855f7' },
+                                                { label: '表', score: aiResult.scores.expression, color: 'text-amber-500', fill: '#f59e0b' }
+                                            ].map((s, idx) => (
+                                                <div key={idx} className="bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60 p-4 rounded-2xl text-center shadow-sm">
+                                                    <div className="text-[10px] font-black text-slate-400 dark:text-slate-500 mb-2 uppercase tracking-widest">{s.label}</div>
+                                                    <div className="flex justify-center gap-1">
+                                                        {Array.from({ length: 5 }).map((_, i) => (
+                                                            <Star key={i} size={14} fill={i < s.score ? s.fill : "none"} stroke={i < s.score ? s.fill : "#cbd5e1"} strokeWidth={i < s.score ? 1 : 2} />
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ))}
                                         </div>
 
-                                        <div className="p-10">
-                                            {/* Scores */}
-                                            <div className="grid grid-cols-3 gap-4 mb-10">
-                                                <div className="bg-slate-800/50 p-4 rounded-2xl text-center">
-                                                    <div className="text-xs font-bold text-slate-500 mb-1 uppercase">信 (Trust)</div>
-                                                    <div className="flex justify-center gap-1">
-                                                        {Array.from({ length: 5 }).map((_, i) => <Star key={i} size={14} fill={i < aiResult.scores.trust ? "#14b8a6" : "none"} stroke={i < aiResult.scores.trust ? "#14b8a6" : "#475569"} />)}
-                                                    </div>
-                                                </div>
-                                                <div className="bg-slate-800/50 p-4 rounded-2xl text-center">
-                                                    <div className="text-xs font-bold text-slate-500 mb-1 uppercase">觉 (Insight)</div>
-                                                    <div className="flex justify-center gap-1">
-                                                        {Array.from({ length: 5 }).map((_, i) => <Star key={i} size={14} fill={i < aiResult.scores.insight ? "#a855f7" : "none"} stroke={i < aiResult.scores.insight ? "#a855f7" : "#475569"} />)}
-                                                    </div>
-                                                </div>
-                                                <div className="bg-slate-800/50 p-4 rounded-2xl text-center">
-                                                    <div className="text-xs font-bold text-slate-500 mb-1 uppercase">表 (Exp)</div>
-                                                    <div className="flex justify-center gap-1">
-                                                        {Array.from({ length: 5 }).map((_, i) => <Star key={i} size={14} fill={i < aiResult.scores.expression ? "#f59e0b" : "none"} stroke={i < aiResult.scores.expression ? "#f59e0b" : "#475569"} />)}
-                                                    </div>
-                                                </div>
+                                        {/* Feedback */}
+                                        <div className="p-6 md:p-8 bg-slate-50/80 dark:bg-slate-800/30 border border-slate-200/50 dark:border-slate-700/50 rounded-2xl mb-8 relative">
+                                            <div className="absolute top-0 right-0 p-4 opacity-5 dark:opacity-10 pointer-events-none">
+                                                <BrainCircuit size={64} />
                                             </div>
+                                            <h4 className="text-slate-400 dark:text-teal-400/80 font-black mb-4 flex items-center gap-2 text-xs uppercase tracking-widest">
+                                                <BrainCircuit size={16} /> 船长全方位观察
+                                            </h4>
+                                            <p className={`${isMobile ? 'text-sm' : 'text-base'} text-slate-700 dark:text-slate-200 leading-relaxed font-bold italic`}>
+                                                "{aiResult.feedback}"
+                                            </p>
+                                        </div>
 
-                                            <div className="p-8 bg-slate-800/30 border border-slate-700/50 rounded-3xl mb-10 relative">
-                                                <BrainCircuit className="absolute -top-4 -left-4 text-teal-400 opacity-20" size={48} />
-                                                <h4 className="text-teal-400 font-black mb-4 flex items-center gap-2 italic uppercase tracking-tighter bg-teal-400/10 px-3 py-1 rounded-lg w-fit">
-                                                    船长寄语 / Soul Feedback
-                                                </h4>
-                                                <p className="text-xl text-slate-200 leading-relaxed italic">
-                                                    "{aiResult.feedback}"
-                                                </p>
-                                            </div>
-
+                                        {/* Action Buttons */}
+                                        <div className="flex flex-col gap-4">
+                                            {availableTasks.length > 0 && (
+                                                <button
+                                                    onClick={retryCurrentFunction}
+                                                    className="w-full py-4 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-white rounded-2xl font-black transition-all flex items-center justify-center gap-3 border-2 border-slate-100 dark:border-slate-700 shadow-sm"
+                                                >
+                                                    <RotateCcw size={18} /> 继续挑战 {currentFunction} ({availableTasks.length}个可选)
+                                                </button>
+                                            )}
                                             <button
                                                 onClick={nextLevel}
-                                                className="w-full py-5 bg-white text-slate-900 rounded-2xl font-black text-xl hover:bg-slate-200 transition-all flex items-center justify-center gap-3"
+                                                className="w-full py-5 bg-gradient-to-r from-teal-500 to-blue-600 hover:from-teal-600 hover:to-blue-700 text-white rounded-2xl font-black shadow-xl shadow-teal-500/20 transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3 text-lg"
                                             >
-                                                开启下一阶段：{stack[(currentFunctionIndex + 1) % stack.length]} <ArrowRight size={24} />
+                                                进入下一阶段：{stack[(currentFunctionIndex + 1) % stack.length]} <ArrowRight size={22} />
                                             </button>
                                         </div>
                                     </div>
-                                )}
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                </div>
-            </div>
+                                </div>
+                            )}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </main>
 
             {/* Hidden Canvas for Frame Capture */}
             <canvas ref={canvasRef} width="300" height="300" className="hidden" />
@@ -442,4 +546,3 @@ const TaskSolo: React.FC<Props> = ({ onBack, isMobile }) => {
 };
 
 export default TaskSolo;
-

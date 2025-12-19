@@ -12,7 +12,7 @@ import {
 } from "./services/geminiService";
 import { speak } from './utils/tts';
 import { startSpeechRecognition, stopSpeechRecognition, isSpeechRecognitionSupported } from './utils/speechRecognition';
-import { Map as MapIcon, LogOut, Music, VideoOff, Dices, ChevronRight, ChevronLeft, BrainCircuit, Heart, Lightbulb, Mic, CircleHelp, X, Timer, CheckCircle, SkipForward, Users, RefreshCw, Star, Play, Power, Compass, Footprints, Loader, Zap, Repeat, Divide, Copy, Move, UserPlus, UsersRound, Settings, Flag, Radio, Sun, Moon, Volume2, Eye, ArrowRight, Ship } from 'lucide-react';
+import { Map as MapIcon, LogOut, Music, VideoOff, Dices, ChevronRight, ChevronLeft, BrainCircuit, Heart, Lightbulb, Mic, CircleHelp, X, Timer, CheckCircle, SkipForward, Users, RefreshCw, Star, Play, Power, Compass, Footprints, Loader, Zap, Repeat, Divide, Copy, Move, UserPlus, UsersRound, Settings, Flag, Radio, Sun, Moon, Volume2, Eye, ArrowRight, Ship, Layers } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AIConfigModal from './components/AIConfigModal';
 import MBTIHub from './components/MBTIHub';
@@ -368,6 +368,7 @@ function App() {
     const [micVolume, setMicVolume] = useState(0);
     const [highEnergyBonus, setHighEnergyBonus] = useState(false);
 
+
     // Host Tools
     const [isManualMode, setIsManualMode] = useState(false);
     const [isQuickTestMode, setIsQuickTestMode] = useState(false);
@@ -383,7 +384,12 @@ function App() {
 
     useEffect(() => {
         const checkMobile = () => {
-            setIsMobile(window.innerWidth < 1024);
+            const mobile = window.innerWidth < 1024;
+            setIsMobile(mobile);
+            // Mobile: Default to minimized sidebar
+            if (mobile) {
+                setIsSidebarMinimized(true);
+            }
         };
         checkMobile();
         window.addEventListener('resize', checkMobile);
@@ -1323,7 +1329,7 @@ function App() {
 
     if (gameState.phase === 'HUB') {
         return (
-            <div className={`min-h-screen flex flex-col transition-colors duration-300 font-sans ${isDarkMode ? 'dark bg-slate-900 text-white' : 'bg-stone-50 text-slate-800'}`}>
+            <div className={`h-screen flex flex-col transition-colors duration-300 font-sans ${isDarkMode ? 'dark bg-slate-900 text-white' : 'bg-stone-50 text-slate-800'} overflow-hidden`}>
                 <header className="h-16 flex items-center justify-between px-6 border-b border-slate-200 dark:border-white/5 shrink-0">
                     <div className="flex items-center gap-2 font-black text-xl tracking-tighter italic">
                         <Ship className="text-blue-500" /> RAINBOW BOAT
@@ -1334,15 +1340,15 @@ function App() {
                         </button>
                     </div>
                 </header>
-                <main className="flex-1 relative">
-                    <MBTIHub onSelectMode={handleHubSelect} isMobile={isMobile} />
+                <main className="flex-1 relative overflow-hidden">
+                    <MBTIHub onSelectMode={handleHubSelect} onOpenConfig={() => setShowConfig(true)} isMobile={isMobile} />
                 </main>
             </div>
         );
     }
 
     if (gameState.phase === 'SOLO_TASKS') {
-        return <TaskSolo onBack={() => setGameState(prev => ({ ...prev, phase: 'HUB' }))} isMobile={isMobile} />;
+        return <TaskSolo onBack={() => setGameState(prev => ({ ...prev, phase: 'HUB' }))} isMobile={isMobile} isDarkMode={isDarkMode} />;
     }
 
     if (gameState.phase === 'ONBOARDING') {
@@ -1391,10 +1397,10 @@ function App() {
     const playerStack = MBTI_STACKS[currentPlayer.mbti] || [];
 
     return (
-        <div className={`min-h-screen w-full text-slate-800 dark:text-slate-200 font-sans flex flex-col overflow-x-hidden relative selection:bg-teal-500/30 transition-colors duration-300 ${isMobile && gameState.phase !== 'PLAYING' ? 'overflow-y-auto' : 'overflow-hidden'}`}>
+        <div className={`h-screen w-full text-slate-800 dark:text-slate-200 font-sans flex flex-col overflow-hidden relative selection:bg-teal-500/30 transition-colors duration-300 ${isDarkMode ? 'dark bg-slate-900' : 'bg-stone-50'} ${isMobile && gameState.phase === 'SETUP' ? 'overflow-y-auto' : 'overflow-hidden'}`}>
 
             {/* Top Bar - Transparent with blur */}
-            <header className="h-16 bg-white/80 dark:bg-slate-900/60 backdrop-blur border-b border-slate-200 dark:border-white/5 flex items-center justify-between px-6 shrink-0 z-30 transition-colors duration-300">
+            <header className={`${isMobile ? 'h-14 px-4' : 'h-16 px-6'} bg-white/80 dark:bg-slate-900/60 backdrop-blur border-b border-slate-200 dark:border-white/5 flex items-center justify-between shrink-0 z-30 transition-colors duration-300`}>
                 <div className="flex items-center gap-6 w-1/3">
                     <button onClick={resetGame} className="flex items-center gap-1 text-slate-500 hover:text-teal-600 dark:text-slate-400 dark:hover:text-white transition group" title="Return to Home">
                         <LogOut size={16} className="group-hover:-translate-x-1 transition" />
@@ -1486,13 +1492,13 @@ function App() {
                 </div>
             </header>
 
-            <main className={`flex-1 flex relative ${isMobile && gameState.phase !== 'PLAYING' ? 'flex-col overflow-y-auto' : 'overflow-hidden'}`}>
+            <main className="flex-1 flex relative overflow-hidden">
                 {/* Original Game UI Wrapper */}
                 {(gameState.phase === 'PLAYING' || gameState.phase === 'SETUP') && (
-                    <div className={`flex-1 flex relative ${isMobile ? 'flex-col' : 'overflow-hidden'}`}>
+                    <div className="flex-1 flex relative overflow-hidden">
                         {/* Game Board Content */}
-                        <div className={`flex-1 relative bg-transparent flex flex-col transition-all duration-300 ${isMobile ? 'h-[45vh] min-h-[350px]' : ''}`}>
-                            <div className={`flex-1 flex items-center justify-center ${isMobile ? 'overflow-auto touch-pan-x touch-pan-y' : 'overflow-hidden'} cursor-grab active:cursor-grabbing`}>
+                        <div className="flex-1 relative bg-transparent flex flex-col overflow-hidden">
+                            <div className="flex-1 flex items-center justify-center overflow-hidden cursor-grab active:cursor-grabbing">
                                 <GameBoard
                                     players={gameState.players}
                                     currentPlayerId={currentPlayer.id}
@@ -1502,6 +1508,7 @@ function App() {
                                     gameMode={gameState.gameMode}
                                     visibilityRadius={gameState.sightRange}
                                     isMobile={isMobile}
+                                    isDarkMode={isDarkMode}
                                 />
                             </div>
 
@@ -1519,7 +1526,7 @@ function App() {
                             {/* Dice & Interactions */}
                             <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-20">
                                 <div className="relative w-full h-full max-w-4xl max-h-[800px]">
-                                    <div className={`absolute ${isMobile ? 'bottom-4 right-4 scale-75' : 'bottom-20 right-8'} pointer-events-auto transition-all duration-300 ${gameState.gameMode === GameMode.MBTI_16 ? 'translate-x-24' : ''}`}>
+                                    <div className={`absolute bottom-20 right-8 pointer-events-auto transition-all duration-300 ${gameState.gameMode === GameMode.MBTI_16 ? 'translate-x-24' : ''}`}>
                                         {/* Host Manual Dice Input */}
                                         {isManualMode && gameState.subPhase === 'IDLE' && gameState.remainingSteps === 0 && (
                                             <div className="mb-6 p-4 bg-slate-800/80 rounded-2xl border border-amber-500/30 backdrop-blur shadow-xl">
@@ -1773,9 +1780,9 @@ function App() {
                             </AnimatePresence>
 
                             {/* Player Avatar (Bottom Left - replaces Video) */}
-                            <div className={`absolute ${isMobile ? 'bottom-2 left-2 scale-75 origin-bottom-left' : 'bottom-6 left-6'} z-40`}>
-                                <div className={`relative group ${isMobile ? 'w-20 h-20' : 'w-32 h-32'}`}>
-                                    <div className="w-full h-full rounded-full overflow-hidden border-2 border-slate-200 dark:border-slate-700 shadow-2xl bg-white dark:bg-black flex items-center justify-center">
+                            <div className={`absolute ${isMobile ? 'bottom-4 left-4 scale-75' : 'bottom-6 left-6'} z-40`}>
+                                <div className={`relative group ${isMobile ? 'w-24 h-24' : 'w-32 h-32'}`}>
+                                    <div className="w-full h-full rounded-full overflow-hidden border-2 border-white dark:border-slate-700 shadow-xl bg-white dark:bg-black flex items-center justify-center">
                                         {currentPlayer.avatar.startsWith('data:') ? (
                                             <img src={currentPlayer.avatar} className="w-full h-full object-cover" />
                                         ) : (
@@ -1784,64 +1791,76 @@ function App() {
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        {/* Sidebar (Right/Bottom) */}
-                        <div className={`bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border-slate-200 dark:border-white/5 flex flex-col transition-all duration-300 z-20 shadow-xl ${isMobile ? 'w-full border-t max-h-[35vh]' : (isSidebarMinimized ? 'w-16 border-l' : 'w-64 border-l')}`}>
-                            <div className="h-16 flex items-center justify-between px-4 border-b border-slate-200 dark:border-white/5 shrink-0">
-                                {!isSidebarMinimized && <span className="font-bold text-slate-400 text-xs uppercase tracking-widest">当前能量场</span>}
-                                <button onClick={() => setIsSidebarMinimized(!isSidebarMinimized)} className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-white transition"><ChevronRight size={16} /></button>
-                            </div>
-                            {!isSidebarMinimized ? (
-                                <div className="flex-1 flex flex-col overflow-hidden">
-                                    <div
-                                        className={`overflow-y-auto custom-scrollbar p-3 transition-all duration-300 ${gameState.players.length > 6 ? 'space-y-1.5' : 'space-y-3'}`}
-                                        style={{ maxHeight: '65%' }}
-                                    >
-                                        {[...gameState.players].sort((a, b) => (b.trustScore + b.insightScore + b.expressionScore) - (a.trustScore + a.insightScore + a.expressionScore)).map((p) => {
-                                            const total = p.trustScore + p.insightScore + p.expressionScore;
-                                            const isCompact = gameState.players.length > 6;
-                                            return (
-                                                <div key={p.id} className={`rounded-xl border transition-all ${isCompact ? 'p-2' : 'p-3'} ${p.id === currentPlayer.id ? 'bg-slate-50 dark:bg-slate-800 border-teal-500/30 shadow-lg' : 'bg-transparent border-slate-100 dark:border-slate-800/50'}`}>
-                                                    <div className="flex justify-between items-center mb-1.5">
-                                                        <div className="flex items-center gap-2">
-                                                            <div className={`rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-slate-700 dark:text-white overflow-hidden ring-1 ring-slate-300 dark:ring-slate-600 ${isCompact ? 'w-6 h-6 text-[9px]' : 'w-8 h-8 text-[10px]'}`}>
-                                                                {p.avatar.startsWith('data:') ? <img src={p.avatar} className="w-full h-full object-cover" /> : p.name[0]}
-                                                            </div>
-                                                            <div className="leading-tight">
-                                                                <div className={`font-bold text-slate-700 dark:text-slate-200 ${isCompact ? 'text-[10px]' : 'text-xs'}`}>{p.name}</div>
-                                                                <div className="text-[9px] text-slate-400 dark:text-slate-500">{p.mbti}</div>
-                                                            </div>
-                                                        </div>
-                                                        <div className={`font-bold text-amber-500 ${isCompact ? 'text-xs' : 'text-sm'}`}>{total}</div>
-                                                    </div>
-                                                    <div className="flex gap-1 text-[9px] text-slate-500">
-                                                        <div className="flex-1 bg-slate-100 dark:bg-slate-900/40 rounded px-1.5 py-0.5 flex justify-between"><span>信</span><span className="text-blue-500 dark:text-blue-400">{p.trustScore}</span></div>
-                                                        <div className="flex-1 bg-slate-100 dark:bg-slate-900/40 rounded px-1.5 py-0.5 flex justify-between"><span>觉</span><span className="text-purple-500 dark:text-purple-400">{p.insightScore}</span></div>
-                                                        <div className="flex-1 bg-slate-100 dark:bg-slate-900/40 rounded px-1.5 py-0.5 flex justify-between"><span>表</span><span className="text-orange-500 dark:text-orange-400">{p.expressionScore}</span></div>
-                                                    </div>
-                                                </div>
-                                            )
-                                        })}
-                                    </div>
-                                    <div className="flex-1 bg-slate-50/50 dark:bg-slate-950/50 border-t border-slate-200 dark:border-slate-800 p-3 overflow-y-auto custom-scrollbar text-[10px] space-y-1.5 min-h-[150px]">
-                                        {gameState.logs.slice(-30).map(l => (
-                                            <div key={l.id} className="text-slate-500 dark:text-slate-400 leading-snug mb-1.5 border-b border-slate-200 dark:border-slate-900/50 pb-1">
-                                                <span className="text-teal-600 dark:text-teal-500 font-bold mr-1">{l.author || '•'}</span>
-                                                {l.text}
-                                                {l.taskDetails && <div className="text-[9px] text-slate-400 dark:text-slate-600 mt-0.5 italic line-clamp-2">{l.taskDetails}</div>}
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="flex flex-col items-center gap-4 py-4">
-                                    {gameState.players.map(p => (
-                                        <div key={p.id} className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-[10px] border ${p.id === currentPlayer.id ? 'border-teal-500 text-teal-500' : 'border-slate-300 dark:border-slate-700 text-slate-400'}`}>{p.name[0]}</div>
-                                    ))}
-                                </div>
+                            {/* Mobile Sidebar Toggle Button */}
+                            {isMobile && isSidebarMinimized && (
+                                <button
+                                    onClick={() => setIsSidebarMinimized(false)}
+                                    className="absolute bottom-4 right-4 z-40 w-12 h-12 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center shadow-lg border border-slate-200 dark:border-slate-700 text-teal-600 dark:text-teal-400"
+                                >
+                                    <Layers size={20} />
+                                </button>
                             )}
                         </div>
+
+                        {/* Sidebar (Right) - Hidden on mobile when minimized */}
+                        {(!isMobile || !isSidebarMinimized) && (
+                            <div className={`bg-white/95 dark:bg-slate-900/90 backdrop-blur-md border-slate-200 dark:border-white/5 flex flex-col transition-all duration-300 z-50 shadow-2xl ${isMobile ? 'absolute bottom-0 left-0 right-0 border-t rounded-t-3xl max-h-[50vh] overflow-hidden' : (isSidebarMinimized ? 'w-16 border-l' : 'w-64 border-l')}`}>
+                                <div className={`${isMobile ? 'h-12' : 'h-16'} flex items-center justify-between px-6 border-b border-slate-100 dark:border-white/5 shrink-0`}>
+                                    {!isSidebarMinimized && <span className={`font-bold text-slate-500 dark:text-slate-400 ${isMobile ? 'text-[11px]' : 'text-xs'} uppercase tracking-[0.2em]`}>当前能量场</span>}
+                                    <button onClick={() => setIsSidebarMinimized(!isSidebarMinimized)} className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-white transition-colors"><ChevronRight size={18} className={isMobile ? 'rotate-90' : ''} /></button>
+                                </div>
+                                {!isSidebarMinimized ? (
+                                    <div className="flex-1 flex flex-col overflow-hidden">
+                                        <div
+                                            className={`overflow-y-auto custom-scrollbar p-3 transition-all duration-300 ${gameState.players.length > 6 ? 'space-y-1.5' : 'space-y-3'}`}
+                                            style={{ maxHeight: '65%' }}
+                                        >
+                                            {[...gameState.players].sort((a, b) => (b.trustScore + b.insightScore + b.expressionScore) - (a.trustScore + a.insightScore + a.expressionScore)).map((p) => {
+                                                const total = p.trustScore + p.insightScore + p.expressionScore;
+                                                const isCompact = gameState.players.length > 6;
+                                                return (
+                                                    <div key={p.id} className={`rounded-xl border transition-all ${isCompact ? 'p-2' : 'p-3'} ${p.id === currentPlayer.id ? 'bg-slate-50 dark:bg-slate-800 border-teal-500/30 shadow-lg' : 'bg-transparent border-slate-100 dark:border-slate-800/50'}`}>
+                                                        <div className="flex justify-between items-center mb-1.5">
+                                                            <div className="flex items-center gap-2">
+                                                                <div className={`rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-slate-700 dark:text-white overflow-hidden ring-1 ring-slate-300 dark:ring-slate-600 ${isCompact ? 'w-6 h-6 text-[9px]' : 'w-8 h-8 text-[10px]'}`}>
+                                                                    {p.avatar.startsWith('data:') ? <img src={p.avatar} className="w-full h-full object-cover" /> : p.name[0]}
+                                                                </div>
+                                                                <div className="leading-tight">
+                                                                    <div className={`font-bold text-slate-700 dark:text-slate-200 ${isCompact ? 'text-[10px]' : 'text-xs'}`}>{p.name}</div>
+                                                                    <div className="text-[9px] text-slate-400 dark:text-slate-500">{p.mbti}</div>
+                                                                </div>
+                                                            </div>
+                                                            <div className={`font-bold text-amber-500 ${isCompact ? 'text-xs' : 'text-sm'}`}>{total}</div>
+                                                        </div>
+                                                        <div className="flex gap-1 text-[9px] text-slate-500">
+                                                            <div className="flex-1 bg-slate-100 dark:bg-slate-900/40 rounded px-1.5 py-0.5 flex justify-between"><span>信</span><span className="text-blue-500 dark:text-blue-400">{p.trustScore}</span></div>
+                                                            <div className="flex-1 bg-slate-100 dark:bg-slate-900/40 rounded px-1.5 py-0.5 flex justify-between"><span>觉</span><span className="text-purple-500 dark:text-purple-400">{p.insightScore}</span></div>
+                                                            <div className="flex-1 bg-slate-100 dark:bg-slate-900/40 rounded px-1.5 py-0.5 flex justify-between"><span>表</span><span className="text-orange-500 dark:text-orange-400">{p.expressionScore}</span></div>
+                                                        </div>
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
+                                        <div className="flex-1 bg-slate-50/50 dark:bg-slate-950/50 border-t border-slate-200 dark:border-slate-800 p-3 overflow-y-auto custom-scrollbar text-[10px] space-y-1.5 min-h-[150px]">
+                                            {gameState.logs.slice(-30).map(l => (
+                                                <div key={l.id} className="text-slate-500 dark:text-slate-400 leading-snug mb-1.5 border-b border-slate-200 dark:border-slate-900/50 pb-1">
+                                                    <span className="text-teal-600 dark:text-teal-500 font-bold mr-1">{l.author || '•'}</span>
+                                                    {l.text}
+                                                    {l.taskDetails && <div className="text-[9px] text-slate-400 dark:text-slate-600 mt-0.5 italic line-clamp-2">{l.taskDetails}</div>}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center gap-4 py-4">
+                                        {gameState.players.map(p => (
+                                            <div key={p.id} className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-[10px] border ${p.id === currentPlayer.id ? 'border-teal-500 text-teal-500' : 'border-slate-300 dark:border-slate-700 text-slate-400'}`}>{p.name[0]}</div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 )}
                 {showConfig && <AIConfigModal onClose={() => setShowConfig(false)} />}

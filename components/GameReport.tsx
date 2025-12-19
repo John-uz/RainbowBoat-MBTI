@@ -357,46 +357,46 @@ const GameReport: React.FC<Props> = ({ players, report, onReturnHome, startTime,
                     </button>
                 </div>
                 {showQR && (
-                    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-900/95 backdrop-blur-md p-4 animate-in fade-in duration-300">
-                        <div className="w-full max-w-5xl h-[85vh] flex flex-col bg-slate-800 rounded-3xl overflow-hidden shadow-2xl border border-slate-700">
+                    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-900/90 dark:bg-slate-950/95 backdrop-blur-md p-4 animate-in fade-in duration-300">
+                        <div className="w-full max-w-5xl h-[85vh] flex flex-col bg-white dark:bg-slate-800 rounded-[2.5rem] overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-700">
 
                             {/* Header */}
-                            <div className="p-6 border-b border-slate-700 flex justify-between items-center bg-slate-800 z-10">
+                            <div className="p-8 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-white dark:bg-slate-800 z-10">
                                 <div>
-                                    <h3 className="text-2xl font-bold text-white flex items-center gap-2"><QrCode className="text-purple-500" /> 船票分发 · 赛博珍藏</h3>
-                                    <p className="text-slate-400 text-sm mt-1">请每位船员扫描属于自己的船票，获取专属航行分析。</p>
+                                    <h3 className="text-2xl font-black text-slate-800 dark:text-white flex items-center gap-2"><QrCode size={28} className="text-purple-500" /> 船票分发 · 赛博珍藏</h3>
+                                    <p className="text-slate-500 dark:text-slate-400 text-sm mt-1 font-medium">请每位船员扫描属于自己的船票，获取专属航行分析报告。</p>
                                 </div>
-                                <button onClick={() => setShowQR(false)} className="px-6 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-full font-bold transition">
-                                    <X size={20} /> 关闭
+                                <button onClick={() => setShowQR(false)} className="w-12 h-12 flex items-center justify-center bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-500 dark:text-white rounded-full transition-all group">
+                                    <X size={24} className="group-hover:rotate-90 transition-transform" />
                                 </button>
                             </div>
 
                             {/* Scrollable Content */}
-                            <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div className="flex-1 overflow-y-auto p-8 custom-scrollbar bg-slate-50/50 dark:bg-slate-900/50">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                                     {sortedPlayers.map((p) => {
-                                        // Generate Per-Player Text Data (Not URL)
-                                        // User requested: "Just text content, not link"
                                         const personalText = `🌈 彩虹船 - 航行档案\n\n【群体画像】\n${report.groupAnalysis}\n\n【${p.name} 的专属分析】\n${report.playerAnalysis[p.id] || "暂无数据"}\n\n[总分]: ${p.trustScore + p.insightScore + p.expressionScore}\n(信任:${p.trustScore} | 觉察:${p.insightScore} | 表现:${p.expressionScore})`;
 
                                         return (
-                                            <div key={p.id} className="bg-slate-900 rounded-2xl p-6 border border-slate-700 flex flex-col items-center gap-4 hover:border-purple-500 transition-colors group">
+                                            <div key={p.id} className="bg-white dark:bg-slate-800 rounded-3xl p-8 border border-slate-100 dark:border-slate-700 flex flex-col items-center gap-6 hover:border-purple-500 dark:hover:border-purple-500 transition-all shadow-sm hover:shadow-xl group">
                                                 <div className="flex items-center gap-4 w-full">
-                                                    <div className="w-12 h-12 rounded-full overflow-hidden bg-slate-800 border border-slate-600">
-                                                        {p.avatar.startsWith('data:') ? <img src={p.avatar} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center font-bold text-lg text-white">{p.name[0]}</div>}
+                                                    <div className="w-14 h-14 rounded-2xl overflow-hidden bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-inner">
+                                                        {p.avatar.startsWith('data:') ? <img src={p.avatar} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center font-black text-2xl text-slate-400">{p.name[0]}</div>}
                                                     </div>
                                                     <div className="flex-1">
-                                                        <div className="font-bold text-white text-lg">{p.name}</div>
-                                                        <div className="text-xs text-purple-400 font-mono">{p.mbti}</div>
+                                                        <div className="font-black text-slate-800 dark:text-white text-xl">{p.name}</div>
+                                                        <div className="text-xs text-purple-600 dark:text-purple-400 font-black tracking-widest uppercase">{p.mbti}</div>
                                                     </div>
                                                 </div>
 
-                                                <div className="p-3 bg-white rounded-xl shadow-inner mt-2">
-                                                    <QRCodeCanvas value={personalText} size={180} level={"M"} includeMargin={false} />
+                                                <div className="p-4 bg-white rounded-2xl shadow-xl ring-8 ring-slate-50 dark:ring-slate-900/50 group-hover:ring-purple-50 dark:group-hover:ring-purple-900/20 transition-all">
+                                                    <QRCodeCanvas value={personalText} size={200} level={"M"} includeMargin={false} />
                                                 </div>
 
-                                                <p className="text-xs text-slate-500 text-center">
-                                                    扫码获取<br /><span className="text-purple-400">"{p.name}"</span> 的专属报告
+                                                <p className="text-xs text-slate-400 dark:text-slate-500 text-center font-bold leading-relaxed">
+                                                    扫码码获取<br />
+                                                    <span className="text-purple-600 dark:text-purple-400 text-sm">"{p.name}"</span><br />
+                                                    的专属航行报告
                                                 </p>
                                             </div>
                                         );

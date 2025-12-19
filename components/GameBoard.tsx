@@ -10,6 +10,7 @@ interface Props {
     gameMode: GameMode;
     visibilityRadius: number; // passed from sightRange
     isMobile: boolean;
+    isDarkMode: boolean;
 }
 
 // Increased size to 60 for Hex
@@ -18,11 +19,10 @@ const HEX_SIZE = 60;
 const SQUARE_SIZE = 110;
 
 const hexPoints = (x: number, y: number, size: number) => {
-    const points = [];
+    let points = [];
     for (let i = 0; i < 6; i++) {
-        const angle_deg = 60 * i - 30;
-        const angle_rad = (Math.PI / 180) * angle_deg;
-        points.push(`${x + size * Math.cos(angle_rad)},${y + size * Math.sin(angle_rad)}`);
+        const angle = 2 * Math.PI / 6 * (i + 0.5);
+        points.push(`${x + size * Math.cos(angle)},${y + size * Math.sin(angle)}`);
     }
     return points.join(' ');
 };
@@ -42,7 +42,7 @@ const gridToPixel = (q: number, r: number) => {
     return { x: px, y: py };
 }
 
-const GameBoard: React.FC<Props> = ({ players, currentPlayerId, boardLayout, validMoves, onTileClick, gameMode, visibilityRadius, isMobile }) => {
+const GameBoard: React.FC<Props> = ({ players, currentPlayerId, boardLayout, validMoves, onTileClick, gameMode, visibilityRadius, isMobile, isDarkMode }) => {
 
     // Render JUNGIAN (Hex) Map - No Fog logic requested for Jung mode
     const renderHexMap = () => {
@@ -69,7 +69,7 @@ const GameBoard: React.FC<Props> = ({ players, currentPlayerId, boardLayout, val
                         // Light mode fill vs Dark mode fill
                         className="fill-slate-200 stroke-slate-300 dark:fill-slate-900 dark:stroke-slate-700"
                         style={{
-                            fill: isCenter ? (document.documentElement.classList.contains('dark') ? '#334155' : '#cbd5e1') : undefined,
+                            fill: isCenter ? (isDarkMode ? '#334155' : '#cbd5e1') : undefined,
                         }}
                         stroke={isTarget ? '#2dd4bf' : baseColor}
                         strokeWidth={isTarget ? 6 : (isCenter ? 3 : 2)}
@@ -293,15 +293,39 @@ const GameBoard: React.FC<Props> = ({ players, currentPlayerId, boardLayout, val
         );
     }
 
+    // Calculate current player position for mobile viewport centering
+    const currentPlayer = players.find(p => p.id === currentPlayerId);
+    const currentTile = currentPlayer ? boardLayout[currentPlayer.position] : null;
+
+    // Get pixel position of current player
+    let playerPixelPos = { x: 600, y: 450 }; // Default center
+    if (currentTile) {
+        if (gameMode === GameMode.JUNG_8) {
+            playerPixelPos = axialToPixel(currentTile.q, currentTile.r);
+        } else {
+            playerPixelPos = gridToPixel(currentTile.q, currentTile.r);
+        }
+    }
+
+    // Mobile: Zoom in around player (show ~3 ring radius)
+    // Desktop: Show full map
+    const mobileViewBoxSize = 500; // Smaller viewBox for zoomed-in effect
+    const mobileViewBox = isMobile
+        ? `${playerPixelPos.x - mobileViewBoxSize / 2} ${playerPixelPos.y - mobileViewBoxSize / 2} ${mobileViewBoxSize} ${mobileViewBoxSize}`
+        : "0 0 1200 900";
+
     return (
-        <div className={`w-full h-full bg-stone-100 dark:bg-slate-900/50 rounded-2xl border border-slate-300 dark:border-slate-700 relative shadow-inner flex items-center justify-center transition-colors duration-300 ${isMobile ? 'overflow-visible' : 'overflow-hidden cursor-move'}`}>
-            <div className="absolute top-4 left-4 text-slate-500 dark:text-slate-500 text-[10px] md:text-xs font-mono z-10 bg-slate-100/80 dark:bg-slate-900/80 px-2 py-1 rounded">
-                {gameMode === GameMode.MBTI_16 ? 'MBTI 十六型田字格 (33格) - 迷雾海域' : '彩虹船 (Rainbow Ark)'}
-            </div>
+        <div className={`w-full h-full bg-stone-100 dark:bg-slate-900/50 rounded-2xl border border-slate-300 dark:border-slate-700 relative shadow-inner flex items-center justify-center transition-colors duration-300 ${isMobile ? 'overflow-hidden' : 'overflow-hidden cursor-move'}`}>
+            {!isMobile && (
+                <div className="absolute top-4 left-4 text-slate-500 dark:text-slate-500 text-xs font-mono z-10 bg-slate-100/80 dark:bg-slate-900/80 px-2 py-1 rounded">
+                    {gameMode === GameMode.MBTI_16 ? 'MBTI 十六型田字格 (33格) - 迷雾海域' : '彩虹船 (Rainbow Ark)'}
+                </div>
+            )}
 
             <svg
-                viewBox="0 0 1200 900"
-                className={`w-full h-full animate-fade-in select-none ${isMobile ? 'min-w-[800px] min-h-[600px] touch-manipulation' : 'touch-pan-y'}`}
+                viewBox={mobileViewBox}
+                className={`w-full h-full animate-fade-in select-none ${isMobile ? 'touch-manipulation' : 'touch-pan-y'}`}
+                style={{ transition: isMobile ? 'transform 0.3s ease-out' : undefined }}
             >
                 {gameMode === GameMode.JUNG_8 ? renderHexMap() : renderSquareMap()}
             </svg>
