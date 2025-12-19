@@ -13,6 +13,7 @@ interface Props {
     toggleTheme: () => void;
     initialStep?: 'setup' | 'quiz';
     isSoloTest?: boolean;
+    isMobile?: boolean;
     onBackToHub?: () => void;
     onShowQuickReport?: (player: { name: string, mbti: string }, results: MBTIAnalysisResult[]) => void;
 }
@@ -103,7 +104,7 @@ const CaptainManualModal: React.FC<{ onClose: () => void }> = ({ onClose }) => (
     </div>
 );
 
-const Onboarding: React.FC<Props> = ({ onComplete, isDarkMode, toggleTheme, initialStep = 'setup', isSoloTest = false, onBackToHub, onShowQuickReport }) => {
+const Onboarding: React.FC<Props> = ({ onComplete, isDarkMode, toggleTheme, initialStep = 'setup', isSoloTest = false, isMobile = false, onBackToHub, onShowQuickReport }) => {
     const [step, setStep] = useState<'setup' | 'quiz' | 'analyzing' | 'results'>(initialStep);
     const [humanPlayers, setHumanPlayers] = useState<{ id: string, name: string, mbti: string, avatarImage?: string }[]>([
         { id: 'p1', name: '', mbti: '' }
@@ -223,6 +224,7 @@ const Onboarding: React.FC<Props> = ({ onComplete, isDarkMode, toggleTheme, init
 
     // Show Quick Test Report if triggered
     if (showQuickReport && selectedMbtiForReport) {
+        const formattedAnswers = QUESTIONS.map(q => ({ q: q.text, val: answers[q.id] || 50 }));
         return (
             <QuickTestReport
                 playerName={humanPlayers[currentPlayerConfigIndex]?.name || '探索者'}
@@ -232,6 +234,7 @@ const Onboarding: React.FC<Props> = ({ onComplete, isDarkMode, toggleTheme, init
                     setShowQuickReport(false);
                     if (onBackToHub) onBackToHub();
                 }}
+                answers={formattedAnswers}
             />
         );
     }
@@ -242,47 +245,38 @@ const Onboarding: React.FC<Props> = ({ onComplete, isDarkMode, toggleTheme, init
                 <h3 className="text-xl font-bold mb-2 text-center text-slate-800 dark:text-white">分析完成</h3>
                 <p className="text-center text-slate-500 dark:text-slate-400 mb-6 text-sm">虽然 AI 觉得你像这些类型，但最终决定权在你。</p>
 
-                <div className="space-y-4">
-                    {analysisResults.map((result, idx) => (
+                <div className={`${isMobile ? 'flex flex-row gap-2 overflow-x-auto no-scrollbar pb-2' : 'space-y-4'}`}>
+                    {analysisResults.slice(0, 3).map((result, idx) => (
                         <button
                             key={result.type}
-                            onClick={() => handleSelectResult(result.type)}
-                            className="w-full p-4 bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600 hover:border-teal-500 transition text-left group relative overflow-hidden"
+                            onClick={() => {
+                                setSelectedMbtiForReport(result.type);
+                                setShowQuickReport(true);
+                            }}
+                            className={`${isMobile ? 'min-w-[110px] flex-shrink-0 p-3' : 'w-full p-4'} bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600 hover:border-teal-500 transition text-left group relative overflow-hidden`}
                         >
-                            <div className="flex justify-between items-end mb-2 relative z-10">
-                                <span className="text-2xl font-bold text-slate-800 dark:text-white group-hover:text-teal-600 dark:group-hover:text-teal-300">{result.type}</span>
-                                <span className="text-lg font-mono font-bold text-teal-600 dark:text-teal-400">{result.percentage}%</span>
+                            <div className={`flex ${isMobile ? 'flex-col items-start' : 'justify-between items-end'} mb-1 relative z-10`}>
+                                <span className={`${isMobile ? 'text-lg' : 'text-2xl'} font-bold text-slate-800 dark:text-white group-hover:text-teal-600 dark:group-hover:text-teal-300`}>{result.type}</span>
+                                <span className={`${isMobile ? 'text-xs' : 'text-lg'} font-mono font-bold text-teal-600 dark:text-teal-400`}>{result.percentage}%</span>
                             </div>
                             {/* Progress Bar Background */}
                             <div className="absolute bottom-0 left-0 h-1 bg-teal-500/20 w-full">
                                 <div className="h-full bg-teal-500" style={{ width: `${result.percentage}%` }}></div>
                             </div>
-                            <p className="text-sm text-slate-600 dark:text-slate-300 relative z-10">{result.reason}</p>
+                            {!isMobile && <p className="text-sm text-slate-600 dark:text-slate-300 relative z-10 line-clamp-1">{result.reason}</p>}
+                            {isMobile && <div className="text-[9px] text-slate-400 font-bold uppercase tracking-tight">点击查看报告</div>}
                         </button>
                     ))}
                 </div>
 
                 <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700 text-center flex flex-col gap-3">
                     {isSoloTest && (
-                        <>
-                            <button
-                                onClick={() => {
-                                    // Use the top result as default, or let user choose
-                                    const topResult = analysisResults[0]?.type || 'INTJ';
-                                    setSelectedMbtiForReport(topResult);
-                                    setShowQuickReport(true);
-                                }}
-                                className="w-full py-4 bg-gradient-to-r from-teal-600 to-indigo-600 text-white rounded-xl font-bold hover:brightness-110 shadow-lg shadow-teal-500/20 flex items-center justify-center gap-2 transition"
-                            >
-                                <Sparkles size={20} /> 查看深度解析报告
-                            </button>
-                            <button onClick={() => onBackToHub && onBackToHub()} className="w-full py-3 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-white rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-600 transition">
-                                完成测试，返回主页
-                            </button>
-                        </>
+                        <button onClick={() => onBackToHub && onBackToHub()} className="w-full py-3 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-white rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-600 transition">
+                            完成测试，返回主页
+                        </button>
                     )}
                     <button onClick={() => setStep('setup')} className="text-slate-500 hover:text-slate-800 dark:hover:text-white text-sm">
-                        {isSoloTest ? '都不准？去游戏手动选择' : '都不准？手动选择'}
+                        都不准？{isSoloTest ? '跳转到彩虹船游戏模式' : '手动选择'}
                     </button>
                 </div>
             </div>

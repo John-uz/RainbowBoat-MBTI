@@ -1343,6 +1343,7 @@ function App() {
                 <main className="flex-1 relative overflow-hidden">
                     <MBTIHub onSelectMode={handleHubSelect} onOpenConfig={() => setShowConfig(true)} isMobile={isMobile} />
                 </main>
+                {showConfig && <AIConfigModal onClose={() => setShowConfig(false)} />}
             </div>
         );
     }
@@ -1359,6 +1360,7 @@ function App() {
                 toggleTheme={toggleTheme}
                 initialStep={isQuickTestMode ? 'quiz' : 'setup'}
                 isSoloTest={isQuickTestMode}
+                isMobile={isMobile}
                 onBackToHub={resetGame}
                 onShowQuickReport={handleShowQuickReport}
             />

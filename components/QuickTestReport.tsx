@@ -1,14 +1,15 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import { Anchor, Sparkles, Heart, Brain, Zap, Users, Star, ArrowRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Anchor, Sparkles, Heart, Brain, Zap, Users, Star, ArrowRight, Loader2, Quote } from 'lucide-react';
 import { MBTI_CHARACTERS, MBTI_GROUPS, MBTI_STACKS, JUNG_FUNCTIONS } from '../types';
-import { MBTIAnalysisResult } from '../services/geminiService';
+import { MBTIAnalysisResult, generateDetailedMBTIReport, MBTIDetailedReport } from '../services/geminiService';
 
 interface Props {
     playerName: string;
     mbtiType: string;
     analysisResults: MBTIAnalysisResult[];
     onBackToHub: () => void;
+    answers: { q: string, val: number }[];
 }
 
 // 内置的MBTI类型描述
@@ -150,205 +151,235 @@ const MBTI_DESCRIPTIONS: Record<string, {
     }
 };
 
-const QuickTestReport: React.FC<Props> = ({ playerName, mbtiType, analysisResults, onBackToHub }) => {
-    const typeInfo = MBTI_DESCRIPTIONS[mbtiType] || MBTI_DESCRIPTIONS['INTJ'];
-    const character = MBTI_CHARACTERS[mbtiType] || '未知';
-    const stack = MBTI_STACKS[mbtiType] || [];
+const QuickTestReport: React.FC<Props> = ({ playerName, mbtiType, analysisResults, onBackToHub, answers }) => {
+    const [currentType, setCurrentType] = useState(mbtiType);
+    const [report, setReport] = useState<MBTIDetailedReport | null>(null);
+    const [loading, setLoading] = useState(false);
 
-    // Find group
+    useEffect(() => {
+        const fetchReport = async () => {
+            setLoading(true);
+            try {
+                // Initial short delay for smoother transition
+                const data = await generateDetailedMBTIReport(currentType, answers);
+                setReport(data);
+            } catch (e) {
+                console.error("Failed to fetch detailed AI report", e);
+                // Fallback to static data if AI fails
+                const staticInfo = MBTI_DESCRIPTIONS[currentType] || MBTI_DESCRIPTIONS['INTJ'];
+                setReport({
+                    type: currentType,
+                    title: staticInfo.title,
+                    nickname: staticInfo.nickname,
+                    description: staticInfo.description,
+                    strengths: staticInfo.strengths,
+                    growth: staticInfo.growth,
+                    socialTip: staticInfo.socialTip,
+                    monologue: "探索中的灵魂，总会找到属于自己的答案。"
+                });
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchReport();
+    }, [currentType]);
+
+    // Derived values for UI
+    const character = MBTI_CHARACTERS[currentType] || '秘密角色';
+    const stack = MBTI_STACKS[currentType] || [];
+
     let groupName = '';
-    let groupColor = '';
+    let groupColor = '#14b8a6';
     Object.entries(MBTI_GROUPS).forEach(([name, data]) => {
-        if (data.types.includes(mbtiType)) {
+        if (data.types.includes(currentType)) {
             groupName = name;
             groupColor = data.hexColor;
         }
     });
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white overflow-y-auto touch-pan-y">
-            {/* Decorative Background */}
-            <div className="fixed inset-0 pointer-events-none">
-                <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[50%] bg-purple-500/10 rounded-full blur-[150px]" />
-                <div className="absolute bottom-[-20%] left-[-10%] w-[50%] h-[50%] bg-teal-500/10 rounded-full blur-[150px]" />
+        <div className="min-h-screen bg-slate-950 text-white overflow-y-auto selection:bg-teal-500/30">
+            {/* Dynamic Background */}
+            <div className="fixed inset-0 pointer-events-none overflow-hidden">
+                <motion.div
+                    animate={{
+                        scale: [1, 1.2, 1],
+                        rotate: [0, 90, 0],
+                    }}
+                    transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                    className="absolute top-[-20%] right-[-10%] w-[60%] h-[60%] rounded-full blur-[120px] opacity-20"
+                    style={{ backgroundColor: groupColor }}
+                />
+                <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-600/10 rounded-full blur-[100px]" />
             </div>
 
-            <div className="relative z-10 max-w-2xl mx-auto px-6 py-12">
-                {/* Header */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="text-center mb-12"
-                >
-                    <div className="inline-block px-4 py-2 bg-gradient-to-r from-teal-500/20 to-purple-500/20 rounded-full border border-white/10 mb-6">
-                        <span className="text-sm font-bold text-teal-300">🎯 AI 趣味快测结果</span>
+            <div className="relative z-10 max-w-2xl mx-auto px-6 py-10">
+                {/* Header Selector */}
+                <div className="flex flex-col items-center mb-10">
+                    <div className="inline-block px-4 py-2 bg-white/5 rounded-full border border-white/10 mb-6 backdrop-blur-md">
+                        <span className="text-[10px] font-black tracking-[0.2em] text-teal-400 uppercase">人格可能性切换</span>
                     </div>
-                    <h1 className="text-4xl md:text-5xl font-black mb-4">
-                        {playerName || '探索者'}，你好！
-                    </h1>
-                    <p className="text-slate-400 text-lg">根据你的选择，AI 认为你最可能是...</p>
-                </motion.div>
 
-                {/* Main Type Card */}
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.2 }}
-                    className="bg-slate-800/50 backdrop-blur-xl rounded-3xl border border-white/10 p-8 mb-8 text-center"
-                >
-                    <div
-                        className="inline-flex items-center justify-center w-24 h-24 rounded-full mb-6 text-4xl font-black"
-                        style={{ backgroundColor: `${groupColor}30`, border: `3px solid ${groupColor}` }}
-                    >
-                        {mbtiType}
+                    <div className="flex items-center gap-2 p-1.5 bg-white/5 backdrop-blur-2xl rounded-2xl border border-white/10 w-full max-w-sm">
+                        {analysisResults.slice(0, 3).map((res) => (
+                            <button
+                                key={res.type}
+                                onClick={() => setCurrentType(res.type)}
+                                className={`flex-1 py-3 rounded-xl transition-all duration-300 relative ${currentType === res.type ? 'bg-white shadow-xl scale-105 z-10' : 'hover:bg-white/5'}`}
+                            >
+                                <div className={`text-sm font-black ${currentType === res.type ? 'text-slate-900' : 'text-slate-500'}`}>{res.type}</div>
+                                <div className={`text-[9px] font-bold ${currentType === res.type ? 'text-teal-600' : 'text-slate-600'}`}>{res.percentage}%</div>
+                                {currentType === res.type && (
+                                    <motion.div layoutId="active-tab" className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-teal-500 rounded-full" />
+                                )}
+                            </button>
+                        ))}
                     </div>
-                    <h2 className="text-3xl font-bold mb-2">{typeInfo.title}</h2>
-                    <p className="text-slate-400 mb-4">{typeInfo.nickname}</p>
-                    <div className="flex justify-center gap-2 mb-6">
-                        <span className="px-3 py-1 bg-slate-700/50 rounded-full text-xs text-slate-300">{groupName}</span>
-                        <span className="px-3 py-1 bg-slate-700/50 rounded-full text-xs text-slate-300">代表角色: {character}</span>
-                    </div>
-                    <p className="text-slate-300 leading-relaxed">{typeInfo.description}</p>
-                </motion.div>
-
-                {/* AI Analysis Results */}
-                {analysisResults.length > 0 && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.3 }}
-                        className="bg-slate-800/30 backdrop-blur rounded-2xl border border-white/5 p-6 mb-8"
-                    >
-                        <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                            <Sparkles size={20} className="text-teal-400" />
-                            AI 匹配分析
-                        </h3>
-                        <div className="space-y-3">
-                            {analysisResults.map((result, idx) => (
-                                <div
-                                    key={result.type}
-                                    className={`flex items-center justify-between p-3 rounded-xl ${result.type === mbtiType ? 'bg-teal-500/20 border border-teal-500/30' : 'bg-slate-700/30'}`}
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <span className={`font-bold ${result.type === mbtiType ? 'text-teal-300' : 'text-slate-400'}`}>
-                                            {result.type}
-                                        </span>
-                                        <span className="text-slate-400 text-sm">{result.reason}</span>
-                                    </div>
-                                    <span className={`font-mono font-bold ${result.type === mbtiType ? 'text-teal-400' : 'text-slate-500'}`}>
-                                        {result.percentage}%
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                    </motion.div>
-                )}
-
-                {/* Cognitive Stack */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.4 }}
-                    className="bg-slate-800/30 backdrop-blur rounded-2xl border border-white/5 p-6 mb-8"
-                >
-                    <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                        <Brain size={20} className="text-purple-400" />
-                        认知功能栈
-                    </h3>
-                    <div className="grid grid-cols-4 gap-2">
-                        {stack.slice(0, 4).map((func, idx) => {
-                            const funcInfo = JUNG_FUNCTIONS.find(f => f.id === func);
-                            return (
-                                <div
-                                    key={idx}
-                                    className="p-3 rounded-xl text-center"
-                                    style={{ backgroundColor: `${funcInfo?.color}20` }}
-                                >
-                                    <div className="font-bold text-lg" style={{ color: funcInfo?.color }}>{func}</div>
-                                    <div className="text-[10px] text-slate-400 mt-1">
-                                        {idx === 0 ? '主导' : idx === 1 ? '辅助' : idx === 2 ? '第三' : '劣势'}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </motion.div>
-
-                {/* Strengths & Growth */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                    <motion.div
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.5 }}
-                        className="bg-emerald-500/10 backdrop-blur rounded-2xl border border-emerald-500/20 p-6"
-                    >
-                        <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-emerald-400">
-                            <Star size={20} />
-                            核心优势
-                        </h3>
-                        <ul className="space-y-2">
-                            {typeInfo.strengths.map((s, idx) => (
-                                <li key={idx} className="flex items-center gap-2 text-slate-300">
-                                    <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
-                                    {s}
-                                </li>
-                            ))}
-                        </ul>
-                    </motion.div>
-
-                    <motion.div
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.5 }}
-                        className="bg-amber-500/10 backdrop-blur rounded-2xl border border-amber-500/20 p-6"
-                    >
-                        <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-amber-400">
-                            <Zap size={20} />
-                            成长方向
-                        </h3>
-                        <ul className="space-y-2">
-                            {typeInfo.growth.map((g, idx) => (
-                                <li key={idx} className="flex items-center gap-2 text-slate-300">
-                                    <div className="w-1.5 h-1.5 bg-amber-400 rounded-full" />
-                                    {g}
-                                </li>
-                            ))}
-                        </ul>
-                    </motion.div>
                 </div>
 
-                {/* Social Tip */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.6 }}
-                    className="bg-gradient-to-r from-teal-500/10 to-purple-500/10 backdrop-blur rounded-2xl border border-white/10 p-6 mb-12"
-                >
-                    <h3 className="text-lg font-bold mb-3 flex items-center gap-2">
-                        <Heart size={20} className="text-pink-400" />
-                        社交小贴士
-                    </h3>
-                    <p className="text-slate-300 leading-relaxed italic">"{typeInfo.socialTip}"</p>
-                </motion.div>
+                <AnimatePresence mode="wait">
+                    {loading ? (
+                        <motion.div
+                            key="loading"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="flex flex-col items-center justify-center py-20"
+                        >
+                            <Loader2 size={48} className="text-teal-500 animate-spin mb-6" />
+                            <p className="text-slate-400 font-medium animate-pulse">AI 正在深度解析 {currentType} 的灵魂代码...</p>
+                        </motion.div>
+                    ) : (
+                        report && (
+                            <motion.div
+                                key={currentType}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -20 }}
+                                className="space-y-8"
+                            >
+                                {/* Main Banner */}
+                                <div className="text-center">
+                                    <h1 className="text-4xl md:text-6xl font-black mb-4 tracking-tighter">
+                                        {playerName} <span className="text-slate-500">x</span> <span style={{ color: groupColor }}>{currentType}</span>
+                                    </h1>
+                                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-900 border border-white/10 text-xs font-bold shadow-inner">
+                                        <Sparkles size={12} className="text-yellow-400" />
+                                        {report.title}
+                                    </div>
+                                </div>
 
-                {/* Action Buttons */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.7 }}
-                    className="flex flex-col gap-4"
-                >
+                                {/* Deep Insight Card */}
+                                <div className="bg-slate-900/80 backdrop-blur-xl rounded-[2.5rem] border border-white/10 p-8 shadow-2xl relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 p-6 opacity-10">
+                                        <Quote size={80} style={{ color: groupColor }} />
+                                    </div>
+
+                                    <div className="relative z-10">
+                                        <div className="flex items-center gap-3 mb-6">
+                                            <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold text-xl shadow-lg rotate-3" style={{ backgroundColor: groupColor }}>
+                                                {currentType[0]}
+                                            </div>
+                                            <div className="text-left">
+                                                <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">灵魂点评</div>
+                                                <div className="text-sm font-bold text-slate-200">{report.nickname}</div>
+                                            </div>
+                                        </div>
+
+                                        <p className="text-lg text-slate-300 leading-relaxed font-medium mb-8">
+                                            {report.description}
+                                        </p>
+
+                                        {/* Inner Monologue */}
+                                        <div className="p-6 bg-white/5 rounded-3xl border border-white/5 italic text-slate-400 text-sm leading-relaxed text-center quote-mark relative">
+                                            <span className="text-2xl text-slate-600 absolute -top-2 left-4 opacity-50">“</span>
+                                            {report.monologue}
+                                            <span className="text-2xl text-slate-600 absolute -bottom-6 right-4 opacity-50">”</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Cognitive Stack Mini */}
+                                <div className="grid grid-cols-4 gap-3">
+                                    {stack.slice(0, 4).map((func, idx) => {
+                                        const funcInfo = JUNG_FUNCTIONS.find(f => f.id === func);
+                                        return (
+                                            <div key={idx} className="bg-slate-900/50 backdrop-blur rounded-2xl border border-white/5 p-3 text-center group hover:bg-white/5 transition-colors">
+                                                <div className="text-xs font-black mb-1" style={{ color: funcInfo?.color }}>{func}</div>
+                                                <div className="text-[8px] text-slate-600 uppercase font-black">{['主导', '辅助', '第三', '劣势'][idx]}</div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                {/* Strengths & Growth */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="bg-teal-500/5 rounded-3xl border border-teal-500/10 p-6">
+                                        <h3 className="text-teal-400 font-black text-sm uppercase tracking-widest mb-4 flex items-center gap-2">
+                                            <Star size={16} /> 高光时刻
+                                        </h3>
+                                        <ul className="space-y-3">
+                                            {report.strengths.map((s, i) => (
+                                                <li key={i} className="flex items-start gap-2 text-sm text-slate-300 font-medium">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-teal-500 mt-1.5 shrink-0" />
+                                                    {s}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                    <div className="bg-amber-500/5 rounded-3xl border border-amber-500/10 p-6">
+                                        <h3 className="text-amber-400 font-black text-sm uppercase tracking-widest mb-4 flex items-center gap-2">
+                                            <Zap size={16} /> 升级指南
+                                        </h3>
+                                        <ul className="space-y-3">
+                                            {report.growth.map((g, i) => (
+                                                <li key={i} className="flex items-start gap-2 text-sm text-slate-300 font-medium">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0" />
+                                                    {g}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                {/* Character & Tip */}
+                                <div className="flex flex-col md:flex-row gap-4">
+                                    <div className="flex-1 bg-white/5 rounded-2xl p-4 flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-xl shadow-inner">
+                                            🎭
+                                        </div>
+                                        <div>
+                                            <div className="text-[10px] font-black text-slate-500 uppercase">代表角色</div>
+                                            <div className="text-sm font-bold text-slate-300">{character}</div>
+                                        </div>
+                                    </div>
+                                    <div className="flex-[2] bg-gradient-to-r from-teal-500/10 to-blue-500/10 rounded-2xl p-4 flex items-center gap-4 border border-white/5">
+                                        <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-teal-400">
+                                            <Heart size={20} />
+                                        </div>
+                                        <div className="text-sm font-medium text-slate-300 italic">
+                                            "{report.socialTip}"
+                                        </div>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )
+                    )}
+                </AnimatePresence>
+
+                {/* Footer Actions */}
+                <div className="mt-12 pt-10 border-t border-white/5 flex flex-col gap-4">
                     <button
                         onClick={onBackToHub}
-                        className="w-full py-4 bg-gradient-to-r from-teal-600 to-blue-600 hover:brightness-110 rounded-2xl font-bold text-white shadow-lg transition-all flex items-center justify-center gap-2"
+                        className="w-full py-4 bg-white text-slate-900 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-teal-400 transition-colors shadow-2xl flex items-center justify-center gap-2"
                     >
-                        <Anchor size={20} />
-                        返回 MBTI Hub
+                        <Anchor size={18} />
+                        返回 MBTI HUB
                     </button>
-                    <p className="text-center text-slate-500 text-sm">
-                        想要更深入的探索？试试"上船开 Party"多人模式！
+                    <p className="text-center text-slate-600 text-[10px] font-bold uppercase tracking-[0.3em]">
+                        RAINBOW BOAT人格实验室 · ALPHA 0.2
                     </p>
-                </motion.div>
+                </div>
             </div>
         </div>
     );
