@@ -191,10 +191,24 @@ const AIConfigModal: React.FC<Props> = ({ onClose }) => {
 
                     {activeTab === 'prompts' && (
                         <div className="space-y-6">
+                            {/* Design Philosophy */}
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-teal-400 uppercase tracking-wider flex items-center gap-1">
+                                    游戏哲学与最高指令 (Soul)
+                                </label>
+                                <textarea
+                                    value={config.designPhilosophy}
+                                    onChange={(e) => setConfig({ ...config, designPhilosophy: e.target.value })}
+                                    className="w-full h-28 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-300 focus:border-teal-500 outline-none resize-none font-mono leading-relaxed"
+                                    placeholder="游戏的灵魂..."
+                                />
+                                <p className="text-[10px] text-slate-500">定义应用的核心价值观，用于指导 AI 生成内容的温度和方向。</p>
+                            </div>
+
                             {/* Persona */}
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-purple-400 uppercase tracking-wider flex items-center gap-1">
-                                    System Persona (核心人设)
+                                    核心人设 (Identity)
                                 </label>
                                 <textarea
                                     value={config.systemPersona}
@@ -208,7 +222,7 @@ const AIConfigModal: React.FC<Props> = ({ onClose }) => {
                             {/* Task Gen */}
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-green-400 uppercase tracking-wider flex items-center gap-1">
-                                    Task Generation Instruction (任务生成指令)
+                                    任务生成指令 (Instruction)
                                 </label>
                                 <textarea
                                     value={config.taskPromptTemplate}
@@ -221,7 +235,7 @@ const AIConfigModal: React.FC<Props> = ({ onClose }) => {
                             {/* Report Gen */}
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-yellow-400 uppercase tracking-wider flex items-center gap-1">
-                                    Report & Analysis Instruction (结算与深度分析)
+                                    结算与深度分析 (Logic)
                                 </label>
                                 <textarea
                                     value={config.reportPromptTemplate}

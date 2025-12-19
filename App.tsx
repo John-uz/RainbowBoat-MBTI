@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { GameMode, GameState, Player, JUNG_FUNCTIONS, MBTI_TYPES, MBTI_STACKS, BoardTile, getHexNeighbors, getGridNeighbors, BOT_NAMES, TASK_CATEGORIES_CONFIG, ScoreModifier, SpecialAbility, MBTI_GROUPS, MBTI_CHARACTERS } from './types';
+import { GameMode, GameState, Player, JUNG_FUNCTIONS, MBTI_TYPES, MBTI_STACKS, BoardTile, getHexNeighbors, getGridNeighbors, BOT_NAMES, TASK_CATEGORIES_CONFIG, ScoreModifier, SpecialAbility, MBTI_GROUPS, MBTI_CHARACTERS, LogEntry } from './types';
 import Onboarding from './components/Onboarding';
 import GameBoard from './components/GameBoard';
 import GameReport from './components/GameReport';
@@ -555,6 +555,30 @@ function App() {
     }, [gameState.subPhase, gameState.currentReviewerId]);
 
     // --- LOGIC: NEXT STEP FINDER ---
+    const calculatePotentialLandingTiles = (player: Player, steps: number): number[] => {
+        if (steps <= 0) return [player.position];
+
+        // Use a set to track unique landing tiles
+        let currentLevel = [player.position];
+        // Track the previous position to avoid going back at each step
+        let prevPosMap: Record<number, number | null> = { [player.position]: player.previousPosition };
+
+        for (let s = 0; s < steps; s++) {
+            let nextLevel: Set<number> = new Set();
+            for (const pos of currentLevel) {
+                const tempPlayer = { ...player, position: pos, previousPosition: prevPosMap[pos] ?? null };
+                const moves = calculateValidNextSteps(tempPlayer, board);
+                moves.forEach(m => {
+                    nextLevel.add(m);
+                    if (prevPosMap[m] === undefined) prevPosMap[m] = pos;
+                });
+            }
+            currentLevel = Array.from(nextLevel);
+            if (currentLevel.length === 0) break;
+        }
+        return currentLevel;
+    };
+
     const calculateValidNextSteps = (player: Player, currentBoard: BoardTile[]): number[] => {
         const currentTile = currentBoard.find(t => t.index === player.position);
         if (!currentTile) return [];
@@ -753,17 +777,28 @@ function App() {
             // Randomize sight range (1 or 2)
             const newSightRange = Math.random() > 0.5 ? 2 : 1;
 
-            setGameState(prev => ({
-                ...prev,
-                diceValue: roll,
-                remainingSteps: roll,
-                sightRange: newSightRange,
-                movementState: 'IDLE',
-                activeModifier: 'NORMAL',
-                activeSpecialAbility: 'NONE',
-                helperId: null,
-                scoreTargetPlayerId: null
-            }));
+            setGameState(prev => {
+                const newState: GameState = {
+                    ...prev,
+                    diceValue: roll,
+                    remainingSteps: roll,
+                    sightRange: newSightRange,
+                    movementState: 'IDLE',
+                    activeModifier: 'NORMAL' as ScoreModifier,
+                    activeSpecialAbility: 'NONE' as SpecialAbility,
+                    helperId: null,
+                    scoreTargetPlayerId: null,
+                    // Clear cache for new turn to avoid memory issues or stale data
+                    pregeneratedTasks: {}
+                };
+
+                // PREDICTIVE FETCHING:
+                // Find potential landing tiles based on full dice roll
+                const landingTiles = calculatePotentialLandingTiles(player, roll);
+                prefetchTasks(landingTiles, prev.players, prev.logs);
+
+                return newState;
+            });
 
             // Reset Bonus
             setHighEnergyBonus(false);
@@ -821,13 +856,49 @@ function App() {
             if (isTeleportLanding || gameState.remainingSteps === 1) {
                 finishMovementAndTriggerEvent(targetTile, isTeleportLanding);
             } else {
-                setGameState(prev => ({ ...prev, movementState: 'IDLE' }));
+                setGameState(prev => {
+                    // PREDICTIVE FETCHING for subsequent steps
+                    const nextSteps = calculateValidNextSteps(prev.players[prev.currentPlayerIndex], board);
+                    prefetchTasks(nextSteps, prev.players, prev.logs);
+                    return { ...prev, movementState: 'IDLE' };
+                });
             }
         }, 600);
     }
 
+    const prefetchTasks = async (tileIndices: number[], players: Player[], logs: LogEntry[]) => {
+        const currentPlayer = players[gameState.currentPlayerIndex];
+
+        tileIndices.forEach(async (idx) => {
+            const tile = board.find(t => t.index === idx);
+            if (!tile) return;
+
+            // Check if already in cache or being fetched
+            const cacheKey = idx.toString();
+            // Note: In a real app we might want a 'fetching' state to avoid duplicate requests
+            // but for simplicity we'll just check if it exists
+
+            setGameState(prev => {
+                if (prev.pregeneratedTasks?.[cacheKey]) return prev;
+
+                // Trigger generation
+                generateAllTaskOptions(tile.functionId, prev.players, currentPlayer, prev.logs).then(tasks => {
+                    setGameState(latest => ({
+                        ...latest,
+                        pregeneratedTasks: {
+                            ...(latest.pregeneratedTasks || {}),
+                            [cacheKey]: tasks
+                        }
+                    }));
+                });
+                return prev;
+            });
+        });
+    };
+
     const finishMovementAndTriggerEvent = (tile: BoardTile, justTeleported: boolean) => {
         const player = gameState.players[gameState.currentPlayerIndex];
+        const cacheKey = tile.index.toString();
 
         setGameState(prev => ({ ...prev, movementState: 'IDLE' }));
 
@@ -842,19 +913,33 @@ function App() {
             return;
         }
 
-        // Generate Tasks
-        generateAllTaskOptions(tile.functionId, gameState.players, player, gameState.logs).then(tasks => {
-            setGameState(prev => ({ ...prev, pregeneratedTasks: tasks }));
-        });
+        // Check Cache first
+        if (gameState.pregeneratedTasks?.[cacheKey]) {
+            setGameState(prev => ({
+                ...prev,
+                subPhase: 'SELECTING_CARD',
+                selectedTask: null,
+                hasReselected: false
+            }));
+        } else {
+            // Generate Tasks if not in cache
+            generateAllTaskOptions(tile.functionId, gameState.players, player, gameState.logs).then(tasks => {
+                setGameState(prev => ({
+                    ...prev,
+                    pregeneratedTasks: {
+                        ...(prev.pregeneratedTasks || {}),
+                        [cacheKey]: tasks
+                    }
+                }));
+            });
 
-        setGameState(prev => ({
-            ...prev,
-            subPhase: 'SELECTING_CARD',
-            selectedTask: null,
-            hasReselected: false,
-            scoreTargetPlayerId: prev.scoreTargetPlayerId,
-            helperId: prev.helperId
-        }));
+            setGameState(prev => ({
+                ...prev,
+                subPhase: 'SELECTING_CARD',
+                selectedTask: null,
+                hasReselected: false
+            }));
+        }
 
         addLog(`抵达 ${tile.characterName || tile.functionId}，正在翻开命运牌...`, 'system');
     };
@@ -941,7 +1026,10 @@ function App() {
     };
 
     const handleSelectCategory = (category: 'standard' | 'truth' | 'dare' | 'deep') => {
-        const cached = gameState.pregeneratedTasks?.[category];
+        const cacheKey = gameState.currentTile?.index.toString() || "";
+        const tileCache = gameState.pregeneratedTasks?.[cacheKey];
+        const cached = tileCache ? tileCache[category] : null;
+
         if (cached) {
             setGameState(prev => ({ ...prev, subPhase: 'VIEWING_TASK', selectedTask: cached }));
             activateCamera();
@@ -950,7 +1038,14 @@ function App() {
             const tile = gameState.currentTile;
             if (tile) {
                 generateAllTaskOptions(tile.functionId, gameState.players, gameState.players[gameState.currentPlayerIndex], gameState.logs).then(tasks => {
-                    setGameState(prev => ({ ...prev, selectedTask: tasks[category], pregeneratedTasks: tasks }));
+                    setGameState(prev => ({
+                        ...prev,
+                        selectedTask: tasks[category],
+                        pregeneratedTasks: {
+                            ...(prev.pregeneratedTasks || {}),
+                            [tile.index.toString()]: tasks
+                        }
+                    }));
                     activateCamera();
                 });
             }
@@ -958,12 +1053,15 @@ function App() {
     };
 
     const handleReselect = () => {
-        if (gameState.hasReselected || !gameState.pregeneratedTasks) return;
+        const cacheKey = gameState.currentTile?.index.toString() || "";
+        const tileCache = gameState.pregeneratedTasks?.[cacheKey];
+        if (gameState.hasReselected || !tileCache) return;
+
         const categories: ('standard' | 'truth' | 'dare' | 'deep')[] = ['standard', 'truth', 'dare', 'deep'];
         const currentCat = gameState.selectedTask?.category;
         const available = categories.filter(c => c !== currentCat);
         const randomCat = available[Math.floor(Math.random() * available.length)];
-        setGameState(prev => ({ ...prev, hasReselected: true, selectedTask: prev.pregeneratedTasks![randomCat] }));
+        setGameState(prev => ({ ...prev, hasReselected: true, selectedTask: tileCache[randomCat] }));
     };
 
     const handleSkip = () => {
@@ -1020,12 +1118,21 @@ function App() {
         }, 1000);
     };
 
-    // Auto-capture keyframes for Vision Analysis
+    // Task-Driven Sampling (Blue Water 4.0 Phase 3)
     useEffect(() => {
-        if (gameState.subPhase !== 'TASK_EXECUTION' || !isCameraActive || !cameraStream) return;
+        if (gameState.subPhase !== 'TASK_EXECUTION' || !isCameraActive || !cameraStream || !gameState.selectedTask) return;
 
-        const captureInterval = setInterval(async () => {
-            if (videoRef.current && canvasRef.current) {
+        const task = gameState.selectedTask;
+        const isDare = task.category === 'dare' ||
+            /动作|模仿|表演|姿势|跳舞|运动/.test(task.description + task.title);
+
+        if (!isDare) return;
+
+        const duration = task.durationSeconds;
+        const captureTimes = [Math.floor(duration * 0.5), Math.floor(duration * 0.1)]; // 50% and 90% (remaining)
+
+        const checkInterval = setInterval(async () => {
+            if (captureTimes.includes(taskTimer) && videoRef.current && canvasRef.current) {
                 const video = videoRef.current;
                 const canvas = canvasRef.current;
                 const context = canvas.getContext('2d');
@@ -1035,15 +1142,17 @@ function App() {
                     context.drawImage(video, 0, 0, canvas.width, canvas.height);
                     const base64 = canvas.toDataURL('image/jpeg', 0.6);
 
-                    // Call AI to translate visual to text evidence (Semantic Compression)
-                    const summary = await analyzeVisualAspect(base64, gameState.selectedTask?.title || "MBTI 互动");
-                    setVisualEvidence(prev => [...prev.slice(-2), summary]); // Keep last 3 visual snapshots
+                    // Call AI to translate visual to text evidence
+                    analyzeVisualAspect(base64, task.title).then(summary => {
+                        setVisualEvidence(prev => [...prev, summary]);
+                        addLog(`[AI 观测]: ${summary}`, 'system');
+                    });
                 }
             }
-        }, 15000); // Every 15 seconds
+        }, 1000);
 
-        return () => clearInterval(captureInterval);
-    }, [gameState.subPhase, isCameraActive, cameraStream]);
+        return () => clearInterval(checkInterval);
+    }, [gameState.subPhase, taskTimer, isCameraActive, cameraStream, gameState.selectedTask]);
 
     // Ensure camera stream is attached when video element appears
     useEffect(() => {

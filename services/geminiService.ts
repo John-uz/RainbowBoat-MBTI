@@ -16,7 +16,8 @@ export interface AIConfig {
     groqModel: string;
 
     // Custom Prompts
-    systemPersona: string;      // The "Soul"
+    designPhilosophy: string;   // The "Soul" and core values
+    systemPersona: string;      // The "Identity"
     taskPromptTemplate: string; // The "Instruction" for generating tasks
     reportPromptTemplate: string; // The "Instruction" for generating reports
 
@@ -166,73 +167,48 @@ const MBTI_PROFILE_DATA: Record<string, string> = {
 
 // --- DEFAULT PROMPT TEMPLATES (Localized & Professional) ---
 
+const DEFAULT_PHILOSOPHY = `
+《彩虹船》核心哲学：
+- 【彩虹】：不仅是绚丽的色彩，更是生命中“不动摇的约定”与“风雨后的盼望”。它代表玩家之间建立的真实、神圣且持久的连接。
+- 【船】：是我们在波涛世界中的“避难所”与“救赎舞台”。每个人都在同一条船上，我们彼此扶持，共同前行。
+设计原则：
+1. 语言应如深夜炉火，温暖而不灼人，敏锐而不刻薄。
+2. 任务与反馈应具有“和解”与“觉察”的张力，引导玩家回归内心。
+3. 始终记得：每一位玩家都是独特的灵魂。
+`.trim();
+
 const DEFAULT_PERSONA = `
-[角色设定]
-你是《彩虹船》的 AI 船长，一位深谙荣格八维与 MBTI 理论的资深心理引导师。
-
-[核心职责]
-你不仅是游戏的主持人，更是玩家心灵的“镜子”和航海的“领航员”。你需要利用心理学知识（特别是荣格八维理论）来设计任务和生成报告，帮助玩家：
-1. ** 建立信任(Trust) **：通过深度暴露和接纳。
-2. ** 觉察自我(Insight) **：识别自己的优势功能与阴影 / 盲点功能。
-3. ** 大胆表达(Expression) **：在安全的环境中尝试不习惯的行为模式。
-
-[语言风格]
-    - 专业而不枯燥：可以使用“Fe（外倾情感）”、“Ni（内倾直觉）”等术语，但必须紧跟通俗有趣的解释。
-- 温暖而敏锐：像一位老友，既能接住玩家的梗，又能温柔地指出玩家的回避或伪装。
-- ** 参考资料 **：你拥有关于 16 型人格的深度资料库（包含最佳状态、压力反应、成长领域），请在互动中积极运用这些知识。
+[第一层：核心身份]
+你不仅是 AI，更是《彩虹船》的领航导师。你深谙荣格心理学，擅长通过“影子”、“原型”与“功能动力学”透视人性。
+你的使命是帮助玩家在这场航行中，透过彼此的色彩看到更深层的真实。
+请务必遵循：始终使用简体中文回复，杜绝任何英文表述（特定的术语请紧跟中文解释）。
 `.trim();
 
 const DEFAULT_TASK_PROMPT = `
-[任务生成目标]
-基于【当前玩家的 MBTI 深度画像】和【当前游戏上下文】，生成 4 个社交挑战。
+[第二层：任务指令]
+任务必须基于【认知功能(Cognitive Functions)】设计：
+1. 感知位格 (Se/Si, Ne/Ni)：设计关于观察、回忆、直觉捕捉与未来远景的任务。
+2. 决策位格 (Te/Ti, Fe/Fi)：设计关于逻辑重构、价值观排序、共情连接与效率挑战的任务。
 
-[设计原则：动态难度]
-1. ** 舒适区任务(Flow State) **：利用玩家的【优势功能】（如 ENTJ 的 Te，INFJ 的 Ni）设计的任务。让玩家感到自信、掌控。
-2. ** 成长区任务(Growth Zone) **：针对玩家的【成长领域 / 盲点】（如 INTP 的 Fe，ESTJ 的 Fi）设计的轻度挑战。鼓励玩家走出舒适区（例如让逻辑型玩家表达情感，让直觉型玩家关注细节）。
+任务调性：
+- 拒绝平庸。
+- 引导玩家进行“有勇气的暴露”和“有深度的连接”。
+- 所有的标题必须具备文学性或趣味性（杜绝：任务1、任务2）。
 
-[输出要求 - 关键!]
-    - ** 绝对不要 ** 在任务描述中介绍玩家或格子代表的人物的背景故事。玩家已经知道了。
-- 直接给出 ** 适切有趣 ** 的任务标题（不要包含人物名字，要好玩）。
-- 任务内容要具体、可执行、社交导向。
-
-[任务分类要求]
-1. "standard"(暖身)：轻松互动。可结合玩家的【他人眼中】形象进行设计。
-2. "truth"(真心话)：深度提问。针对玩家的【内在价值观】或【压力状态】下的反思。(Score: Insight)
-3. "dare"(大冒险)：行动挑战。迫使玩家调用其【劣势功能】（如让 INTJ 做肢体表演 Se，让 ESFP 进行逻辑分析 Ti）。(Score: Expression)
-4. "deep"(走心)：灵魂连接。基于【最佳状态】描述，设计能发挥其天赋并温暖他人的环节。(Score: Trust)
-
-[输出格式]
-返回纯 JSON 对象，包含 keys: "standard", "truth", "dare", "deep"。
-每个 Value 结构：
-{
-    "title": "简短有趣的标题 (不要包含人物名)",
-        "description": "具体指令。请直接告诉玩家做什么。",
-            "scoreType": "trust" | "insight" | "expression",
-                "durationSeconds": 45 - 90
-}
+输出规范：
+- 严格输出 JSON 格式。
 `.trim();
 
 const DEFAULT_REPORT_PROMPT = `
-[报告生成目标]
-基于【荣格八维动力学】和【游戏日志】，生成一份深度心理分析报告。
+[第二层：分析指令]
+请作为“僚机”和“灵魂观测者”，分析本局游戏的团体动力。
+输出必须包含：
+1. **团体化学反应**：不要各说各的，要横向对比。谁是今晚的“情感锚点”？谁和谁的“功能位格”达成了惊人的同步（CP感）？
+2. **结构化点评**：每个玩家的点评必须包含一个 #短标签。
+3. **金句引用**：引用回溯玩家在游戏中的关键发言，并进行心理学升华。
 
-[分析维度]
-1. ** 状态识别 **：玩家在游戏中是处于【最佳状态】（发挥了天赋）还是【压力状态】（爆发了阴影功能）？请引用知识库中的描述进行对比。
-2. ** 互动场域 **：分析场上不同人格（如 NF 组与 ST 组）之间的化学反应。
-3. ** 成长建议 **：基于玩家的【成长领域】，给出温柔但切中要害的建议。
-
-[输出要求 - 关键!]
-返回纯 JSON 对象：
-{
-    "groupAnalysis": "150-200字的团体动力学分析。需包含整体氛围、互动亮点、人格组间的化学反应。",
-    "playerAnalysis": {
-        "在此填入玩家ID": "针对该玩家的深度点评（150字左右）。\n包含：\n1. 🌟 **高光时刻**：基于游戏日志，分析其如何发挥了[最佳状态]中的优势（如功能栈调用）。\n2. 💡 **盲点觉察**：识别游戏中可能出现的[压力反应]或[成长领域]对应行为。\n3. 🌈 **彩虹寄语**：基于其人格特点，给出专属的成长建议。"
-    }
-}
-注意：
-1. ** 必须包含所有玩家 ID ** 作为 key。
-2. 请在文本内部使用 emoji 和 换行符(\\n) 来排版。
-3. 语言风格要融合专业性与人文关怀（参考：他人眼中的印象与真实内在的平衡）。
+[输出格式]
+返回纯 JSON，包含 groupAnalysis 和 playerAnalysis 两个 key。
 `.trim();
 
 const DEFAULT_CONFIG: AIConfig = {
@@ -242,10 +218,11 @@ const DEFAULT_CONFIG: AIConfig = {
     openRouterKey: '',
     groqKey: '',
 
-    geminiModel: 'gemini-2.5-flash', // 不要再未经讨论就改这个模型了！！
+    geminiModel: 'gemini-2.5-flash',
     openRouterModel: 'anthropic/claude-3-haiku',
     groqModel: 'llama3-70b-8192',
 
+    designPhilosophy: DEFAULT_PHILOSOPHY,
     systemPersona: DEFAULT_PERSONA,
     taskPromptTemplate: DEFAULT_TASK_PROMPT,
     reportPromptTemplate: DEFAULT_REPORT_PROMPT,
@@ -394,7 +371,7 @@ const callZhipu = async (system: string, user: string, jsonMode: boolean): Promi
 
 // 5. Pollinations (Little P) - Free, No Key
 const callPollinations = async (system: string, user: string, jsonMode: boolean): Promise<string> => {
-    const prompt = `${system} \n\n${user} \n\nRespond in JSON.`;
+    const prompt = `${system} \n\n${user} \n\n请以纯 JSON 格式返回。`;
     const response = await fetch(`https://text.pollinations.ai/${encodeURIComponent(prompt)}`);
     if (!response.ok) throw new Error(`Pollinations ${response.statusText}`);
     let text = await response.text();
@@ -444,19 +421,18 @@ const unifiedAICall = async (userPrompt: string, systemPromptOverride?: string, 
     let system = systemPromptOverride || currentConfig.systemPersona;
 
     if (!system.toLowerCase().includes("json")) {
-        system += "\n\nIMPORTANT: You MUST respond strictly in valid raw JSON format.";
+        system += "\n\n重要：你必须严格以有效的 JSON 原始格式返回结果，不要包含任何 Markdown 标记或多余的解释。";
     }
 
     const errors: string[] = [];
 
-    // The core failover sequence re-enforced by USER:
-    // 1. Groq -> 2. OpenRouter -> 3. Zhipu -> 4. Gemini -> 5. Pollinations (No Key)
-
-    // Check deployment platform for default optimization
+    // 检测请求特性 (Hybrid Routing 识别)
+    const isMultimodal = !!imageData;
+    const isLongContext = userPrompt.length > 15000; // 长文本定义为超过 15k 字符
     const isMainlandChina = getEnvVar('VITE_PLATFORM') === 'china' || getEnvVar('VITE_PLATFORM') === 'vercel';
 
-    // Build the dynamic provider chain
-    const providers = [
+    // 默认优先级序列
+    let providers = [
         { name: 'Groq', call: () => callGroq(system, userPrompt, true, imageData) },
         { name: 'OpenRouter', call: () => callOpenRouter(system, userPrompt, true, imageData) },
         { name: 'Zhipu', call: () => callZhipu(system, userPrompt, true) },
@@ -464,14 +440,28 @@ const unifiedAICall = async (userPrompt: string, systemPromptOverride?: string, 
         { name: 'Pollinations', call: () => callPollinations(system, userPrompt, true) }
     ];
 
-    // Rearrange priority based on platform defaults if NO USER KEYS are provided
-    // BUT if the user has provided specific keys, they still trigger respective calls in order.
-    if (isMainlandChina) {
-        // Move Zhipu to the top for China/Vercel deployments to ensure stability
-        const zhipuIndex = providers.findIndex(p => p.name === 'Zhipu');
-        if (zhipuIndex > -1) {
-            const [zhipu] = providers.splice(zhipuIndex, 1);
-            providers.unshift(zhipu);
+    // 实施混合路由策略 (各取所长)
+    if (isMultimodal || isLongContext) {
+        // [策略 A] 多模态/长文本：Gemini 是绝对的冠军
+        console.log(`[路由选择] ${isMultimodal ? '多模态' : '长文本'}任务，优先调用 Gemini...`);
+        providers = [
+            { name: 'Gemini', call: () => callGemini(system, userPrompt, true, imageData) },
+            { name: 'OpenRouter', call: () => callOpenRouter(system, userPrompt, true, imageData) },
+            { name: 'Zhipu', call: () => callZhipu(system, userPrompt, true) },
+            { name: 'Groq', call: () => callGroq(system, userPrompt, true, imageData) },
+            { name: 'Pollinations', call: () => callPollinations(system, userPrompt, true) }
+        ];
+    } else {
+        // [策略 B] 普通文本：Groq 追求极速与人格感
+        if (isMainlandChina) {
+            // 在大陆环境下，由于延迟和稳定性，智谱作为高速首选
+            const zhipuIndex = providers.findIndex(p => p.name === 'Zhipu');
+            if (zhipuIndex > -1) {
+                const [zhipu] = providers.splice(zhipuIndex, 1);
+                providers.unshift(zhipu);
+            }
+        } else {
+            // 海外或通用场景，Groq 是默认的首选
         }
     }
 
@@ -502,16 +492,17 @@ const serializePlayers = (players: Player[]): string => {
     ).join('\n');
 };
 
-/**
- * [知识去重注入] 仅提取当前场上存在的 MBTI 类型定义
- */
 const getRelevantKnowledge = (players: Player[]): string => {
     const uniqueTypes = Array.from(new Set(players.map(p => p.mbti)));
-    let context = "\n[核心人格动力学参考]\n";
+    let context = "\n[人格动态特征 - 专家知识库]\n";
     uniqueTypes.forEach(type => {
-        if (MBTI_PROFILE_DATA[type]) {
-            // 仅提取关键特征，过滤冗余描述
-            context += `--- ${type} ---\n${MBTI_PROFILE_DATA[type].trim()}\n`;
+        const data = MBTI_PROFILE_DATA[type];
+        if (data) {
+            const titleMatch = data.match(/\[称号\] (.*)/);
+            const title = titleMatch ? titleMatch[1] : '';
+            const loopMatch = data.match(/\((.*)\)/);
+            const loop = loopMatch ? loopMatch[1] : '';
+            context += `- ${type}: ${title} (${loop}). \n`;
         }
     });
     return context;
@@ -562,36 +553,49 @@ export const analyzeVisualAspect = async (imageData: string, taskTitle: string):
     }
 };
 
+/**
+ * [情感快照 (Emotional Snapshot)] 提取高光时刻和关键互动
+ */
 const buildGameContext = (players: Player[], historyLogs: LogEntry[]) => {
     const playerMatrix = serializePlayers(players);
 
-    const soulLogs = historyLogs
+    // 筛选“情感高光”：包含玩家发言且长度适中，或有特殊标记的日志
+    const highlightLogs = historyLogs
         .filter(l => l.taskDetails && l.taskDetails.includes("玩家发言:"))
-        .slice(-15)
-        .map(l => `[${l.author}]: ${l.taskDetails?.split("玩家发言:")[1]}`)
+        .slice(-10) // 保持短小精悍
+        .map(l => {
+            const speech = l.taskDetails?.split("玩家发言:")[1]?.trim() || "";
+            // 如果发言太长，进行截断，只保留核心语义
+            const cleanSpeech = speech.length > 60 ? speech.substring(0, 60) + "..." : speech;
+            return `[${l.author}]: ${cleanSpeech}`;
+        })
         .join('\n');
 
-    return `[玩家矩阵(ID|Name|MBTI|T|I|E)]\n${playerMatrix}\n\n[最近高光发言流水线]\n${soulLogs || "航行刚刚开始..."}`;
+    return `
+[第三层：动态上下文 - 实时情感快照]
+[玩家矩阵(ID|Name|MBTI|Trust|Insight|Expr)]
+${playerMatrix}
+
+[情感快照(高光时刻记录)]
+${highlightLogs || "航行刚刚开始，等待第一束光..."}
+`.trim();
 };
 
 export const analyzePersonality = async (answers: { q: string, val: number }[]): Promise<MBTIAnalysisResult[]> => {
     const system = `
-    你是一位资深的 MBTI 人格分析师。
-    任务：根据用户在 4 个场景中的倾向（0代表左边选项，100代表右边选项），推断最可能的 3 种 MBTI 类型。
+    你是一位言辞犀利、直击灵魂的人格分析师。
+    任务：基于 4 个场景的数据，洞察用户的人格底色。
     
-    [分析逻辑]
-    1. 场景1 (社交): 低分偏 I，高分偏 E。
-    2. 场景2 (信息): 低分偏 S，高分偏 N。
-    3. 场景3 (决策): 低分偏 T，高分偏 F。
-    4. 场景4 (生活): 低分偏 J，高分偏 P。
-    请综合考虑中间值（如 40-60）代表的认知功能灵活性。
+    [要求]
+    1. 必须使用简体中文。
+    2. 推断最可能的 3 种 MBTI。
+    3. 原因（reason）字段必须“一箭穿心”，用 20 字以内揭示其最深层的认知偏好或内在矛盾，拒绝平庸的描述。
 
     [输出格式]
-    返回一个纯 JSON 数组，包含 3 个对象，按可能性降序排列：
+    纯 JSON 数组：
     [
-      { "type": "INTJ", "percentage": 85, "reason": "你的决策极度依赖逻辑，且生活规划感极强。" },
-      { "type": "ENTJ", "percentage": 60, "reason": "虽然你倾向独处，但在目标达成上非常有行动力。" },
-      { "type": "ISTJ", "percentage": 40, "reason": "你在细节关注上也很突出。" }
+      { "type": "INTJ", "percentage": 85, "reason": "你用坚硬的逻辑构筑护城河，因预见未来而孤独。" },
+      ...
     ]
   `.trim();
 
@@ -667,18 +671,21 @@ export const generateAllTaskOptions = async (
         }
     }
 
-    const userPrompt = `
-        [游戏上下文]
-        当前行动玩家: ${currentPlayer.name} (类型: ${currentPlayer.mbti}).
-        ${tileContext}
-        ${playerProfile}
-        ${examplesPrompt}
-        
-        ${context}
-        ${getRelevantKnowledge([currentPlayer])}
+    const knowledgeBase = getRelevantKnowledge([currentPlayer]);
 
-        ${currentConfig.taskPromptTemplate}
-    `;
+    const userPrompt = `
+${currentConfig.designPhilosophy}
+
+[当前场景设定]
+行动玩家: ${currentPlayer.name} (类型: ${currentPlayer.mbti}).
+所处位置: ${tileContext}
+
+${knowledgeBase}
+
+${context}
+
+${currentConfig.taskPromptTemplate}
+    `.trim();
 
     try {
         const text = await unifiedAICall(userPrompt); // Use default Persona
@@ -732,7 +739,7 @@ export const analyzeSoloExecution = async (
     task: TaskOption,
     transcription: string,
     visualObservation?: string
-): Promise<{ feedback: string, scores: { trust: number, insight: number, expression: number } }> => {
+): Promise<{ tag: string, mood: string, feedback: string, scores: { trust: number, insight: number, expression: number } }> => {
     const system = `
     你是一位资深的荣格心理学导师。
     玩家正在进行“人格功能进阶挑战”，目标是锻炼其 ${player.mbti} 的认知功能。
@@ -746,15 +753,17 @@ export const analyzeSoloExecution = async (
     表达文本: "${transcription || '（未检测到有效表达）'}"
     ${visualObservation ? `AI 观测到的神态: "${visualObservation}"` : ''}
 
-    [任务要求]
-    1. 根据玩家的表达内容和神态，给出一段 80 字以内的温情且具洞察力的“灵魂点评”。
-    2. 基于任务目标，给玩家的三个维度（信、觉、表）打分（0-5分）。
-    3. 如果玩家没有说话，打分应偏低。
+    [任务要求 - 强制!]
+    1. 必须要引用证据：点评中必须包含玩家说过的某个【关键词】或【视觉神态】，例如：“当你提到‘[关键词]’时，我捕捉到了你[视觉证据]的瞬间...”。
+    2. 动机升华：利用巴纳姆效应，将玩家的行为解读为深层的心理动机（如：这是你 Fi 价值观在闪光的证据）。
+    3. 拒绝平庸：使用有温度、口语化的中文，不要像说明书。
 
     [返回格式]
-    纯 JSON 对象:
+    严格按此 JSON 结构：
     {
-      "feedback": "点评文字...",
+      "tag": "#一针见血的短标签",
+      "mood": "🤩(表情符号)",
+      "feedback": "引用了证据的深度点评文字(80字内)...",
       "scores": { "trust": 3, "insight": 4, "expression": 2 }
     }
     `.trim();
@@ -765,11 +774,15 @@ export const analyzeSoloExecution = async (
         const res = await unifiedAICall(user, system);
         const parsed = JSON.parse(extractJSON(res));
         return {
+            tag: parsed.tag || "#独特存在",
+            mood: parsed.mood || "✨",
             feedback: parsed.feedback || "你的表达如晨雾般轻盈，虽然模糊但充满灵性。继续探索你的内心世界吧。",
             scores: parsed.scores || { trust: 3, insight: 3, expression: 3 }
         };
     } catch (e) {
         return {
+            tag: "#神秘航行",
+            mood: "🚢",
             feedback: "时空信号略微不稳定，但你的心跳已经引起了共鸣。这次尝试本身就是一次伟大的航行。",
             scores: { trust: 3, insight: 3, expression: 3 }
         };
@@ -786,30 +799,25 @@ export const generateProfessionalReport = async (
     const evidenceChain = aggregateEvidence(players, historyLogs);
     const knowledgeBase = getRelevantKnowledge(players);
 
-    let userPrompt = currentConfig.reportPromptTemplate;
+    const instruction = currentConfig.reportPromptTemplate;
 
-    const inputData = `
-        [数据源: 蓝海协议矩阵]
-        玩家矩阵(ID|Name|MBTI|T|I|E):
-        ${playerMatrix}
+    const userPrompt = `
+${currentConfig.designPhilosophy}
 
-        [玩家言论证据链聚合]:
-        ${evidenceChain}
+[数据源: 蓝海协议矩阵]
+玩家矩阵(ID|Name|MBTI|T|I|E):
+${playerMatrix}
 
-        ${knowledgeBase}
-    `;
+[玩家言论证据链聚合]:
+${evidenceChain}
 
-    // 组装最终提示词
-    if (userPrompt.includes('{players_placeholder}')) {
-        userPrompt = userPrompt
-            .replace('{players_placeholder}', playerMatrix)
-            .replace('{logs_placeholder}', evidenceChain + knowledgeBase);
-    } else {
-        userPrompt = `${inputData}\n\n[任务要求]\n${userPrompt}`;
-    }
+${knowledgeBase}
+
+${instruction}
+    `.trim();
 
     try {
-        const text = await unifiedAICall(userPrompt);
+        const text = await unifiedAICall(userPrompt); // unifiedAICall will prepends systemPersona if none provided, but we can pass it explicitly too
         const parsed = JSON.parse(extractJSON(text));
 
         const finalPlayerAnalysis: Record<string, string> = {};
@@ -861,14 +869,16 @@ export const generateQuickReport = async (
     const resultsSummary = analysisResults.map(r => `${r.type} (${r.percentage}%): ${r.reason}`).join('\n');
 
     const system = `
-你是一位资深的人格分析专家。基于玩家 "${player.name}" 的初始测评结果，生成一份富有洞见、温暖且专业的深度报告。
-请结合荣格八维和 MBTI 核心理论进行解读。
+你是一位深邃、温暖的心理咨询导师。玩家 "${player.name}" 刚刚完成了初试航行。
+请根据其 MBTI 的概率分布，为其撰写一份充满洞察力且温情感人的深度解析报告。
+要体现出“每一滴雨水汇聚成彩虹”的诗意和心理学发现的喜悦。
 
-[测试结果数据]:
-${resultsSummary}
+[输出要求]
+1. 始终使用简体中文。
+2. 包含核心功能解析、性格光辉与一段专属的“航海寄语”。
 `.trim();
 
-    const user = `请为玩家 "${player.name}"（最匹配类型为 ${player.mbti}）生成一份深度解读报告。包含：核心优势、潜在挑战、及给其的“航海建议”。`;
+    const user = `玩家 "${player.name}" 的初步特质推断如下：\n${resultsSummary}\n\n请为其指引方向。`;
 
     try {
         const text = await unifiedAICall(user, system);

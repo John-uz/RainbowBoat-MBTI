@@ -62,7 +62,7 @@ export interface GameState {
   accumulatedRating: number;
 
   // Pre-generation Cache
-  pregeneratedTasks: Record<string, TaskOption> | null;
+  pregeneratedTasks: Record<string, Record<string, TaskOption>> | null;
 
   // States
   movementState: 'IDLE' | 'ROLLING' | 'MOVING_STEP' | 'TELEPORTING';
