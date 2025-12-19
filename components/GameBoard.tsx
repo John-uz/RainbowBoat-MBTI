@@ -1,4 +1,6 @@
 import React from 'react';
+import { motion } from 'framer-motion';
+import { Heart } from 'lucide-react';
 import { Player, JUNG_FUNCTIONS, BoardTile, GameMode, MBTI_GROUPS } from '../types';
 
 interface Props {
@@ -199,8 +201,16 @@ const GameBoard: React.FC<Props> = ({ players, currentPlayerId, boardLayout, val
                         <g className="animate-in fade-in zoom-in duration-500">
                             {tile.functionId === 'Hub' ? (
                                 <>
-                                    <text x={x} y={y - 5} textAnchor="middle" className="fill-slate-900 dark:fill-white" fontWeight="bold" fontSize="18" style={{ pointerEvents: 'none', userSelect: 'none' }}>海洋</text>
-                                    <text x={x} y={y + 18} textAnchor="middle" className="fill-slate-900 dark:fill-white" fontWeight="bold" fontSize="18" style={{ pointerEvents: 'none', userSelect: 'none' }}>之心</text>
+                                    <motion.g
+                                        animate={{
+                                            scale: [1, 1.15, 1],
+                                            filter: ["drop-shadow(0 0 5px #f43f5e)", "drop-shadow(0 0 15px #f43f5e)", "drop-shadow(0 0 5px #f43f5e)"]
+                                        }}
+                                        transition={{ duration: 2, repeat: Infinity }}
+                                    >
+                                        <Heart x={x - 20} y={y - 25} size={40} className="fill-red-500 text-red-500" />
+                                    </motion.g>
+                                    <text x={x} y={y + 25} textAnchor="middle" className="fill-slate-900 dark:fill-white font-black" fontSize="14" style={{ pointerEvents: 'none', userSelect: 'none' }}>海洋之心</text>
                                 </>
                             ) : (
                                 <>

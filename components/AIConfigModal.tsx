@@ -1,6 +1,6 @@
 
 import React, { useState, useRef } from 'react';
-import { X, Save, RotateCcw, Cpu, Key, MessageSquare, AlertTriangle, PlayCircle, Download, Upload, ShieldCheck } from 'lucide-react';
+import { X, Save, RotateCcw, Cpu, Key, MessageSquare, AlertTriangle, PlayCircle, Download, Upload, ShieldCheck, Flag, Globe } from 'lucide-react';
 import { getAIConfig, updateAIConfig, AIConfig, SYSTEM_KEYS } from '../services/geminiService';
 
 interface Props {
@@ -15,7 +15,8 @@ const AIConfigModal: React.FC<Props> = ({ onClose }) => {
     const handleSave = () => {
         updateAIConfig(config);
         onClose();
-        alert("AI 配置链已更新！\n优先顺序: Groq -> OpenRouter -> Zhipu -> Gemini -> Pollinations");
+        const regionDesc = config.regionMode === 'china' ? "中国大陆 (DeepSeek/Zhipu)" : (config.regionMode === 'overseas' ? "国际海外 (Groq/Gemini)" : "智能感知");
+        alert(`AI 配置已保存！\n当前航路: ${regionDesc}`);
     };
 
     const handleReset = () => {
@@ -134,6 +135,40 @@ const AIConfigModal: React.FC<Props> = ({ onClose }) => {
 
                     {activeTab === 'keys' && (
                         <div className="space-y-6">
+                            {/* Region Selection */}
+                            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
+                                <div className="flex justify-between items-center">
+                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                                        <Globe size={14} className="text-teal-400" /> 航行区域配置 (Region Mode)
+                                    </label>
+                                    <div className="text-[10px] text-slate-500 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+                                        {config.regionMode === 'auto' ? '自动探测中...' : '手动锁定'}
+                                    </div>
+                                </div>
+                                <div className="flex bg-slate-900 p-1 rounded-xl">
+                                    {[
+                                        { id: 'auto', label: '智能感知', icon: <Cpu size={14} /> },
+                                        { id: 'china', label: '中国大陆', icon: <Flag size={14} /> },
+                                        { id: 'overseas', label: '国际海外', icon: <Globe size={14} /> }
+                                    ].map(mode => (
+                                        <button
+                                            key={mode.id}
+                                            onClick={() => setConfig({ ...config, regionMode: mode.id as any })}
+                                            className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg transition-all ${config.regionMode === mode.id ? 'bg-teal-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                                        >
+                                            {mode.icon}
+                                            {mode.label}
+                                        </button>
+                                    ))}
+                                </div>
+                                <p className="text-[10px] text-slate-500 leading-relaxed px-1">
+                                    {config.regionMode === 'china'
+                                        ? '已优化：DeepSeek & 智谱 极速链路。跳过海外模型以防网络超时。'
+                                        : config.regionMode === 'overseas'
+                                            ? '已优化：Groq & Gemini 国际主流链路。跳过国内节点。'
+                                            : '智能探测：将根据您的时区和 VITE_PLATFORM 自动切换最佳航路。'}
+                                </p>
+                            </div>
                             {/* GROQ */}
                             {renderKeyInput(
                                 "1. Groq (小G) - 极速推荐",

@@ -27,6 +27,9 @@ export interface AIConfig {
     // DeepSeek AI
     deepseekKey: string;
     deepseekModel: string;
+
+    // Region Mode
+    regionMode: 'auto' | 'china' | 'overseas';
 }
 
 export interface MBTIAnalysisResult {
@@ -190,30 +193,50 @@ const DEFAULT_PERSONA = `
 `.trim();
 
 const DEFAULT_TASK_PROMPT = `
-[第二层：任务指令]
-任务必须基于【认知功能(Cognitive Functions)】设计：
-1. 感知位格 (Se/Si, Ne/Ni)：设计关于观察、回忆、直觉捕捉与未来远景的任务。
-2. 决策位格 (Te/Ti, Fe/Fi)：设计关于逻辑重构、价值观排序、共情连接与效率挑战的任务。
+[目标]
+为当前玩家生成 4 个社交挑战任务。
 
-任务调性：
-- 拒绝平庸。
-- 引导玩家进行“有勇气的暴露”和“有深度的连接”。
-- 所有的标题必须具备文学性或趣味性（杜绝：任务1、任务2）。
+[核心原则：把心理学藏在游戏里]
+1. **隐性引导 (The Iceberg Strategy)**：
+   - 如果系统提示"阴影挑战"，请设计一个**"大冒险 (Dare)"**，让他突破劣势。告诉他："这虽然很反直觉，但试试看你会发现新大陆。"
+   - 如果系统提示"优势区"，请设计一个**"高光时刻 (Standard)"**，展现其天赋。
+2. **调性要求**：
+   - 拒绝说教。使用年轻人、派对感的语言（例如：不叫“Fe社交”，叫“在线摇人”）。
+   - 任务必须涉及玩家之间的实际互动。
 
-输出规范：
-- 严格输出 JSON 格式。
+[任务分类]
+- "standard" (暖身): 展现天分。
+- "truth" (真心话): 交换秘密。
+- "dare" (挑战): 突破舒适。
+- "deep" (走心): 灵魂对谈。
+
+[输出格式]
+Strict JSON object. Simplified Chinese.
+{
+  "standard": { "title": "标题", "description": "指令", "scoreType": "trust"|"insight"|"expression", "durationSeconds": 60 },
+  ... (truth, dare, deep)
+}
 `.trim();
 
 const DEFAULT_REPORT_PROMPT = `
-[第二层：分析指令]
-请作为“僚机”和“灵魂观测者”，分析本局游戏的团体动力。
-输出必须包含：
-1. **团体化学反应**：不要各说各的，要横向对比。谁是今晚的“情感锚点”？谁和谁的“功能位格”达成了惊人的同步（CP感）？
-2. **结构化点评**：每个玩家的点评必须包含一个 #短标签。
-3. **金句引用**：引用回溯玩家在游戏中的关键发言，并进行心理学升华。
+[目标]
+作为“灵魂观测者”，生成一份“一针见血”且具备“年度报告”质感的总结。
+
+[核心视角]
+1. **团体化学反应**：分析全场的能量流动（CP感、冲突、共鸣）。谁是今晚的“心理捕手”？谁是“深海潜行者”？
+2. **个人高光与盲点**：
+   - 🌟 **高光**：必须引用玩家在游戏中的真实【关键词】或【行为】。
+   - 💡 **盲点**：用幽默且温柔的方式戳破他的回避（基于人格阶序）。
+3. **社交僚机**：为他们之后的互动提供一个“聊天契机”或“破冰梗”。
 
 [输出格式]
-返回纯 JSON，包含 groupAnalysis 和 playerAnalysis 两个 key。
+Strict JSON array with "groupAnalysis" and "playerAnalysis":
+{
+  "groupAnalysis": "200字辛辣点评。例如：'全场都是 NT 逻辑狂人，这艘船快要变成辩论赛场了...' ",
+  "playerAnalysis": {
+     "PLAYER_ID": "100字点评。🌟 **高光时刻**：[引用发言]... 💡 **盲点觉察**：[温柔调侃]... 🏷️ #三个 #个性 #标签"
+  }
+}
 `.trim();
 
 const DEFAULT_CONFIG: AIConfig = {
@@ -233,7 +256,8 @@ const DEFAULT_CONFIG: AIConfig = {
     reportPromptTemplate: DEFAULT_REPORT_PROMPT,
     zhipuKey: '',
     deepseekKey: '',
-    deepseekModel: 'deepseek-chat'
+    deepseekModel: 'deepseek-chat',
+    regionMode: 'auto'
 };
 
 // --- CONFIG MANAGEMENT ---
@@ -350,9 +374,20 @@ const callGemini = async (system: string, user: string, jsonMode: boolean, image
 };
 
 // 4. Zhipu AI (BigModel) - OpenAI Compatible
-const callZhipu = async (system: string, user: string, jsonMode: boolean): Promise<string> => {
+const callZhipu = async (system: string, user: string, jsonMode: boolean, imageData?: string): Promise<string> => {
     const key = currentConfig.zhipuKey || SYSTEM_KEYS.zhipu;
     if (!key) throw new Error("Skipped: No Zhipu Key");
+
+    const isVision = !!imageData;
+    const model = isVision ? "glm-4v" : "glm-4-flash";
+
+    const content: any[] = [{ type: "text", text: user }];
+    if (imageData) {
+        content.push({
+            type: "image_url",
+            image_url: { url: imageData.startsWith('data:') ? imageData : `data:image/jpeg;base64,${imageData}` }
+        });
+    }
 
     const response = await fetch("https://open.bigmodel.cn/api/paas/v4/chat/completions", {
         method: 'POST',
@@ -361,10 +396,10 @@ const callZhipu = async (system: string, user: string, jsonMode: boolean): Promi
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-            model: "glm-4-flash", // Use fast & free-tier friendly model
+            model: model,
             messages: [
                 { role: "system", content: system },
-                { role: "user", content: user }
+                { role: "user", content: isVision ? content : user }
             ],
             response_format: jsonMode ? { type: "json_object" } : undefined,
             temperature: 0.7
@@ -401,6 +436,48 @@ const callDeepSeek = async (system: string, user: string, jsonMode: boolean): Pr
     if (!response.ok) throw new Error(`DeepSeek ${response.statusText} `);
     const data = await response.json();
     return data.choices?.[0]?.message?.content || "{}";
+};
+
+/**
+ * [人格动力学字典] MBTI 到 荣格八维功能的映射 (主导, 辅助, 第三, 劣势)
+ */
+const COGNITIVE_STACKS: Record<string, string[]> = {
+    'INTJ': ['Ni', 'Te', 'Fi', 'Se'], 'INTP': ['Ti', 'Ne', 'Si', 'Fe'],
+    'ENTJ': ['Te', 'Ni', 'Se', 'Fi'], 'ENTP': ['Ne', 'Ti', 'Fe', 'Si'],
+    'INFJ': ['Ni', 'Fe', 'Ti', 'Se'], 'INFP': ['Fi', 'Ne', 'Si', 'Te'],
+    'ENFJ': ['Fe', 'Ni', 'Se', 'Ti'], 'ENFP': ['Ne', 'Fi', 'Te', 'Si'],
+    'ISTJ': ['Si', 'Te', 'Fi', 'Ne'], 'ISFJ': ['Si', 'Fe', 'Ti', 'Ne'],
+    'ESTJ': ['Te', 'Si', 'Ne', 'Fi'], 'ESFJ': ['Fe', 'Si', 'Ne', 'Ti'],
+    'ISTP': ['Ti', 'Se', 'Ni', 'Fe'], 'ISFP': ['Fi', 'Se', 'Ni', 'Te'],
+    'ESTP': ['Se', 'Ti', 'Fe', 'Ni'], 'ESFP': ['Se', 'Fi', 'Te', 'Ni']
+};
+
+/**
+ * 计算玩家与格子的“心理张力”
+ */
+const getFunctionalTension = (player: Player, functionId: string): string => {
+    const stack = COGNITIVE_STACKS[player.mbti];
+    if (!stack) return "";
+
+    // 寻找格子功能在玩家阶序中的位置
+    const index = stack.indexOf(functionId);
+
+    if (index === 0) return `[张力：优势区] 玩家正处于其核心天赋 ${functionId} 领地。请设计能让他“稳定发挥、展现高光”的任务。`;
+    if (index === 1) return `[张力：熟练区] 玩家对 ${functionId} 很擅长。请引导他以此功能为支点，协助他人。`;
+    if (index === 3) return `[张力：阴影挑战] 重点！${functionId} 是玩家的劣势功能。请设计“破冰式”的挑战，鼓励他走出舒适区，但要用幽默化解尴尬。`;
+
+    // 如果格子是一个 MBTI 类型，检查是否为相反类型（Dual Relationship）
+    const mbtiChar = MBTI_CHARACTERS[functionId];
+    if (mbtiChar) {
+        // 简单的对立检查逻辑
+        const opposites: Record<string, string> = { 'E': 'I', 'I': 'E', 'S': 'N', 'N': 'S', 'T': 'F', 'F': 'T', 'J': 'P', 'P': 'J' };
+        const oppositeType = player.mbti.split('').map(c => opposites[c] || c).join('');
+        if (functionId === oppositeType) {
+            return `[张力：完全镜像] 玩家遇到了自己的“镜像原型” ${functionId}。请设计关于“视角反转”或“跨次元理解”的任务。`;
+        }
+    }
+
+    return `[张力：普通区] 请结合 ${functionId} 属性和玩家性格，设计一个有趣的派对互动。`;
 };
 
 // 5. Pollinations (Little P) - Free, No Key
@@ -449,6 +526,27 @@ const extractJSON = (text: string): string => {
     return text.trim();
 };
 
+/**
+ * 智能环境嗅探：根据时区或环境变量判断用户所在区域
+ */
+const getDetectedRegion = (): 'china' | 'overseas' => {
+    const platform = getEnvVar('VITE_PLATFORM');
+    if (platform === 'china') return 'china';
+
+    try {
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+        // 包含中国主要时区
+        if (tz.includes('Asia/Shanghai') || tz.includes('Asia/Urumqi') || tz.includes('Asia/Chongqing') || tz.includes('Asia/Harbin')) {
+            return 'china';
+        }
+        // 如果是 UTC+8 且没有明确时区字符串的情况
+        const offset = new Date().getTimezoneOffset();
+        if (offset === -480) return 'china';
+    } catch (e) { }
+
+    return 'overseas';
+};
+
 // --- MAIN FALLBACK CONTROLLER ---
 
 const unifiedAICall = async (userPrompt: string, systemPromptOverride?: string, imageData?: string): Promise<string> => {
@@ -462,50 +560,52 @@ const unifiedAICall = async (userPrompt: string, systemPromptOverride?: string, 
 
     // 检测请求特性 (Hybrid Routing 识别)
     const isMultimodal = !!imageData;
-    const isLongContext = userPrompt.length > 15000; // 长文本定义为超过 15k 字符
-    const isMainlandChina = getEnvVar('VITE_PLATFORM') === 'china' || getEnvVar('VITE_PLATFORM') === 'vercel';
+    const isLongContext = userPrompt.length > 15000;
 
-    // 默认优先级序列
-    let providers = [
-        { name: 'Groq', call: () => callGroq(system, userPrompt, true, imageData) },
-        { name: 'OpenRouter', call: () => callOpenRouter(system, userPrompt, true, imageData) },
-        { name: 'DeepSeek', call: () => callDeepSeek(system, userPrompt, true) },
-        { name: 'Zhipu', call: () => callZhipu(system, userPrompt, true) },
-        { name: 'Gemini', call: () => callGemini(system, userPrompt, true, imageData) },
-        { name: 'Pollinations', call: () => callPollinations(system, userPrompt, true) }
-    ];
+    // 确定当前生效区域
+    const region = currentConfig.regionMode === 'auto' ? getDetectedRegion() : currentConfig.regionMode;
 
-    // 实施混合路由策略 (各取所长)
-    if (isMultimodal || isLongContext) {
-        // [策略 A] 多模态/长文本：Gemini 是绝对的冠军
-        console.log(`[路由选择] ${isMultimodal ? '多模态' : '长文本'}任务，优先调用 Gemini...`);
+    // 1. 根据区域确定可用供应商列表 (严格遵循用户需求)
+    let providers = [];
+    if (region === 'china') {
+        process.env.NODE_ENV !== 'production' && console.log("[环境路由] 检测到位于中国大陆，优化为国内极速链路...");
+
+        // 大陆环境逻辑：视觉首选智谱，文本首选 DeepSeek
+        if (isMultimodal) {
+            providers = [
+                { name: 'Zhipu', call: () => callZhipu(system, userPrompt, true, imageData) },
+                { name: 'DeepSeek', call: () => callDeepSeek(system, userPrompt, true) }
+            ];
+        } else {
+            providers = [
+                { name: 'DeepSeek', call: () => callDeepSeek(system, userPrompt, true) },
+                { name: 'Zhipu', call: () => callZhipu(system, userPrompt, true, imageData) }
+            ];
+        }
+    } else {
+        process.env.NODE_ENV !== 'production' && console.log("[环境路由] 检测到位于海外，优化为国际主流链路...");
         providers = [
+            { name: 'Groq', call: () => callGroq(system, userPrompt, true, imageData) },
             { name: 'Gemini', call: () => callGemini(system, userPrompt, true, imageData) },
             { name: 'OpenRouter', call: () => callOpenRouter(system, userPrompt, true, imageData) },
-            { name: 'Zhipu', call: () => callZhipu(system, userPrompt, true) },
-            { name: 'Groq', call: () => callGroq(system, userPrompt, true, imageData) },
             { name: 'Pollinations', call: () => callPollinations(system, userPrompt, true) }
         ];
-    } else {
-        // [策略 B] 普通文本：Groq 追求极速与人格感
-        if (isMainlandChina) {
-            // 在大陆环境下，DeepSeek 优先，智谱备选
-            const dsIndex = providers.findIndex(p => p.name === 'DeepSeek');
-            const zpIndex = providers.findIndex(p => p.name === 'Zhipu');
+    }
 
-            // 先处理智谱，再处理 DeepSeek，确保 DeepSeek 在最前面
-            if (zpIndex > -1) {
-                const [zp] = providers.splice(zpIndex, 1);
-                providers.unshift(zp);
-            }
-            if (dsIndex > -1) {
-                // 因为智谱已经 unshift 了，所以要重新找 DeepSeek 下标或者直接按逻辑放
-                const newDsIndex = providers.findIndex(p => p.name === 'DeepSeek');
-                const [ds] = providers.splice(newDsIndex, 1);
-                providers.unshift(ds);
-            }
-        } else {
-            // 海外或通用场景，Groq 是默认的首选
+    // 2. 实施混合路由优先级调整 (在可用列表中各取所长)
+    if (isMultimodal || isLongContext) {
+        // 如果 Gemini 在可用列表中，将其排到第一位
+        const gIndex = providers.findIndex(p => p.name === 'Gemini');
+        if (gIndex > 0) {
+            const [gemini] = providers.splice(gIndex, 1);
+            providers.unshift(gemini);
+        }
+    } else if (region === 'overseas') {
+        // 海外普通文本首选 Groq
+        const groqIndex = providers.findIndex(p => p.name === 'Groq');
+        if (groqIndex > 0) {
+            const [groq] = providers.splice(groqIndex, 1);
+            providers.unshift(groq);
         }
     }
 
@@ -518,8 +618,8 @@ const unifiedAICall = async (userPrompt: string, systemPromptOverride?: string, 
         }
     }
 
-    console.error("All AI providers failed:", errors);
-    throw new Error("ALL_AI_FAILED");
+    console.error("All AI providers failed in current region segment:", errors);
+    throw new Error(`ALL_AI_FAILED_IN_${region.toUpperCase()}`);
 };
 
 // --- HELPERS ---
@@ -692,17 +792,57 @@ export const generateAllTaskOptions = async (
         ? `\n[当前行动玩家 ${currentPlayer.mbti} 的深度画像 (参考此资料定制任务)]\n${MBTI_PROFILE_DATA[currentPlayer.mbti]}\n`
         : "";
 
+    // [核心：注入心理动力学张力]
+    const tensionContext = getFunctionalTension(currentPlayer, functionId);
+
     // Customize logic for MBTI 16 Characters
-    let tileContext = `所处功能格: "${functionId}" (请结合荣格八维功能设计相关任务).`;
+    let tileContext = `所处功能格: "${functionId}" (人格动力学建议: ${tensionContext}).`;
 
     // Check if it's an MBTI Type
     const mbtiCharacter = MBTI_CHARACTERS[functionId];
     if (mbtiCharacter) {
         if (functionId === 'Hub') {
+            const SPIRITUAL_ANCHORS: Record<string, string> = {
+                // SJ - 守护者: 核心是“恒久与安息”
+                'ISTJ': '关键词：【时间里的基石】。肯定其坚守的意义，引导其体验“即便不奔跑，也依然被接纳”的安稳。',
+                'ISFJ': '关键词：【无名的守护】。肯定其细碎的付出，引导其发现“自己的每一个微小善意都被宇宙铭记”。',
+                'ESTJ': '关键词：【慈爱的秩序】。引导其思考规则背后的温情，鼓励展现“守护者在卸下铠甲后的柔软”。',
+                'ESFJ': '关键词：【灵魂的交织】。肯定其联结他人的天赋，引导其确认“自己是生命体中不可或缺的一部分”。',
+
+                // SP - 探险家: 核心是“真实与恩典”
+                'ISTP': '关键词：【造物的匠心】。引导其从逻辑走向对万物精密之美的惊叹，体验从细节中透出的生命奥秘。',
+                'ISFP': '关键词：【流动的色彩】。肯定其灵敏的核心，引导其体验“自己也是世界这幅画卷中最独特的笔触”。',
+                'ESTP': '关键词：【真实的触碰】。引导其在当下的行动中，体验一种超越感知的、更庞大的托举力量。',
+                'ESFP': '关键词：【生命的庆典】。引导其挥洒纯粹的喜乐，在分享快乐中体验到生命本身就是一场无条件的礼物。',
+
+                // NF - 理想主义: 核心是“救赎与看见”
+                'INFJ': '关键词：【旷野的慰藉】。引导其进入内心深处的宁静，在寂静中听见那个一直陪伴自己的微小声音。',
+                'INFP': '关键词：【裂缝中的光】。肯定其脆弱中的勇气，引导其体验“完全被看见、完全被接纳”的灵魂自由。',
+                'ENFJ': '关键词：【停杯的安息】。引导其暂时放下拯救者的包容，去体验并领受那份属于他自己的、被照顾的爱。',
+                'ENFP': '关键词：【新生的无限】。引导其发现生命中的新可能，体验一种“万物皆在更新”的生命活力。',
+
+                // NT - 分析家: 核心是“敬畏与交托”
+                'INTJ': '关键词：【超越的视角】。引导其从个人规划走向对客观规律的敬畏，学习在未知中寻找终极的平安。',
+                'INTP': '关键词：【活着的真理】。引导其意识到真理不只是抽象概念，更是真实的生活与爱。',
+                'ENTJ': '关键词：【服务者的权柄】。引导其思考权柄的真正来源是服务。设计关于“承认软弱即是力量”的体验。',
+                'ENTP': '关键词：【更高维度的跃迁】。引导其打破逻辑的围墙，在对未知的探索中遇见那个更有生命力的自己。'
+            };
+
+            const anchor = SPIRITUAL_ANCHORS[currentPlayer.mbti] || "关键词：【爱与接纳】。引导玩家感受当下的安宁与连接。";
+
             tileContext = `
-                [特殊场景]
-                玩家处于中央格“海洋之心”位置。这是一个象征完美、包容、救赎、深度连接与神圣关系的地方。
-                请设计温暖、治愈、建立深度信任（关系导向）的任务。不要过于宗教化，但要体现牺牲、包容、无条件的爱的主题。
+                [核心场景：海洋之心 (The Sanctuary)]
+                玩家处于地图中央。这是一个象征【完整性】、【疗愈】与【真实连接】的区域，指向一位【完美人格、深度同在】的超越者。
+                在这里，面具被卸下，灵魂得到安息。
+                
+                [当前玩家]: ${currentPlayer.mbti}
+                [灵魂导向指南]: ${anchor}
+
+                [任务设计要求]
+                1. 使用“温润如玉”的中文，具有人文深度和文学美感。
+                2. 任务要像“光”一样照进裂缝，触碰该人格最深层的渴望或软弱。
+                3. 移除任何生硬的传教用词，转而传递关于“勇气、牺牲、无条件的爱、诚实与敬畏”的普世人类经验。
+                4. "deep" (走心) 任务应当具有强烈的治愈性和生命连接感。
             `;
         } else {
             // For MBTI Character tiles, we can also pick examples from the dominant/aux functions of that type

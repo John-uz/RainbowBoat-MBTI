@@ -205,7 +205,7 @@ const generateMap = (mode: GameMode): BoardTile[] => {
             const r2 = Math.min(MAP_RADIUS, -q + MAP_RADIUS);
             for (let r = r1; r <= r2; r++) {
                 const isCenter = q === 0 && r === 0;
-                let fid = isCenter ? '?' : (deck.pop() || 'Te');
+                let fid = isCenter ? 'Hub' : (deck.pop() || 'Te');
 
                 let mod: ScoreModifier = 'NORMAL';
                 let special: SpecialAbility = 'NONE';
@@ -1410,6 +1410,17 @@ function App() {
             accumulatedRating: 0
         }));
         setLoadingProgress(0);
+        // We'll increment progress only if mic has some input or just rely on a timer + mic enabling
+        const timer = setInterval(() => {
+            setLoadingProgress(prev => {
+                if (prev >= 100) {
+                    clearInterval(timer);
+                    setShowStartBtn(true);
+                    return 100;
+                }
+                return prev + 2;
+            });
+        }, 60);
         setShowStartBtn(false);
         setBoard([]);
         setValidMoves([]);
@@ -1476,13 +1487,62 @@ function App() {
     }
 
     if (gameState.phase === 'LOADING') {
+        const loadingTexts = [
+            '正在构筑海域坐标...',
+            '正在同步人格频谱...',
+            '正在穿越潜意识迷雾...',
+            '正在观测玩家星象...',
+            '领航员声纳扫描完毕...'
+        ];
+        const currentText = loadingTexts[Math.floor((loadingProgress / 100) * (loadingTexts.length - 1))];
+
         return (
             <div className="min-h-screen w-full flex flex-col items-center justify-center text-slate-800 dark:text-white relative font-sans transition-colors duration-300">
                 <div className="z-10 flex flex-col items-center w-full max-w-4xl px-8 text-center bg-white/10 dark:bg-black/20 backdrop-blur-md rounded-3xl p-16 shadow-2xl border border-white/10">
-                    <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-8xl font-bold tracking-tight mb-4 text-transparent bg-clip-text bg-[linear-gradient(to_right,#ef4444,#f97316,#eab308,#22c55e,#3b82f6,#a855f7)] drop-shadow-lg">彩虹船</motion.h1>
+                    <motion.h1
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="text-8xl font-bold tracking-tight mb-2 text-transparent bg-clip-text bg-[linear-gradient(to_right,#ef4444,#f97316,#eab308,#22c55e,#3b82f6,#a855f7)] drop-shadow-lg"
+                    >
+                        彩虹船
+                    </motion.h1>
+
+                    <motion.p
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.5 }}
+                        className="text-xl font-bold text-teal-500/80 dark:text-teal-400/80 tracking-[0.3em] mb-12"
+                    >
+                        驶向海洋之心，领略生命之多彩
+                    </motion.p>
+
                     <MicCheck />
-                    <div className="w-full h-4 bg-slate-700 rounded-full overflow-hidden mb-12 mt-8 relative z-20"><motion.div className="h-full bg-gradient-to-r from-teal-400 to-blue-500" initial={{ width: 0 }} animate={{ width: `${loadingProgress}%` }} /></div>
-                    {showStartBtn && (<motion.button initial={{ scale: 0.8 }} animate={{ scale: 1 }} onClick={handleEnterGame} className="mt-8 px-16 py-6 bg-white text-slate-900 rounded-full font-bold text-3xl shadow-2xl flex items-center gap-3"><Play size={32} fill="currentColor" /> 启 航</motion.button>)}
+
+                    <div className="w-full h-4 bg-slate-700/50 rounded-full overflow-hidden mb-4 mt-8 relative z-20">
+                        <motion.div
+                            className="h-full bg-gradient-to-r from-teal-400 via-blue-500 to-purple-600"
+                            initial={{ width: 0 }}
+                            animate={{ width: `${loadingProgress}%` }}
+                        />
+                    </div>
+
+                    <p className="text-xs font-bold text-slate-500 animate-pulse tracking-widest uppercase">
+                        {currentText}
+                    </p>
+
+                    {showStartBtn && (
+                        <motion.button
+                            initial={{ scale: 0.8, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            onClick={handleEnterGame}
+                            style={{
+                                pointerEvents: (loadingProgress < 100) ? 'none' : 'auto'
+                            }}
+                            className={`mt-12 px-16 py-6 rounded-full font-bold text-3xl shadow-2xl flex items-center gap-3 transition-all ${loadingProgress < 100 ? 'bg-slate-700 text-slate-500 grayscale cursor-not-allowed' : 'bg-white text-slate-900 hover:scale-105 active:scale-95'}`}
+                        >
+                            <Play size={32} fill="currentColor" /> {loadingProgress < 100 ? '声纳离线' : '启 航'}
+                        </motion.button>
+                    )}
                 </div>
             </div>
         );
