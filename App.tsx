@@ -1321,7 +1321,7 @@ function App() {
 
     if (gameState.phase === 'HUB') {
         return (
-            <div className={`h-screen flex flex-col transition-colors duration-300 font-sans ${isDarkMode ? 'dark bg-slate-900 text-white' : 'bg-slate-50 text-slate-900'}`}>
+            <div className={`min-h-screen flex flex-col transition-colors duration-300 font-sans ${isDarkMode ? 'dark bg-slate-900 text-white' : 'bg-slate-50 text-slate-900'}`}>
                 <header className="h-16 flex items-center justify-between px-6 border-b border-slate-200 dark:border-white/5 shrink-0">
                     <div className="flex items-center gap-2 font-black text-xl tracking-tighter italic">
                         <Ship className="text-blue-500" /> RAINBOW BOAT
@@ -1332,7 +1332,7 @@ function App() {
                         </button>
                     </div>
                 </header>
-                <main className="flex-1 overflow-hidden relative">
+                <main className="flex-1 relative">
                     <MBTIHub onSelectMode={handleHubSelect} />
                 </main>
             </div>
@@ -1359,7 +1359,7 @@ function App() {
 
     if (gameState.phase === 'LOADING') {
         return (
-            <div className="h-screen w-full flex flex-col items-center justify-center text-slate-800 dark:text-white relative overflow-hidden font-sans transition-colors duration-300">
+            <div className="min-h-screen w-full flex flex-col items-center justify-center text-slate-800 dark:text-white relative font-sans transition-colors duration-300">
                 <div className="z-10 flex flex-col items-center w-full max-w-4xl px-8 text-center bg-white/10 dark:bg-black/20 backdrop-blur-md rounded-3xl p-16 shadow-2xl border border-white/10">
                     <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-8xl font-bold tracking-tight mb-4 text-transparent bg-clip-text bg-[linear-gradient(to_right,#ef4444,#f97316,#eab308,#22c55e,#3b82f6,#a855f7)] drop-shadow-lg">彩虹船</motion.h1>
                     <MicCheck />
@@ -1389,7 +1389,7 @@ function App() {
     const playerStack = MBTI_STACKS[currentPlayer.mbti] || [];
 
     return (
-        <div className="h-screen w-full text-slate-800 dark:text-slate-200 font-sans flex flex-col overflow-hidden relative selection:bg-teal-500/30 transition-colors duration-300">
+        <div className="min-h-screen w-full text-slate-800 dark:text-slate-200 font-sans flex flex-col overflow-x-hidden relative selection:bg-teal-500/30 transition-colors duration-300">
 
             {/* Top Bar - Transparent with blur */}
             <header className="h-16 bg-white/80 dark:bg-slate-900/60 backdrop-blur border-b border-slate-200 dark:border-white/5 flex items-center justify-between px-6 shrink-0 z-30 transition-colors duration-300">
@@ -1484,10 +1484,10 @@ function App() {
                 </div>
             </header>
 
-            <main className="flex-1 flex overflow-hidden relative">
+            <main className={`flex-1 flex relative ${isMobile ? 'flex-col' : 'overflow-hidden'}`}>
                 {/* Original Game UI Wrapper */}
                 {(gameState.phase === 'PLAYING' || gameState.phase === 'SETUP') && (
-                    <div className="flex-1 flex overflow-hidden relative">
+                    <div className={`flex-1 flex relative ${isMobile ? 'flex-col' : 'overflow-hidden'}`}>
                         {/* Game Board Content */}
                         <div className={`flex-1 relative bg-transparent flex flex-col transition-all duration-300 ${isMobile ? 'h-[60vh]' : ''}`}>
                             <div className="flex-1 flex items-center justify-center overflow-hidden cursor-grab active:cursor-grabbing">
@@ -1783,8 +1783,8 @@ function App() {
                             </div>
                         </div>
 
-                        {/* Sidebar (Right) */}
-                        <div className={`bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border-l border-slate-200 dark:border-white/5 flex flex-col transition-all duration-300 z-20 shadow-xl ${isSidebarMinimized ? 'w-16' : 'w-64'}`}>
+                        {/* Sidebar (Right/Bottom) */}
+                        <div className={`bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border-slate-200 dark:border-white/5 flex flex-col transition-all duration-300 z-20 shadow-xl ${isMobile ? 'w-full border-t min-h-[40vh]' : (isSidebarMinimized ? 'w-16 border-l' : 'w-64 border-l')}`}>
                             <div className="h-16 flex items-center justify-between px-4 border-b border-slate-200 dark:border-white/5 shrink-0">
                                 {!isSidebarMinimized && <span className="font-bold text-slate-400 text-xs uppercase tracking-widest">当前能量场</span>}
                                 <button onClick={() => setIsSidebarMinimized(!isSidebarMinimized)} className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-white transition"><ChevronRight size={16} /></button>
