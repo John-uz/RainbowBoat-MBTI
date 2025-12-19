@@ -43,7 +43,7 @@ const MBTIHub: React.FC<Props> = ({ onSelectMode, isMobile }) => {
     ];
 
     return (
-        <div className={`min-h-screen flex flex-col items-center py-12 px-6 relative gpu-accelerated ${isMobile ? 'overflow-y-auto' : 'overflow-hidden'}`}>
+        <div className={`min-h-screen flex flex-col items-center py-12 px-6 relative gpu-accelerated overflow-y-auto touch-pan-y`}>
             {/* Background Decorative Elements - Reduced blur/count on mobile maybe better but CSS took care of some */}
             <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-500/10 rounded-full blur-[120px] pointer-events-none" />
             <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-500/10 rounded-full blur-[120px] pointer-events-none" />
@@ -63,17 +63,16 @@ const MBTIHub: React.FC<Props> = ({ onSelectMode, isMobile }) => {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-6xl relative z-10">
                 {cards.map((card, idx) => (
-                    <motion.button
+                    <motion.div
                         key={card.id}
                         initial={isMobile ? { opacity: 0 } : { opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ delay: idx * 0.1 }}
                         whileHover={isMobile ? {} : { y: -8, scale: 1.02 }}
-                        onClick={() => onSelectMode(card.id as any)}
-                        className={`group relative flex flex-col text-left p-8 rounded-3xl border ${card.borderColor} bg-slate-900/40 backdrop-blur-xl overflow-hidden transition-all gpu-accelerated`}
+                        className={`group relative flex flex-col text-left p-8 rounded-3xl border ${card.borderColor} bg-slate-900/40 backdrop-blur-xl overflow-hidden transition-all gpu-accelerated touch-pan-y`}
                     >
                         {/* Gradient Hover Effect */}
-                        <div className={`absolute inset-0 bg-gradient-to-br ${card.color} opacity-0 group-hover:opacity-100 transition-opacity`} />
+                        <div className={`absolute inset-0 bg-gradient-to-br ${card.color} opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none`} />
 
                         <div className="relative z-10">
                             <div className="flex justify-between items-start mb-6">
@@ -92,11 +91,14 @@ const MBTIHub: React.FC<Props> = ({ onSelectMode, isMobile }) => {
                                 {card.desc}
                             </p>
 
-                            <div className="flex items-center gap-2 text-sm font-bold text-slate-300 group-hover:text-white group-hover:gap-4 transition-all">
+                            <button
+                                onClick={() => onSelectMode(card.id as any)}
+                                className="flex items-center gap-2 text-sm font-bold text-slate-300 hover:text-white hover:gap-4 transition-all bg-slate-800/50 hover:bg-slate-700/70 px-4 py-2.5 rounded-xl w-full justify-center"
+                            >
                                 立即进入 <ArrowRight size={16} />
-                            </div>
+                            </button>
                         </div>
-                    </motion.button>
+                    </motion.div>
                 ))}
             </div>
 

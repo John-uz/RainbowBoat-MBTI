@@ -425,7 +425,7 @@ function App() {
     const audioRef = useRef<HTMLAudioElement | null>(null);
 
     useEffect(() => {
-        audioRef.current = new Audio('https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3');
+        audioRef.current = new Audio('https://cdn.pixabay.com/audio/2022/03/15/audio_7a8e13b1f2.mp3');
         audioRef.current.loop = true;
         audioRef.current.volume = 0.2;
 
@@ -1489,8 +1489,8 @@ function App() {
                 {(gameState.phase === 'PLAYING' || gameState.phase === 'SETUP') && (
                     <div className={`flex-1 flex relative ${isMobile ? 'flex-col' : 'overflow-hidden'}`}>
                         {/* Game Board Content */}
-                        <div className={`flex-1 relative bg-transparent flex flex-col transition-all duration-300 ${isMobile ? 'h-[60vh]' : ''}`}>
-                            <div className="flex-1 flex items-center justify-center overflow-hidden cursor-grab active:cursor-grabbing">
+                        <div className={`flex-1 relative bg-transparent flex flex-col transition-all duration-300 ${isMobile ? 'min-h-[70vh]' : ''}`}>
+                            <div className={`flex-1 flex items-center justify-center ${isMobile ? 'overflow-auto touch-pan-x touch-pan-y' : 'overflow-hidden'} cursor-grab active:cursor-grabbing`}>
                                 <GameBoard
                                     players={gameState.players}
                                     currentPlayerId={currentPlayer.id}

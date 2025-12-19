@@ -5,6 +5,7 @@ import { analyzePersonality, MBTIAnalysisResult } from '../services/geminiServic
 import { Anchor, Loader2, ArrowRight, Users, LayoutGrid, Plus, Trash2, User, Sparkles, Trophy, Camera, CircleHelp, Settings, Check, BookOpen, Sun, Moon, X, Monitor } from 'lucide-react';
 import { motion } from 'framer-motion';
 import AIConfigModal from './AIConfigModal';
+import QuickTestReport from './QuickTestReport';
 
 interface Props {
     onComplete: (players: { name: string, mbti: string, avatarImage?: string }[], mode: GameMode, botCount: number, targetScore: number) => void;
@@ -122,6 +123,10 @@ const Onboarding: React.FC<Props> = ({ onComplete, isDarkMode, toggleTheme, init
     const [showConfig, setShowConfig] = useState(false);
     const [showManual, setShowManual] = useState(false);
 
+    // State for Quick Test Report
+    const [showQuickReport, setShowQuickReport] = useState(false);
+    const [selectedMbtiForReport, setSelectedMbtiForReport] = useState<string>('');
+
     useEffect(() => {
         let stream: MediaStream | null = null;
         if (cameraActiveIndex !== null) {
@@ -216,6 +221,21 @@ const Onboarding: React.FC<Props> = ({ onComplete, isDarkMode, toggleTheme, init
 
     if (step === 'analyzing') return (<div className="flex flex-col items-center justify-center h-full"><Loader2 size={48} className="text-teal-500 animate-spin mb-4" /><p className="text-xl text-slate-600 dark:text-slate-300">AI 正在连接你的潜意识...</p></div>);
 
+    // Show Quick Test Report if triggered
+    if (showQuickReport && selectedMbtiForReport) {
+        return (
+            <QuickTestReport
+                playerName={humanPlayers[currentPlayerConfigIndex]?.name || '探索者'}
+                mbtiType={selectedMbtiForReport}
+                analysisResults={analysisResults}
+                onBackToHub={() => {
+                    setShowQuickReport(false);
+                    if (onBackToHub) onBackToHub();
+                }}
+            />
+        );
+    }
+
     if (step === 'results') return (
         <div className="flex flex-col items-center justify-center h-full p-4 overflow-y-auto">
             <div className="w-full max-w-xl bg-white dark:bg-slate-800/90 backdrop-blur p-8 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl">
@@ -246,7 +266,12 @@ const Onboarding: React.FC<Props> = ({ onComplete, isDarkMode, toggleTheme, init
                     {isSoloTest && (
                         <>
                             <button
-                                onClick={() => onShowQuickReport && onShowQuickReport(humanPlayers[currentPlayerConfigIndex], analysisResults)}
+                                onClick={() => {
+                                    // Use the top result as default, or let user choose
+                                    const topResult = analysisResults[0]?.type || 'INTJ';
+                                    setSelectedMbtiForReport(topResult);
+                                    setShowQuickReport(true);
+                                }}
                                 className="w-full py-4 bg-gradient-to-r from-teal-600 to-indigo-600 text-white rounded-xl font-bold hover:brightness-110 shadow-lg shadow-teal-500/20 flex items-center justify-center gap-2 transition"
                             >
                                 <Sparkles size={20} /> 查看深度解析报告

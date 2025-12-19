@@ -293,12 +293,12 @@ const GameBoard: React.FC<Props> = ({ players, currentPlayerId, boardLayout, val
     }
 
     return (
-        <div className="w-full h-full bg-stone-100 dark:bg-slate-900/50 rounded-2xl border border-slate-300 dark:border-slate-700 overflow-hidden relative shadow-inner flex items-center justify-center cursor-move transition-colors duration-300">
+        <div className="w-full h-full min-w-[600px] min-h-[500px] bg-stone-100 dark:bg-slate-900/50 rounded-2xl border border-slate-300 dark:border-slate-700 overflow-visible relative shadow-inner flex items-center justify-center cursor-move transition-colors duration-300">
             <div className="absolute top-4 left-4 text-slate-500 dark:text-slate-500 text-xs font-mono z-10 bg-slate-100/80 dark:bg-slate-900/80 px-2 py-1 rounded">
                 {gameMode === GameMode.MBTI_16 ? 'MBTI 十六型田字格 (33格) - 迷雾海域' : '彩虹船 (Rainbow Ark)'}
             </div>
 
-            <svg viewBox="0 0 1200 900" className="w-full h-full animate-fade-in touch-pan-y select-none">
+            <svg viewBox="0 0 1200 900" className="w-full h-full min-w-[600px] min-h-[450px] animate-fade-in touch-manipulation select-none">
                 {gameMode === GameMode.JUNG_8 ? renderHexMap() : renderSquareMap()}
             </svg>
         </div>
