@@ -11,9 +11,10 @@ import { startAudioMonitoring, stopAudioMonitoring } from '../utils/audioAnalyze
 
 interface Props {
     onBack: () => void;
+    isMobile: boolean;
 }
 
-const TaskSolo: React.FC<Props> = ({ onBack }) => {
+const TaskSolo: React.FC<Props> = ({ onBack, isMobile }) => {
     const [selectedType, setSelectedType] = useState<string>('INTJ');
     const [currentFunctionIndex, setCurrentFunctionIndex] = useState(0);
     const [tasks, setTasks] = useState<Record<string, TaskOption> | null>(null);
@@ -153,12 +154,12 @@ const TaskSolo: React.FC<Props> = ({ onBack }) => {
     };
 
     return (
-        <div className="min-h-screen bg-slate-950 text-white p-6 flex flex-col relative overflow-hidden">
+        <div className={`min-h-screen bg-slate-950 text-white p-6 flex flex-col relative ${isMobile ? 'overflow-y-auto' : 'overflow-hidden'}`}>
             {/* Background Glow */}
             <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-blue-500/10 rounded-full blur-[120px] pointer-events-none" />
             <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-500/10 rounded-full blur-[120px] pointer-events-none" />
 
-            <div className="max-w-6xl mx-auto w-full flex-1 flex flex-col relative z-10">
+            <div className={`max-w-6xl mx-auto w-full flex-1 flex flex-col relative z-10 ${isMobile ? 'gap-4' : ''}`}>
                 <header className="flex items-center justify-between mb-8 shrink-0">
                     <button onClick={onBack} className="flex items-center gap-2 text-slate-400 hover:text-white transition group">
                         <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" /> 返回 Hub
@@ -278,7 +279,7 @@ const TaskSolo: React.FC<Props> = ({ onBack }) => {
                                 key="executing"
                                 initial={{ opacity: 0, scale: 0.9 }}
                                 animate={{ opacity: 1, scale: 1 }}
-                                className="w-full flex flex-col md:flex-row gap-8 items-stretch max-w-6xl"
+                                className="w-full flex flex-col lg:flex-row gap-8 items-stretch max-w-6xl"
                             >
                                 {/* Left Side: Task Info */}
                                 <div className="flex-1 bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-[2.5rem] p-8 md:p-12 flex flex-col shadow-2xl">

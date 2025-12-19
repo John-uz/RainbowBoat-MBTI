@@ -180,7 +180,7 @@ const GameReport: React.FC<Props> = ({ players, report, onReturnHome, startTime,
     };
 
     return (
-        <div className="h-full w-full overflow-y-auto p-8 bg-slate-50/80 dark:bg-slate-900/80 text-slate-800 dark:text-white custom-scrollbar transition-colors duration-300 backdrop-blur-sm">
+        <div className="min-h-screen w-full overflow-y-auto p-8 bg-slate-50/80 dark:bg-slate-900/80 text-slate-800 dark:text-white custom-scrollbar transition-colors duration-300 backdrop-blur-sm">
             <div className="max-w-6xl mx-auto space-y-8 pb-20">
 
                 {/* Header */}

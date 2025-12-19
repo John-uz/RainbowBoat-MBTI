@@ -5,9 +5,10 @@ import { Sparkles, Trophy, Ship, ArrowRight, Info } from 'lucide-react';
 
 interface Props {
     onSelectMode: (mode: 'test' | 'tasks' | 'party') => void;
+    isMobile: boolean;
 }
 
-const MBTIHub: React.FC<Props> = ({ onSelectMode }) => {
+const MBTIHub: React.FC<Props> = ({ onSelectMode, isMobile }) => {
     const cards = [
         {
             id: 'test',
@@ -42,7 +43,7 @@ const MBTIHub: React.FC<Props> = ({ onSelectMode }) => {
     ];
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-y-auto">
+        <div className={`min-h-screen flex flex-col items-center py-12 px-6 relative ${isMobile ? 'overflow-y-auto' : 'overflow-hidden'}`}>
             {/* Background Decorative Elements */}
             <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-500/10 rounded-full blur-[120px]" />
             <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-500/10 rounded-full blur-[120px]" />

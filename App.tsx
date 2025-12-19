@@ -1333,14 +1333,14 @@ function App() {
                     </div>
                 </header>
                 <main className="flex-1 relative">
-                    <MBTIHub onSelectMode={handleHubSelect} />
+                    <MBTIHub onSelectMode={handleHubSelect} isMobile={isMobile} />
                 </main>
             </div>
         );
     }
 
     if (gameState.phase === 'SOLO_TASKS') {
-        return <TaskSolo onBack={() => setGameState(prev => ({ ...prev, phase: 'HUB' }))} />;
+        return <TaskSolo onBack={() => setGameState(prev => ({ ...prev, phase: 'HUB' }))} isMobile={isMobile} />;
     }
 
     if (gameState.phase === 'ONBOARDING') {
@@ -1383,7 +1383,7 @@ function App() {
     }
 
     const currentPlayer = gameState.players[gameState.currentPlayerIndex];
-    if (!currentPlayer) return <div className="h-screen bg-slate-950 flex items-center justify-center text-white">Loading Game State...</div>;
+    if (!currentPlayer) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Loading Game State...</div>;
 
     const currentReviewer = gameState.currentReviewerId ? gameState.players.find(p => p.id === gameState.currentReviewerId) : null;
     const playerStack = MBTI_STACKS[currentPlayer.mbti] || [];
