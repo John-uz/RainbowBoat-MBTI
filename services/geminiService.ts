@@ -574,30 +574,25 @@ const buildGameContext = (players: Player[], historyLogs: LogEntry[]) => {
     return `[玩家矩阵(ID|Name|MBTI|T|I|E)]\n${playerMatrix}\n\n[最近高光发言流水线]\n${soulLogs || "航行刚刚开始..."}`;
 };
 
-export interface MBTIDetailedReport {
-    type: string;
-    title: string;
-    nickname: string;
-    description: string;
-    strengths: string[];
-    growth: string[];
-    socialTip: string;
-    monologue: string;
-}
-
 export const analyzePersonality = async (answers: { q: string, val: number }[]): Promise<MBTIAnalysisResult[]> => {
     const system = `
-    你是一位资深的 MBTI 人格分析师，擅长从细微的行为偏好中捕捉人格的原型。
+    你是一位资深的 MBTI 人格分析师。
     任务：根据用户在 4 个场景中的倾向（0代表左边选项，100代表右边选项），推断最可能的 3 种 MBTI 类型。
     
     [分析逻辑]
-    1. 场景1 (社交/E-I): 极低分代表深刻的内省(I)，极高分代表充盈的社交能量(E)。
-    2. 场景2 (信息/S-N): 极低分注重写实与细节(S)，极高分倾向直觉与宏大叙事(N)。
-    3. 场景3 (决策/T-F): 极低分追求逻辑正义(T)，极高分追求情感和谐(F)。
-    4. 场景4 (生活/J-P): 极低分秩序井然(J)，极高分随遇而安(P)。
-    请综合考虑中间值（如 40-60）代表的认知功能灵活性，不要机械判定。
-    
-    输出必须是一个有效的 JSON 数组。
+    1. 场景1 (社交): 低分偏 I，高分偏 E。
+    2. 场景2 (信息): 低分偏 S，高分偏 N。
+    3. 场景3 (决策): 低分偏 T，高分偏 F。
+    4. 场景4 (生活): 低分偏 J，高分偏 P。
+    请综合考虑中间值（如 40-60）代表的认知功能灵活性。
+
+    [输出格式]
+    返回一个纯 JSON 数组，包含 3 个对象，按可能性降序排列：
+    [
+      { "type": "INTJ", "percentage": 85, "reason": "你的决策极度依赖逻辑，且生活规划感极强。" },
+      { "type": "ENTJ", "percentage": 60, "reason": "虽然你倾向独处，但在目标达成上非常有行动力。" },
+      { "type": "ISTJ", "percentage": 40, "reason": "你在细节关注上也很突出。" }
+    ]
   `.trim();
 
     const user = answers.map(a => `${a.q}: ${a.val}`).join('\n');
@@ -605,42 +600,18 @@ export const analyzePersonality = async (answers: { q: string, val: number }[]):
     try {
         const res = await unifiedAICall(user, system);
         const parsed = JSON.parse(extractJSON(res));
-        return parsed;
+        // Fallback validation
+        if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].type) {
+            return parsed;
+        }
+        throw new Error("Invalid format");
     } catch (e) {
+        console.warn("Analysis fallback", e);
         return [
-            { type: "ISFP", percentage: 70, reason: "系统信号波动，但捕捉到了你内心艺术家的气息。" },
-            { type: "INFP", percentage: 50, reason: "或许灵魂深处住着一位诗人？" },
-            { type: "INFJ", percentage: 30, reason: "有一股神秘的洞察者力量。" }
+            { type: "ISFP", percentage: 70, reason: "系统连接不稳定，感受到你内心住着一个自由的艺术家。" },
+            { type: "INFP", percentage: 50, reason: "或者是一个治愈系的哲学家？" },
+            { type: "ESFP", percentage: 30, reason: "偶尔也想成为舞台焦点。" }
         ];
-    }
-};
-
-export const generateDetailedMBTIReport = async (type: string, answers: { q: string, val: number }[]): Promise<MBTIDetailedReport> => {
-    const system = `
-    你是一位殿堂级的人格心理学专家。请为指定的 MBTI 类型生成一份“灵魂级别的深度解析报告”。
-    报告应结合用户的快测原始数据进行个性化解读。
-    
-    [输出格式要求 - 纯 JSON]
-    {
-      "type": "MBTI类型",
-      "title": "类似‘战略家’、‘调停者’的硬核头衔",
-      "nickname": "一句浪漫又毒舌的灵魂点评",
-      "description": "50-100字的深度性格综述，要体现认知功能的运作逻辑",
-      "strengths": ["核心优势1", "核心优势2", "核心优势3", "核心优势4"],
-      "growth": ["精准的成长瓶颈1", "精准的成长瓶颈2", "精准的成长瓶颈3"],
-      "socialTip": "一句在游戏中或现实中都受用的社交箴言",
-      "monologue": "一段该人格在独处时的内心独白（第一人称，非常带感）"
-    }
-    `.trim();
-
-    const user = `人格类型: ${type}\n快测偏好数据:\n${answers.map(a => `${a.q}: ${a.val}`).join('\n')}`;
-
-    try {
-        const res = await unifiedAICall(user, system);
-        return JSON.parse(extractJSON(res));
-    } catch (e) {
-        console.error("Detailed report failed", e);
-        throw e;
     }
 };
 

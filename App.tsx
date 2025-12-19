@@ -1360,7 +1360,6 @@ function App() {
                 toggleTheme={toggleTheme}
                 initialStep={isQuickTestMode ? 'quiz' : 'setup'}
                 isSoloTest={isQuickTestMode}
-                isMobile={isMobile}
                 onBackToHub={resetGame}
                 onShowQuickReport={handleShowQuickReport}
             />
