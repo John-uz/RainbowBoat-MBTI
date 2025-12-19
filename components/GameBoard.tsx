@@ -293,9 +293,51 @@ const GameBoard: React.FC<Props> = ({ players, currentPlayerId, boardLayout, val
         );
     }
 
+    const [panOffset, setPanOffset] = React.useState({ x: 0, y: 0 });
+    const [isDragging, setIsDragging] = React.useState(false);
+    const lastPos = React.useRef({ x: 0, y: 0 });
+
     // Calculate current player position for mobile viewport centering
     const currentPlayer = players.find(p => p.id === currentPlayerId);
     const currentTile = currentPlayer ? boardLayout[currentPlayer.position] : null;
+
+    // Reset pan when current player moves to keep them centered initially
+    React.useEffect(() => {
+        setPanOffset({ x: 0, y: 0 });
+    }, [currentPlayerId, currentPlayer?.position]);
+
+    const handleStart = (e: React.MouseEvent | React.TouchEvent) => {
+        if (!isMobile) return;
+        setIsDragging(true);
+        const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+        const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+        lastPos.current = { x: clientX, y: clientY };
+    };
+
+    const handleMove = (e: React.MouseEvent | React.TouchEvent) => {
+        if (!isDragging || !isMobile) return;
+        const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+        const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+
+        const dx = clientX - lastPos.current.x;
+        const dy = clientY - lastPos.current.y;
+
+        const svgSize = 500; // mobileViewBoxSize
+        const container = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        const scaleX = svgSize / container.width;
+        const scaleY = svgSize / container.height;
+
+        setPanOffset(prev => ({
+            x: prev.x - dx * scaleX,
+            y: prev.y - dy * scaleY
+        }));
+
+        lastPos.current = { x: clientX, y: clientY };
+    };
+
+    const handleEnd = () => {
+        setIsDragging(false);
+    };
 
     // Get pixel position of current player
     let playerPixelPos = { x: 600, y: 450 }; // Default center
@@ -307,15 +349,24 @@ const GameBoard: React.FC<Props> = ({ players, currentPlayerId, boardLayout, val
         }
     }
 
-    // Mobile: Zoom in around player (show ~3 ring radius)
+    // Mobile: Zoom in around player (show ~3 ring radius) + pan offset
     // Desktop: Show full map
-    const mobileViewBoxSize = 500; // Smaller viewBox for zoomed-in effect
+    const mobileViewBoxSize = 500;
     const mobileViewBox = isMobile
-        ? `${playerPixelPos.x - mobileViewBoxSize / 2} ${playerPixelPos.y - mobileViewBoxSize / 2} ${mobileViewBoxSize} ${mobileViewBoxSize}`
+        ? `${playerPixelPos.x - mobileViewBoxSize / 2 + panOffset.x} ${playerPixelPos.y - mobileViewBoxSize / 2 + panOffset.y} ${mobileViewBoxSize} ${mobileViewBoxSize}`
         : "0 0 1200 900";
 
     return (
-        <div className={`w-full h-full bg-stone-100 dark:bg-slate-900/50 rounded-2xl border border-slate-300 dark:border-slate-700 relative shadow-inner flex items-center justify-center transition-colors duration-300 ${isMobile ? 'overflow-hidden' : 'overflow-hidden cursor-move'}`}>
+        <div
+            className={`w-full h-full bg-stone-100 dark:bg-slate-900/50 rounded-2xl border border-slate-300 dark:border-slate-700 relative shadow-inner flex items-center justify-center transition-colors duration-300 ${isMobile ? 'overflow-hidden touch-none' : 'overflow-hidden cursor-move'}`}
+            onMouseDown={handleStart}
+            onMouseMove={handleMove}
+            onMouseUp={handleEnd}
+            onMouseLeave={handleEnd}
+            onTouchStart={handleStart}
+            onTouchMove={handleMove}
+            onTouchEnd={handleEnd}
+        >
             {!isMobile && (
                 <div className="absolute top-4 left-4 text-slate-500 dark:text-slate-500 text-xs font-mono z-10 bg-slate-100/80 dark:bg-slate-900/80 px-2 py-1 rounded">
                     {gameMode === GameMode.MBTI_16 ? 'MBTI 十六型田字格 (33格) - 迷雾海域' : '彩虹船 (Rainbow Ark)'}
@@ -324,11 +375,21 @@ const GameBoard: React.FC<Props> = ({ players, currentPlayerId, boardLayout, val
 
             <svg
                 viewBox={mobileViewBox}
-                className={`w-full h-full animate-fade-in select-none ${isMobile ? 'touch-manipulation' : 'touch-pan-y'}`}
-                style={{ transition: isMobile ? 'transform 0.3s ease-out' : undefined }}
+                className={`w-full h-full animate-fade-in select-none ${isMobile ? 'cursor-grab active:cursor-grabbing' : 'touch-pan-y'}`}
+                style={{ transition: (isMobile && !isDragging) ? 'viewBox 0.3s ease-out' : undefined }}
             >
                 {gameMode === GameMode.JUNG_8 ? renderHexMap() : renderSquareMap()}
             </svg>
+
+            {/* Mobile Reset View Button */}
+            {isMobile && (Math.abs(panOffset.x) > 50 || Math.abs(panOffset.y) > 50) && (
+                <button
+                    onClick={() => setPanOffset({ x: 0, y: 0 })}
+                    className="absolute bottom-4 right-4 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm p-2 rounded-full border border-slate-200 dark:border-slate-700 shadow-lg text-[10px] font-black uppercase tracking-widest text-teal-600 animate-in fade-in slide-in-from-bottom-2"
+                >
+                    聚焦航向
+                </button>
+            )}
         </div>
     );
 };

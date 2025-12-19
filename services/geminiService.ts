@@ -409,10 +409,28 @@ const callPollinations = async (system: string, user: string, jsonMode: boolean)
  */
 const extractJSON = (text: string): string => {
     try {
-        const firstBracket = text.indexOf('{');
-        const lastBracket = text.lastIndexOf('}');
-        if (firstBracket !== -1 && lastBracket !== -1 && lastBracket > firstBracket) {
-            return text.substring(firstBracket, lastBracket + 1);
+        // Find the first occurrence of either '{' or '['
+        const firstBrace = text.indexOf('{');
+        const firstBracket = text.indexOf('[');
+        let startChar = '';
+        let startPos = -1;
+
+        if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
+            startChar = '{';
+            startPos = firstBrace;
+        } else if (firstBracket !== -1) {
+            startChar = '[';
+            startPos = firstBracket;
+        }
+
+        if (startPos === -1) return text.trim();
+
+        // Find the matching last occurrence
+        const endChar = startChar === '{' ? '}' : ']';
+        const lastPos = text.lastIndexOf(endChar);
+
+        if (lastPos !== -1 && lastPos > startPos) {
+            return text.substring(startPos, lastPos + 1);
         }
     } catch (e) {
         console.warn("JSON extraction lookup failed", e);
