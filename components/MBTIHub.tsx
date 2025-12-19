@@ -43,13 +43,13 @@ const MBTIHub: React.FC<Props> = ({ onSelectMode, isMobile }) => {
     ];
 
     return (
-        <div className={`min-h-screen flex flex-col items-center py-12 px-6 relative ${isMobile ? 'overflow-y-auto' : 'overflow-hidden'}`}>
-            {/* Background Decorative Elements */}
-            <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-500/10 rounded-full blur-[120px]" />
-            <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-500/10 rounded-full blur-[120px]" />
+        <div className={`min-h-screen flex flex-col items-center py-12 px-6 relative gpu-accelerated ${isMobile ? 'overflow-y-auto' : 'overflow-hidden'}`}>
+            {/* Background Decorative Elements - Reduced blur/count on mobile maybe better but CSS took care of some */}
+            <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-500/10 rounded-full blur-[120px] pointer-events-none" />
+            <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-500/10 rounded-full blur-[120px] pointer-events-none" />
 
             <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={isMobile ? { opacity: 0 } : { opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="text-center mb-12 relative z-10"
             >
@@ -65,12 +65,12 @@ const MBTIHub: React.FC<Props> = ({ onSelectMode, isMobile }) => {
                 {cards.map((card, idx) => (
                     <motion.button
                         key={card.id}
-                        initial={{ opacity: 0, scale: 0.9 }}
+                        initial={isMobile ? { opacity: 0 } : { opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ delay: idx * 0.1 }}
-                        whileHover={{ y: -8, scale: 1.02 }}
+                        whileHover={isMobile ? {} : { y: -8, scale: 1.02 }}
                         onClick={() => onSelectMode(card.id as any)}
-                        className={`group relative flex flex-col text-left p-8 rounded-3xl border ${card.borderColor} bg-slate-900/40 backdrop-blur-xl overflow-hidden transition-all`}
+                        className={`group relative flex flex-col text-left p-8 rounded-3xl border ${card.borderColor} bg-slate-900/40 backdrop-blur-xl overflow-hidden transition-all gpu-accelerated`}
                     >
                         {/* Gradient Hover Effect */}
                         <div className={`absolute inset-0 bg-gradient-to-br ${card.color} opacity-0 group-hover:opacity-100 transition-opacity`} />

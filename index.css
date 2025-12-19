@@ -1,15 +1,48 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
+
   body {
     font-family: 'Noto Sans SC', sans-serif;
     color: #e2e8f0;
     margin: 0;
-    /* Removed overflow: hidden to allow mobile scrolling */
+    /* Optimize for smooth scrolling and prevent text flickering */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    scroll-padding-top: 2rem;
   }
+}
+
+/* Mobile Performance Optimizations */
+@media (max-width: 768px) {
+  .ocean-background {
+    animation-duration: 60s !important;
+    /* Slow down animation for CPU saving */
+    background-attachment: scroll;
+    /* Fixed backgrounds are slow on mobile */
+  }
+
+  .ocean-background::before {
+    display: none;
+    /* Hide expensive radial gradients on mobile */
+  }
+
+  * {
+    /* Potential GPU acceleration for fixed/absolute elements */
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+.gpu-accelerated {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000;
 }
 
 /* Dynamic Background Layer */
@@ -32,10 +65,10 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-image: 
-    radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 3px),
-    radial-gradient(white, rgba(255,255,255,.15) 1px, transparent 2px),
-    radial-gradient(white, rgba(255,255,255,.1) 2px, transparent 3px);
+  background-image:
+    radial-gradient(white, rgba(255, 255, 255, .2) 2px, transparent 3px),
+    radial-gradient(white, rgba(255, 255, 255, .15) 1px, transparent 2px),
+    radial-gradient(white, rgba(255, 255, 255, .1) 2px, transparent 3px);
   background-size: 550px 550px, 350px 350px, 250px 250px;
   background-position: 0 0, 40px 60px, 130px 270px;
   opacity: 0.3;
@@ -46,13 +79,16 @@
 ::-webkit-scrollbar {
   width: 8px;
 }
+
 ::-webkit-scrollbar-track {
-  background: transparent; 
+  background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
-  background: #475569; 
+  background: #475569;
   border-radius: 4px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
-  background: #64748b; 
+  background: #64748b;
 }

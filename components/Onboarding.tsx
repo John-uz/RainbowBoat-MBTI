@@ -265,8 +265,8 @@ const Onboarding: React.FC<Props> = ({ onComplete, isDarkMode, toggleTheme, init
     );
 
     return (
-        <div className="flex flex-col items-center min-h-screen p-4 overflow-y-auto bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
-            <div className="w-full max-w-6xl bg-white dark:bg-slate-800 p-6 md:p-8 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl my-4 relative">
+        <div className="flex flex-col items-center min-h-screen p-4 overflow-y-auto bg-slate-50 dark:bg-slate-900 transition-colors duration-300 gpu-accelerated">
+            <div className="w-full max-w-6xl bg-white dark:bg-slate-800 p-6 md:p-8 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl my-4 relative gpu-accelerated">
 
                 {/* Top Controls */}
                 <div className="absolute top-6 right-6 flex gap-3 z-10">

@@ -154,7 +154,7 @@ const TaskSolo: React.FC<Props> = ({ onBack, isMobile }) => {
     };
 
     return (
-        <div className={`min-h-screen bg-slate-950 text-white p-6 flex flex-col relative ${isMobile ? 'overflow-y-auto' : 'overflow-hidden'}`}>
+        <div className={`min-h-screen bg-slate-950 text-white p-6 flex flex-col relative gpu-accelerated ${isMobile ? 'overflow-y-auto' : 'overflow-hidden'}`}>
             {/* Background Glow */}
             <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-blue-500/10 rounded-full blur-[120px] pointer-events-none" />
             <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-500/10 rounded-full blur-[120px] pointer-events-none" />
