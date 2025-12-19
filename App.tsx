@@ -425,12 +425,10 @@ function App() {
     const audioRef = useRef<HTMLAudioElement | null>(null);
 
     useEffect(() => {
-        audioRef.current = new Audio('https://cdn.pixabay.com/audio/2022/03/15/audio_7a8e13b1f2.mp3');
+        // Updated to a brighter, light music track
+        audioRef.current = new Audio('https://cdn.pixabay.com/audio/2024/09/25/audio_731ee076e0.mp3');
         audioRef.current.loop = true;
-        audioRef.current.volume = 0.2;
-
-        // Attempt play immediately, though browsers might block it until interaction
-        // We handle the play call again in initGame
+        audioRef.current.volume = 0.15;
     }, []);
 
     // Audio Ducking: Lower volume when listening to speech to prevent feedback loop
@@ -652,7 +650,11 @@ function App() {
         initGame(config.humanPlayers, config.mode, config.botCount, config.targetScore);
     }
 
-    const initGame = (humanPlayers: any[], mode: GameMode, botCount: number, targetScore: number) => {
+    const initGame = (humanPlayers: { name: string, mbti: string, avatarImage?: string }[], mode: GameMode, botCount: number, targetScore: number) => {
+        // Start Audio on User Interaction
+        if (audioRef.current) {
+            audioRef.current.play().catch(e => console.log("Audio play blocked:", e));
+        }
         const newBoard = generateMap(mode);
         setBoard(newBoard);
 
@@ -1389,7 +1391,7 @@ function App() {
     const playerStack = MBTI_STACKS[currentPlayer.mbti] || [];
 
     return (
-        <div className={`min-h-screen w-full text-slate-800 dark:text-slate-200 font-sans flex flex-col overflow-x-hidden relative selection:bg-teal-500/30 transition-colors duration-300 ${isMobile ? 'overflow-y-auto' : ''}`}>
+        <div className={`min-h-screen w-full text-slate-800 dark:text-slate-200 font-sans flex flex-col overflow-x-hidden relative selection:bg-teal-500/30 transition-colors duration-300 ${isMobile && gameState.phase !== 'PLAYING' ? 'overflow-y-auto' : 'overflow-hidden'}`}>
 
             {/* Top Bar - Transparent with blur */}
             <header className="h-16 bg-white/80 dark:bg-slate-900/60 backdrop-blur border-b border-slate-200 dark:border-white/5 flex items-center justify-between px-6 shrink-0 z-30 transition-colors duration-300">
@@ -1484,12 +1486,12 @@ function App() {
                 </div>
             </header>
 
-            <main className={`flex-1 flex relative ${isMobile ? 'flex-col' : 'overflow-hidden'}`}>
+            <main className={`flex-1 flex relative ${isMobile && gameState.phase !== 'PLAYING' ? 'flex-col overflow-y-auto' : 'overflow-hidden'}`}>
                 {/* Original Game UI Wrapper */}
                 {(gameState.phase === 'PLAYING' || gameState.phase === 'SETUP') && (
                     <div className={`flex-1 flex relative ${isMobile ? 'flex-col' : 'overflow-hidden'}`}>
                         {/* Game Board Content */}
-                        <div className={`flex-1 relative bg-transparent flex flex-col transition-all duration-300 ${isMobile ? 'min-h-[70vh]' : ''}`}>
+                        <div className={`flex-1 relative bg-transparent flex flex-col transition-all duration-300 ${isMobile ? 'h-[45vh] min-h-[350px]' : ''}`}>
                             <div className={`flex-1 flex items-center justify-center ${isMobile ? 'overflow-auto touch-pan-x touch-pan-y' : 'overflow-hidden'} cursor-grab active:cursor-grabbing`}>
                                 <GameBoard
                                     players={gameState.players}
@@ -1498,7 +1500,8 @@ function App() {
                                     validMoves={validMoves}
                                     onTileClick={handleTileClick}
                                     gameMode={gameState.gameMode}
-                                    visibilityRadius={gameState.sightRange} // Using sightRange instead of diceValue
+                                    visibilityRadius={gameState.sightRange}
+                                    isMobile={isMobile}
                                 />
                             </div>
 
@@ -1516,7 +1519,7 @@ function App() {
                             {/* Dice & Interactions */}
                             <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-20">
                                 <div className="relative w-full h-full max-w-4xl max-h-[800px]">
-                                    <div className={`absolute bottom-20 right-8 pointer-events-auto transition-all duration-300 ${gameState.gameMode === GameMode.MBTI_16 ? 'translate-x-24' : ''}`}>
+                                    <div className={`absolute ${isMobile ? 'bottom-4 right-4 scale-75' : 'bottom-20 right-8'} pointer-events-auto transition-all duration-300 ${gameState.gameMode === GameMode.MBTI_16 ? 'translate-x-24' : ''}`}>
                                         {/* Host Manual Dice Input */}
                                         {isManualMode && gameState.subPhase === 'IDLE' && gameState.remainingSteps === 0 && (
                                             <div className="mb-6 p-4 bg-slate-800/80 rounded-2xl border border-amber-500/30 backdrop-blur shadow-xl">
@@ -1770,8 +1773,8 @@ function App() {
                             </AnimatePresence>
 
                             {/* Player Avatar (Bottom Left - replaces Video) */}
-                            <div className="absolute bottom-6 left-6 z-40">
-                                <div className="relative group w-32 h-32">
+                            <div className={`absolute ${isMobile ? 'bottom-2 left-2 scale-75 origin-bottom-left' : 'bottom-6 left-6'} z-40`}>
+                                <div className={`relative group ${isMobile ? 'w-20 h-20' : 'w-32 h-32'}`}>
                                     <div className="w-full h-full rounded-full overflow-hidden border-2 border-slate-200 dark:border-slate-700 shadow-2xl bg-white dark:bg-black flex items-center justify-center">
                                         {currentPlayer.avatar.startsWith('data:') ? (
                                             <img src={currentPlayer.avatar} className="w-full h-full object-cover" />
@@ -1784,7 +1787,7 @@ function App() {
                         </div>
 
                         {/* Sidebar (Right/Bottom) */}
-                        <div className={`bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border-slate-200 dark:border-white/5 flex flex-col transition-all duration-300 z-20 shadow-xl ${isMobile ? 'w-full border-t min-h-[40vh]' : (isSidebarMinimized ? 'w-16 border-l' : 'w-64 border-l')}`}>
+                        <div className={`bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border-slate-200 dark:border-white/5 flex flex-col transition-all duration-300 z-20 shadow-xl ${isMobile ? 'w-full border-t max-h-[35vh]' : (isSidebarMinimized ? 'w-16 border-l' : 'w-64 border-l')}`}>
                             <div className="h-16 flex items-center justify-between px-4 border-b border-slate-200 dark:border-white/5 shrink-0">
                                 {!isSidebarMinimized && <span className="font-bold text-slate-400 text-xs uppercase tracking-widest">当前能量场</span>}
                                 <button onClick={() => setIsSidebarMinimized(!isSidebarMinimized)} className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-white transition"><ChevronRight size={16} /></button>

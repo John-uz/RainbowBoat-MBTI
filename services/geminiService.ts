@@ -242,7 +242,7 @@ const DEFAULT_CONFIG: AIConfig = {
     openRouterKey: '',
     groqKey: '',
 
-    geminiModel: 'gemini-2.5-flash',
+    geminiModel: 'gemini-2.5-flash', // 不要再未经讨论就改这个模型了！！
     openRouterModel: 'anthropic/claude-3-haiku',
     groqModel: 'llama3-70b-8192',
 
@@ -431,18 +431,25 @@ const unifiedAICall = async (userPrompt: string, systemPromptOverride?: string, 
 
     const errors: string[] = [];
 
-    const isChinaPlatform = getEnvVar('VITE_PLATFORM') === 'vercel' || getEnvVar('VERCEL') === '1';
+    // The core failover sequence re-enforced by USER:
+    // 1. Groq -> 2. OpenRouter -> 3. Zhipu -> 4. Gemini -> 5. Pollinations (No Key)
 
+    // Check deployment platform for default optimization
+    const isMainlandChina = getEnvVar('VITE_PLATFORM') === 'china' || getEnvVar('VITE_PLATFORM') === 'vercel';
+
+    // Build the dynamic provider chain
     const providers = [
         { name: 'Groq', call: () => callGroq(system, userPrompt, true, imageData) },
         { name: 'OpenRouter', call: () => callOpenRouter(system, userPrompt, true, imageData) },
-        { name: 'Gemini', call: () => callGemini(system, userPrompt, true, imageData) },
         { name: 'Zhipu', call: () => callZhipu(system, userPrompt, true) },
+        { name: 'Gemini', call: () => callGemini(system, userPrompt, true, imageData) },
         { name: 'Pollinations', call: () => callPollinations(system, userPrompt, true) }
     ];
 
-    // Rearrange priority if on Vercel (Mainland China optimization)
-    if (isChinaPlatform) {
+    // Rearrange priority based on platform defaults if NO USER KEYS are provided
+    // BUT if the user has provided specific keys, they still trigger respective calls in order.
+    if (isMainlandChina) {
+        // Move Zhipu to the top for China/Vercel deployments to ensure stability
         const zhipuIndex = providers.findIndex(p => p.name === 'Zhipu');
         if (zhipuIndex > -1) {
             const [zhipu] = providers.splice(zhipuIndex, 1);

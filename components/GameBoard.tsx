@@ -9,6 +9,7 @@ interface Props {
     onTileClick: (index: number) => void;
     gameMode: GameMode;
     visibilityRadius: number; // passed from sightRange
+    isMobile: boolean;
 }
 
 // Increased size to 60 for Hex
@@ -41,7 +42,7 @@ const gridToPixel = (q: number, r: number) => {
     return { x: px, y: py };
 }
 
-const GameBoard: React.FC<Props> = ({ players, currentPlayerId, boardLayout, validMoves, onTileClick, gameMode, visibilityRadius }) => {
+const GameBoard: React.FC<Props> = ({ players, currentPlayerId, boardLayout, validMoves, onTileClick, gameMode, visibilityRadius, isMobile }) => {
 
     // Render JUNGIAN (Hex) Map - No Fog logic requested for Jung mode
     const renderHexMap = () => {
@@ -293,12 +294,15 @@ const GameBoard: React.FC<Props> = ({ players, currentPlayerId, boardLayout, val
     }
 
     return (
-        <div className="w-full h-full min-w-[600px] min-h-[500px] bg-stone-100 dark:bg-slate-900/50 rounded-2xl border border-slate-300 dark:border-slate-700 overflow-visible relative shadow-inner flex items-center justify-center cursor-move transition-colors duration-300">
-            <div className="absolute top-4 left-4 text-slate-500 dark:text-slate-500 text-xs font-mono z-10 bg-slate-100/80 dark:bg-slate-900/80 px-2 py-1 rounded">
+        <div className={`w-full h-full bg-stone-100 dark:bg-slate-900/50 rounded-2xl border border-slate-300 dark:border-slate-700 relative shadow-inner flex items-center justify-center transition-colors duration-300 ${isMobile ? 'overflow-visible' : 'overflow-hidden cursor-move'}`}>
+            <div className="absolute top-4 left-4 text-slate-500 dark:text-slate-500 text-[10px] md:text-xs font-mono z-10 bg-slate-100/80 dark:bg-slate-900/80 px-2 py-1 rounded">
                 {gameMode === GameMode.MBTI_16 ? 'MBTI 十六型田字格 (33格) - 迷雾海域' : '彩虹船 (Rainbow Ark)'}
             </div>
 
-            <svg viewBox="0 0 1200 900" className="w-full h-full min-w-[600px] min-h-[450px] animate-fade-in touch-manipulation select-none">
+            <svg
+                viewBox="0 0 1200 900"
+                className={`w-full h-full animate-fade-in select-none ${isMobile ? 'min-w-[800px] min-h-[600px] touch-manipulation' : 'touch-pan-y'}`}
+            >
                 {gameMode === GameMode.JUNG_8 ? renderHexMap() : renderSquareMap()}
             </svg>
         </div>

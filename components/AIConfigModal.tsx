@@ -15,7 +15,7 @@ const AIConfigModal: React.FC<Props> = ({ onClose }) => {
     const handleSave = () => {
         updateAIConfig(config);
         onClose();
-        alert("AI 配置链已更新！\n优先顺序: Groq -> OpenRouter -> Gemini -> Pollinations");
+        alert("AI 配置链已更新！\n优先顺序: Groq -> OpenRouter -> Zhipu -> Gemini -> Pollinations");
     };
 
     const handleReset = () => {
@@ -107,7 +107,7 @@ const AIConfigModal: React.FC<Props> = ({ onClose }) => {
                         <div className="p-2 bg-teal-500/20 rounded-lg text-teal-400"><Cpu size={24} /></div>
                         <div>
                             <h2 className="text-lg font-bold text-white">AI 神经中枢</h2>
-                            <p className="text-[10px] text-slate-400">灾备调用顺序: 小G &gt; 小O &gt; Mini &gt; 小P</p>
+                            <p className="text-[10px] text-slate-400">灾备调用顺序: Groq &gt; OpenRouter &gt; Zhipu &gt; Gemini &gt; 小P</p>
                         </div>
                     </div>
                     <button onClick={onClose} className="text-slate-500 hover:text-white transition"><X size={24} /></button>
@@ -158,9 +158,21 @@ const AIConfigModal: React.FC<Props> = ({ onClose }) => {
                                 "sk-or-..."
                             )}
 
+                            {/* Zhipu AI */}
+                            {renderKeyInput(
+                                "3. Zhipu (智谱) - 大陆直连推荐",
+                                "text-red-400",
+                                config.zhipuKey,
+                                (v) => setConfig({ ...config, zhipuKey: v }),
+                                !!SYSTEM_KEYS.zhipu,
+                                "glm-4-flash",
+                                (v) => { }, // GLM-4 is free-tier friendly
+                                "输入智谱 API Key..."
+                            )}
+
                             {/* Gemini */}
                             {renderKeyInput(
-                                "3. Gemini (Mini) - 免费稳定",
+                                "4. Gemini (Flash 2.0) - 全球通用",
                                 "text-teal-400",
                                 config.geminiKey,
                                 (v) => setConfig({ ...config, geminiKey: v }),
@@ -168,18 +180,6 @@ const AIConfigModal: React.FC<Props> = ({ onClose }) => {
                                 config.geminiModel,
                                 (v) => setConfig({ ...config, geminiModel: v }),
                                 "AIza..."
-                            )}
-
-                            {/* Zhipu AI */}
-                            {renderKeyInput(
-                                "4. Zhipu (小中) - 大陆直连",
-                                "text-red-400",
-                                config.zhipuKey,
-                                (v) => setConfig({ ...config, zhipuKey: v }),
-                                false, // No system key for Zhipu yet
-                                "glm-4-flash",
-                                () => { }, // Model for Zhipu is currently fixed to flash in this implementation
-                                "输入智谱 API Key..."
                             )}
 
                             <div className="bg-slate-800/50 p-3 rounded-lg flex items-center gap-3 text-xs text-slate-400">
