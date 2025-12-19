@@ -23,6 +23,10 @@ export interface AIConfig {
 
     // Zhipu AI (BigModel)
     zhipuKey: string;
+
+    // DeepSeek AI
+    deepseekKey: string;
+    deepseekModel: string;
 }
 
 export interface MBTIAnalysisResult {
@@ -45,7 +49,8 @@ export const SYSTEM_KEYS = {
     gemini: getEnvVar('VITE_GEMINI_KEY') || getEnvVar('VITE_API_KEY'),
     groq: getEnvVar('VITE_GROQ_KEY'),
     openRouter: getEnvVar('VITE_OPENROUTER_KEY'),
-    zhipu: getEnvVar('VITE_ZHIPU_KEY')
+    zhipu: getEnvVar('VITE_ZHIPU_KEY'),
+    deepseek: getEnvVar('VITE_DEEPSEEK_KEY')
 };
 
 // --- MBTI DEEP KNOWLEDGE BASE (Source: PDF) ---
@@ -226,7 +231,9 @@ const DEFAULT_CONFIG: AIConfig = {
     systemPersona: DEFAULT_PERSONA,
     taskPromptTemplate: DEFAULT_TASK_PROMPT,
     reportPromptTemplate: DEFAULT_REPORT_PROMPT,
-    zhipuKey: ''
+    zhipuKey: '',
+    deepseekKey: '',
+    deepseekModel: 'deepseek-chat'
 };
 
 // --- CONFIG MANAGEMENT ---
@@ -369,6 +376,33 @@ const callZhipu = async (system: string, user: string, jsonMode: boolean): Promi
     return data.choices?.[0]?.message?.content || "{}";
 };
 
+// 4.5 DeepSeek AI - OpenAI Compatible
+const callDeepSeek = async (system: string, user: string, jsonMode: boolean): Promise<string> => {
+    const key = currentConfig.deepseekKey || SYSTEM_KEYS.deepseek;
+    if (!key) throw new Error("Skipped: No DeepSeek Key");
+
+    const response = await fetch("https://api.deepseek.com/chat/completions", {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${key} `,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            model: currentConfig.deepseekModel || "deepseek-chat",
+            messages: [
+                { role: "system", content: system },
+                { role: "user", content: user }
+            ],
+            response_format: jsonMode ? { type: "json_object" } : undefined,
+            temperature: 0.7
+        })
+    });
+
+    if (!response.ok) throw new Error(`DeepSeek ${response.statusText} `);
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || "{}";
+};
+
 // 5. Pollinations (Little P) - Free, No Key
 const callPollinations = async (system: string, user: string, jsonMode: boolean): Promise<string> => {
     const prompt = `${system} \n\n${user} \n\n请以纯 JSON 格式返回。`;
@@ -435,6 +469,7 @@ const unifiedAICall = async (userPrompt: string, systemPromptOverride?: string, 
     let providers = [
         { name: 'Groq', call: () => callGroq(system, userPrompt, true, imageData) },
         { name: 'OpenRouter', call: () => callOpenRouter(system, userPrompt, true, imageData) },
+        { name: 'DeepSeek', call: () => callDeepSeek(system, userPrompt, true) },
         { name: 'Zhipu', call: () => callZhipu(system, userPrompt, true) },
         { name: 'Gemini', call: () => callGemini(system, userPrompt, true, imageData) },
         { name: 'Pollinations', call: () => callPollinations(system, userPrompt, true) }
@@ -454,11 +489,20 @@ const unifiedAICall = async (userPrompt: string, systemPromptOverride?: string, 
     } else {
         // [策略 B] 普通文本：Groq 追求极速与人格感
         if (isMainlandChina) {
-            // 在大陆环境下，由于延迟和稳定性，智谱作为高速首选
-            const zhipuIndex = providers.findIndex(p => p.name === 'Zhipu');
-            if (zhipuIndex > -1) {
-                const [zhipu] = providers.splice(zhipuIndex, 1);
-                providers.unshift(zhipu);
+            // 在大陆环境下，DeepSeek 优先，智谱备选
+            const dsIndex = providers.findIndex(p => p.name === 'DeepSeek');
+            const zpIndex = providers.findIndex(p => p.name === 'Zhipu');
+
+            // 先处理智谱，再处理 DeepSeek，确保 DeepSeek 在最前面
+            if (zpIndex > -1) {
+                const [zp] = providers.splice(zpIndex, 1);
+                providers.unshift(zp);
+            }
+            if (dsIndex > -1) {
+                // 因为智谱已经 unshift 了，所以要重新找 DeepSeek 下标或者直接按逻辑放
+                const newDsIndex = providers.findIndex(p => p.name === 'DeepSeek');
+                const [ds] = providers.splice(newDsIndex, 1);
+                providers.unshift(ds);
             }
         } else {
             // 海外或通用场景，Groq 是默认的首选

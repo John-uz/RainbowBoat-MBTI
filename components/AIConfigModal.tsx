@@ -158,9 +158,21 @@ const AIConfigModal: React.FC<Props> = ({ onClose }) => {
                                 "sk-or-..."
                             )}
 
+                            {/* DeepSeek AI */}
+                            {renderKeyInput(
+                                "3. DeepSeek - 大陆极速推荐",
+                                "text-cyan-400",
+                                config.deepseekKey,
+                                (v) => setConfig({ ...config, deepseekKey: v }),
+                                !!SYSTEM_KEYS.deepseek,
+                                config.deepseekModel, // 'deepseek-chat'
+                                (v) => setConfig({ ...config, deepseekModel: v }),
+                                "sk-..."
+                            )}
+
                             {/* Zhipu AI */}
                             {renderKeyInput(
-                                "3. Zhipu (智谱) - 大陆直连推荐",
+                                "4. Zhipu (智谱) - 极速备选",
                                 "text-red-400",
                                 config.zhipuKey,
                                 (v) => setConfig({ ...config, zhipuKey: v }),
@@ -172,7 +184,7 @@ const AIConfigModal: React.FC<Props> = ({ onClose }) => {
 
                             {/* Gemini */}
                             {renderKeyInput(
-                                "4. Gemini (Flash 2.0) - 全球通用",
+                                "5. Gemini (Flash 2.0) - 全球通用",
                                 "text-teal-400",
                                 config.geminiKey,
                                 (v) => setConfig({ ...config, geminiKey: v }),
