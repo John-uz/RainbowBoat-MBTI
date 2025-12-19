@@ -37,32 +37,12 @@ jobs:
 
       - name: Sync Source Code to Gitee
         env:
-          DST_KEY: ${{ secrets.GITEE_PRIVATE_KEY }}
+            DST_KEY: ${{ secrets.GITEE_PRIVATE_KEY }}
         run: |
-          mkdir -p ~/.ssh
-          echo "$DST_KEY" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan gitee.com >> ~/.ssh/known_hosts
-          git remote add gitee git@gitee.com:JohnF33/RainbowBoat-MBTI.git
-          git push -f gitee main:main
+            mkdir -p ~/.ssh
+            echo "$DST_KEY" > ~/.ssh/id_rsa
+            chmod 600 ~/.ssh/id_rsa
+            ssh-keyscan gitee.com >> ~/.ssh/known_hosts
+            git remote add gitee git@gitee.com:JohnF33/RainbowBoat-MBTI.git
+            git push -f gitee main:main
 
-      - name: Sync Pages to Gitee
-        env:
-          DST_KEY: ${{ secrets.GITEE_PRIVATE_KEY }}
-        run: |
-          cd dist
-          git init
-          git config user.name "GitHub Action"
-          git config user.email "action@github.com"
-          git add .
-          git commit -m "Auto-deploy from GitHub"
-          git remote add gitee git@gitee.com:JohnF33/RainbowBoat-MBTI.git
-          git push -f gitee master:gh-pages
-
-      - name: Reload Gitee Pages
-        uses: yanglbme/gitee-pages-action@main
-        with:
-          gitee-username: JohnF33
-          gitee-password: ${{ secrets.GITEE_PASSWORD }}
-          gitee-repo: JohnF33/RainbowBoat-MBTI
-          branch: gh-pages

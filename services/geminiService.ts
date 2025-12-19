@@ -43,7 +43,8 @@ export const SYSTEM_KEYS = {
     // Allow specific VITE_GEMINI_KEY, fallback to generic VITE_API_KEY
     gemini: getEnvVar('VITE_GEMINI_KEY') || getEnvVar('VITE_API_KEY'),
     groq: getEnvVar('VITE_GROQ_KEY'),
-    openRouter: getEnvVar('VITE_OPENROUTER_KEY')
+    openRouter: getEnvVar('VITE_OPENROUTER_KEY'),
+    zhipu: getEnvVar('VITE_ZHIPU_KEY')
 };
 
 // --- MBTI DEEP KNOWLEDGE BASE (Source: PDF) ---
@@ -366,7 +367,7 @@ const callGemini = async (system: string, user: string, jsonMode: boolean, image
 
 // 4. Zhipu AI (BigModel) - OpenAI Compatible
 const callZhipu = async (system: string, user: string, jsonMode: boolean): Promise<string> => {
-    const key = currentConfig.zhipuKey || getEnvVar('VITE_ZHIPU_KEY');
+    const key = currentConfig.zhipuKey || SYSTEM_KEYS.zhipu;
     if (!key) throw new Error("Skipped: No Zhipu Key");
 
     const response = await fetch("https://open.bigmodel.cn/api/paas/v4/chat/completions", {
@@ -430,44 +431,32 @@ const unifiedAICall = async (userPrompt: string, systemPromptOverride?: string, 
 
     const errors: string[] = [];
 
-    // Priority 1: Groq (小G)
-    try {
-        console.log(`Calling [小G] Groq${imageData ? ' (Vision)' : ''}...`);
-        return await callGroq(system, userPrompt, true, imageData);
-    } catch (e) {
-        errors.push(`Groq: ${(e as Error).message}`);
+    const isChinaPlatform = getEnvVar('VITE_PLATFORM') === 'vercel' || getEnvVar('VERCEL') === '1';
+
+    const providers = [
+        { name: 'Groq', call: () => callGroq(system, userPrompt, true, imageData) },
+        { name: 'OpenRouter', call: () => callOpenRouter(system, userPrompt, true, imageData) },
+        { name: 'Gemini', call: () => callGemini(system, userPrompt, true, imageData) },
+        { name: 'Zhipu', call: () => callZhipu(system, userPrompt, true) },
+        { name: 'Pollinations', call: () => callPollinations(system, userPrompt, true) }
+    ];
+
+    // Rearrange priority if on Vercel (Mainland China optimization)
+    if (isChinaPlatform) {
+        const zhipuIndex = providers.findIndex(p => p.name === 'Zhipu');
+        if (zhipuIndex > -1) {
+            const [zhipu] = providers.splice(zhipuIndex, 1);
+            providers.unshift(zhipu);
+        }
     }
 
-    // Priority 2: OpenRouter (小O)
-    try {
-        console.log(`Calling [小O] OpenRouter${imageData ? ' (Vision)' : ''}...`);
-        return await callOpenRouter(system, userPrompt, true, imageData);
-    } catch (e) {
-        errors.push(`OpenRouter: ${(e as Error).message}`);
-    }
-
-    // Priority 3: Gemini (Mini)
-    try {
-        console.log(`Calling [Mini] Gemini${imageData ? ' (Vision)' : ''}...`);
-        return await callGemini(system, userPrompt, true, imageData);
-    } catch (e) {
-        errors.push(`Gemini: ${(e as Error).message}`);
-    }
-
-    // Priority 4: Zhipu (小中) - Mainland China Optimized
-    try {
-        console.log("Calling [小中] Zhipu AI...");
-        return await callZhipu(system, userPrompt, true);
-    } catch (e) {
-        errors.push(`Zhipu: ${(e as Error).message}`);
-    }
-
-    // Priority 5: Pollinations (小P)
-    try {
-        console.log("Calling [小P] Pollinations...");
-        return await callPollinations(system, userPrompt, true);
-    } catch (e) {
-        errors.push(`Pollinations: ${(e as Error).message}`);
+    for (const provider of providers) {
+        try {
+            console.log(`Calling [${provider.name}]...`);
+            return await provider.call();
+        } catch (e) {
+            errors.push(`${provider.name}: ${(e as Error).message}`);
+        }
     }
 
     console.error("All AI providers failed:", errors);
