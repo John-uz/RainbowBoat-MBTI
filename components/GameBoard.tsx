@@ -382,12 +382,12 @@ const GameBoard: React.FC<Props> = ({ players, currentPlayerId, boardLayout, val
             </svg>
 
             {/* Mobile Reset View Button */}
-            {isMobile && (Math.abs(panOffset.x) > 50 || Math.abs(panOffset.y) > 50) && (
+            {isMobile && (Math.abs(panOffset.x) > 30 || Math.abs(panOffset.y) > 30) && (
                 <button
                     onClick={() => setPanOffset({ x: 0, y: 0 })}
-                    className="absolute bottom-4 right-4 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm p-2 rounded-full border border-slate-200 dark:border-slate-700 shadow-lg text-[10px] font-black uppercase tracking-widest text-teal-600 animate-in fade-in slide-in-from-bottom-2"
+                    className="absolute bottom-24 right-6 bg-teal-600 dark:bg-teal-500 text-white px-3 py-1.5 rounded-full border border-white dark:border-slate-800 shadow-2xl text-[10px] font-black uppercase tracking-widest animate-in fade-in slide-in-from-bottom-4 transition-all active:scale-95 z-50"
                 >
-                    聚焦航向
+                    复位
                 </button>
             )}
         </div>

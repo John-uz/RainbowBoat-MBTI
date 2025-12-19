@@ -1400,94 +1400,92 @@ function App() {
         <div className={`h-screen w-full text-slate-800 dark:text-slate-200 font-sans flex flex-col overflow-hidden relative selection:bg-teal-500/30 transition-colors duration-300 ${isDarkMode ? 'dark bg-slate-900' : 'bg-stone-50'} ${isMobile && gameState.phase === 'SETUP' ? 'overflow-y-auto' : 'overflow-hidden'}`}>
 
             {/* Top Bar - Transparent with blur */}
-            <header className={`${isMobile ? 'h-14 px-4' : 'h-16 px-6'} bg-white/80 dark:bg-slate-900/60 backdrop-blur border-b border-slate-200 dark:border-white/5 flex items-center justify-between shrink-0 z-30 transition-colors duration-300`}>
-                <div className="flex items-center gap-6 w-1/3">
+            <header className={`${isMobile ? 'h-14 px-3' : 'h-16 px-6'} bg-white/80 dark:bg-slate-900/60 backdrop-blur border-b border-slate-200 dark:border-white/5 flex items-center justify-between shrink-0 z-30 transition-colors duration-300`}>
+                <div className={`flex items-center gap-3 ${isMobile ? 'w-auto' : 'w-1/3'}`}>
                     <button onClick={resetGame} className="flex items-center gap-1 text-slate-500 hover:text-teal-600 dark:text-slate-400 dark:hover:text-white transition group" title="Return to Home">
-                        <LogOut size={16} className="group-hover:-translate-x-1 transition" />
+                        <LogOut size={isMobile ? 14 : 16} className="group-hover:-translate-x-1 transition" />
                     </button>
-                    <div className="flex items-center gap-3 bg-slate-100 dark:bg-slate-800/50 pr-4 rounded-full border border-slate-200 dark:border-slate-700/50">
-                        <div className="w-10 h-10 rounded-full border-2 border-teal-500/50 overflow-hidden">
-                            {currentPlayer.avatar.startsWith('data:') ? <img src={currentPlayer.avatar} className="w-full h-full object-cover" /> : <div className="bg-slate-200 dark:bg-slate-700 w-full h-full flex items-center justify-center font-bold text-lg">{currentPlayer.name[0]}</div>}
+                    <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800/50 pr-3 rounded-full border border-slate-200 dark:border-slate-700/50 overflow-hidden">
+                        <div className={`${isMobile ? 'w-7 h-7' : 'w-10 h-10'} rounded-full border-2 border-teal-500/50 overflow-hidden shrink-0`}>
+                            {currentPlayer.avatar.startsWith('data:') ? <img src={currentPlayer.avatar} className="w-full h-full object-cover" /> : <div className="bg-slate-200 dark:bg-slate-700 w-full h-full flex items-center justify-center font-bold text-xs">{currentPlayer.name[0]}</div>}
                         </div>
-                        <div>
-                            <div className="font-bold text-slate-700 dark:text-white text-sm">{currentPlayer.name}</div>
-                            <div className="text-[10px] font-bold text-teal-600 dark:text-teal-400">{currentPlayer.mbti}</div>
+                        <div className="min-w-0">
+                            <div className={`font-black text-slate-700 dark:text-white ${isMobile ? 'text-[10px]' : 'text-sm'} truncate`}>{currentPlayer.name}</div>
+                            <div className={`text-[8px] font-bold text-teal-600 dark:text-teal-400 truncate`}>{currentPlayer.mbti}</div>
                         </div>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-4">
-                    <button
-                        onClick={() => setIsManualMode(!isManualMode)}
-                        className={`px-3 py-1 rounded-full text-xs font-bold border transition ${isManualMode ? 'bg-amber-500 text-white border-amber-600' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-300 dark:border-slate-700'}`}
-                        title="Enable Host Control (Manual Dice)"
-                    >
-                        {isManualMode ? "主持人模式: ON" : "主持人模式: OFF"}
-                    </button>
-                </div>
-
-                <div className="flex-1 flex justify-center">
-                    {gameState.gameMode === GameMode.JUNG_8 && (
-                        <div className="flex items-center px-6 py-2 rounded-full bg-white/40 dark:bg-black/40 border border-slate-200 dark:border-white/5 backdrop-blur-md shadow-inner overflow-x-auto no-scrollbar max-w-xl">
-                            {playerStack.map((f, i) => {
-                                const isCurrent = i === currentPlayer.stackIndex;
-                                return (
-                                    <div key={i} className={`flex flex-col items-center relative transition-all duration-500 ${isCurrent ? 'mx-3' : 'mx-1'}`}>
-                                        {isCurrent && <div className="text-[9px] text-teal-600 dark:text-teal-400 font-bold mb-1 absolute -top-4">当前</div>}
-                                        <div className={`w-8 h-8 flex items-center justify-center text-[10px] font-bold rounded-full transition-all duration-500 ${isCurrent ? 'bg-teal-500 text-white scale-125 shadow-[0_0_15px_#14b8a6]' : 'bg-slate-200 dark:bg-slate-800 text-slate-500'}`}>
-                                            {f}
+                {!isMobile && (
+                    <div className="flex-1 flex justify-center px-4 overflow-hidden">
+                        {gameState.gameMode === GameMode.JUNG_8 && (
+                            <div className="flex items-center px-6 py-2 rounded-full bg-white/40 dark:bg-black/40 border border-slate-200 dark:border-white/5 backdrop-blur-md shadow-inner overflow-x-auto no-scrollbar max-w-xl">
+                                {playerStack.map((f, i) => {
+                                    const isCurrent = i === currentPlayer.stackIndex;
+                                    return (
+                                        <div key={i} className={`flex flex-col items-center relative transition-all duration-500 ${isCurrent ? 'mx-3' : 'mx-1'}`}>
+                                            {isCurrent && <div className="text-[9px] text-teal-600 dark:text-teal-400 font-bold mb-1 absolute -top-4">当前</div>}
+                                            <div className={`w-8 h-8 flex items-center justify-center text-[10px] font-bold rounded-full transition-all duration-500 ${isCurrent ? 'bg-teal-500 text-white scale-125 shadow-[0_0_15px_#14b8a6]' : 'bg-slate-200 dark:bg-slate-800 text-slate-500'}`}>
+                                                {f}
+                                            </div>
                                         </div>
-                                    </div>
-                                )
-                            })}
-                        </div>
-                    )}
-                    {gameState.gameMode === GameMode.MBTI_16 && (
-                        <div className="flex items-center px-6 py-2 rounded-full bg-white/40 dark:bg-black/40 border border-slate-200 dark:border-white/5 backdrop-blur-md shadow-inner overflow-x-auto no-scrollbar max-w-2xl">
-                            {MBTI_TYPES.map((type, i) => {
-                                const isCurrent = gameState.currentTile?.functionId === type;
-                                // Find group to use correct color
-                                let groupColor = 'text-slate-500';
-                                let activeClass = 'bg-slate-200 dark:bg-slate-800 text-slate-500';
+                                    )
+                                })}
+                            </div>
+                        )}
+                        {gameState.gameMode === GameMode.MBTI_16 && (
+                            <div className="flex items-center px-6 py-2 rounded-full bg-white/40 dark:bg-black/40 border border-slate-200 dark:border-white/5 backdrop-blur-md shadow-inner overflow-x-auto no-scrollbar max-w-2xl">
+                                {MBTI_TYPES.map((type, i) => {
+                                    const isCurrent = gameState.currentTile?.functionId === type;
+                                    let activeClass = 'bg-slate-200 dark:bg-slate-800 text-slate-500';
 
-                                const groupEntry = Object.entries(MBTI_GROUPS).find(([_, g]) => g.types.includes(type));
-                                if (groupEntry) {
-                                    const [_, groupData] = groupEntry;
-                                    if (isCurrent) {
-                                        // Parse tailwind classes to apply active style manually or just keep it simple
-                                        // Let's use specific active colors based on group
-                                        if (groupData.hexColor === '#a855f7') activeClass = 'bg-purple-500 text-white shadow-[0_0_15px_#a855f7] scale-110'; // NT
-                                        else if (groupData.hexColor === '#22c55e') activeClass = 'bg-green-500 text-white shadow-[0_0_15px_#22c55e] scale-110'; // NF
-                                        else if (groupData.hexColor === '#3b82f6') activeClass = 'bg-blue-500 text-white shadow-[0_0_15px_#3b82f6] scale-110'; // SJ
-                                        else if (groupData.hexColor === '#eab308') activeClass = 'bg-yellow-500 text-white shadow-[0_0_15px_#eab308] scale-110'; // SP
+                                    const groupEntry = Object.entries(MBTI_GROUPS).find(([_, g]) => g.types.includes(type));
+                                    if (groupEntry) {
+                                        const [_, groupData] = groupEntry;
+                                        if (isCurrent) {
+                                            if (groupData.hexColor === '#a855f7') activeClass = 'bg-purple-500 text-white shadow-[0_0_15px_#a855f7] scale-110';
+                                            else if (groupData.hexColor === '#22c55e') activeClass = 'bg-green-500 text-white shadow-[0_0_15px_#22c55e] scale-110';
+                                            else if (groupData.hexColor === '#3b82f6') activeClass = 'bg-blue-500 text-white shadow-[0_0_15px_#3b82f6] scale-110';
+                                            else if (groupData.hexColor === '#eab308') activeClass = 'bg-yellow-500 text-white shadow-[0_0_15px_#eab308] scale-110';
+                                        }
                                     }
-                                }
 
-                                return (
-                                    <div key={type} className={`flex flex-col items-center relative transition-all duration-500 mx-1 shrink-0`}>
-                                        {isCurrent && <div className="text-[9px] text-teal-600 dark:text-teal-400 font-bold mb-1 absolute -top-4">当前</div>}
-                                        <div className={`px-2 py-1 flex items-center justify-center text-[10px] font-bold rounded-md transition-all duration-500 ${isCurrent ? activeClass : 'bg-slate-200 dark:bg-slate-800 text-slate-500'}`}>
-                                            {type}
+                                    return (
+                                        <div key={type} className={`flex flex-col items-center relative transition-all duration-500 mx-1 shrink-0`}>
+                                            {isCurrent && <div className="text-[9px] text-teal-600 dark:text-teal-400 font-bold mb-1 absolute -top-4">当前</div>}
+                                            <div className={`px-2 py-1 flex items-center justify-center text-[10px] font-bold rounded-md transition-all duration-500 ${isCurrent ? activeClass : 'bg-slate-200 dark:bg-slate-800 text-slate-500'}`}>
+                                                {type}
+                                            </div>
                                         </div>
-                                    </div>
-                                )
-                            })}
-                        </div>
-                    )}
-                </div>
+                                    )
+                                })}
+                            </div>
+                        )}
+                    </div>
+                )}
 
-                <div className="w-1/3 flex justify-end gap-3">
-                    <button onClick={() => handleGameOver(gameState.players)} className="px-3 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 dark:bg-red-900/20 dark:hover:bg-red-900/50 border border-red-200 dark:border-red-800/50 text-red-600 dark:text-red-300 transition flex items-center gap-1.5 text-xs font-bold mr-2">
-                        <Flag size={14} /> 结束游戏
+                <div className={`${isMobile ? 'w-auto' : 'w-1/3'} flex items-center justify-end gap-1.5 md:gap-3`}>
+                    {!isMobile && (
+                        <button
+                            onClick={() => setIsManualMode(!isManualMode)}
+                            className={`px-3 py-1 rounded-full text-xs font-bold border transition ${isManualMode ? 'bg-amber-500 text-white border-amber-600' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-300 dark:border-slate-700'}`}
+                        >
+                            {isManualMode ? "主持人" : "自动"}
+                        </button>
+                    )}
+                    <button onClick={() => handleGameOver(gameState.players)} className={`${isMobile ? 'p-2' : 'px-3 py-1.5'} rounded-lg bg-red-100 hover:bg-red-200 dark:bg-red-900/20 dark:hover:bg-red-900/50 border border-red-200 dark:border-red-800/50 text-red-600 dark:text-red-300 transition flex items-center gap-1.5 text-xs font-bold`}>
+                        <Flag size={14} /> {!isMobile && '结束航行'}
                     </button>
-                    <button onClick={toggleTheme} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-amber-500 dark:hover:text-yellow-400 transition">
-                        {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+                    <button onClick={toggleTheme} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 transition transform active:scale-90">
+                        {isDarkMode ? <Sun size={isMobile ? 16 : 18} /> : <Moon size={isMobile ? 16 : 18} />}
                     </button>
-                    <button onClick={() => setShowConfig(true)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 hover:text-teal-600 dark:hover:text-teal-400 transition" title="AI Config">
-                        <Settings size={18} />
-                    </button>
-                    <button onClick={() => setIsMusicPlaying(!isMusicPlaying)} className={`p-2 rounded-full transition ${isMusicPlaying ? 'text-teal-500 bg-teal-500/10' : 'text-slate-600 dark:text-slate-400'}`} title={isMusicPlaying ? "Pause Music" : "Play Music"}>
-                        <Music size={18} />
+                    {!isMobile && (
+                        <button onClick={() => setShowConfig(true)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 hover:text-teal-600 dark:hover:text-teal-400 transition">
+                            <Settings size={18} />
+                        </button>
+                    )}
+                    <button onClick={() => setIsMusicPlaying(!isMusicPlaying)} className={`p-2 rounded-full transition ${isMusicPlaying ? 'text-teal-500' : 'text-slate-600 dark:text-slate-400'}`}>
+                        <Music size={isMobile ? 16 : 18} />
                     </button>
                 </div>
             </header>
@@ -1796,71 +1794,70 @@ function App() {
                             {isMobile && isSidebarMinimized && (
                                 <button
                                     onClick={() => setIsSidebarMinimized(false)}
-                                    className="absolute bottom-4 right-4 z-40 w-12 h-12 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center shadow-lg border border-slate-200 dark:border-slate-700 text-teal-600 dark:text-teal-400"
+                                    className="absolute bottom-6 right-6 z-[60] w-14 h-14 bg-teal-600 dark:bg-teal-500 text-white rounded-full flex items-center justify-center shadow-[0_8px_20px_rgba(20,184,166,0.3)] border-2 border-white dark:border-slate-800 transition-all active:scale-95 animate-in zoom-in-50 duration-300"
                                 >
-                                    <Layers size={20} />
+                                    <Layers size={24} />
+                                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white dark:border-slate-800"></div>
                                 </button>
                             )}
                         </div>
 
-                        {/* Sidebar (Right) - Hidden on mobile when minimized */}
-                        {(!isMobile || !isSidebarMinimized) && (
-                            <div className={`bg-white/95 dark:bg-slate-900/90 backdrop-blur-md border-slate-200 dark:border-white/5 flex flex-col transition-all duration-300 z-50 shadow-2xl ${isMobile ? 'absolute bottom-0 left-0 right-0 border-t rounded-t-3xl max-h-[50vh] overflow-hidden' : (isSidebarMinimized ? 'w-16 border-l' : 'w-64 border-l')}`}>
-                                <div className={`${isMobile ? 'h-12' : 'h-16'} flex items-center justify-between px-6 border-b border-slate-100 dark:border-white/5 shrink-0`}>
-                                    {!isSidebarMinimized && <span className={`font-bold text-slate-500 dark:text-slate-400 ${isMobile ? 'text-[11px]' : 'text-xs'} uppercase tracking-[0.2em]`}>当前能量场</span>}
-                                    <button onClick={() => setIsSidebarMinimized(!isSidebarMinimized)} className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-white transition-colors"><ChevronRight size={18} className={isMobile ? 'rotate-90' : ''} /></button>
-                                </div>
-                                {!isSidebarMinimized ? (
-                                    <div className="flex-1 flex flex-col overflow-hidden">
-                                        <div
-                                            className={`overflow-y-auto custom-scrollbar p-3 transition-all duration-300 ${gameState.players.length > 6 ? 'space-y-1.5' : 'space-y-3'}`}
-                                            style={{ maxHeight: '65%' }}
-                                        >
-                                            {[...gameState.players].sort((a, b) => (b.trustScore + b.insightScore + b.expressionScore) - (a.trustScore + a.insightScore + a.expressionScore)).map((p) => {
-                                                const total = p.trustScore + p.insightScore + p.expressionScore;
-                                                const isCompact = gameState.players.length > 6;
-                                                return (
-                                                    <div key={p.id} className={`rounded-xl border transition-all ${isCompact ? 'p-2' : 'p-3'} ${p.id === currentPlayer.id ? 'bg-slate-50 dark:bg-slate-800 border-teal-500/30 shadow-lg' : 'bg-transparent border-slate-100 dark:border-slate-800/50'}`}>
-                                                        <div className="flex justify-between items-center mb-1.5">
-                                                            <div className="flex items-center gap-2">
-                                                                <div className={`rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-slate-700 dark:text-white overflow-hidden ring-1 ring-slate-300 dark:ring-slate-600 ${isCompact ? 'w-6 h-6 text-[9px]' : 'w-8 h-8 text-[10px]'}`}>
-                                                                    {p.avatar.startsWith('data:') ? <img src={p.avatar} className="w-full h-full object-cover" /> : p.name[0]}
-                                                                </div>
-                                                                <div className="leading-tight">
-                                                                    <div className={`font-bold text-slate-700 dark:text-slate-200 ${isCompact ? 'text-[10px]' : 'text-xs'}`}>{p.name}</div>
-                                                                    <div className="text-[9px] text-slate-400 dark:text-slate-500">{p.mbti}</div>
-                                                                </div>
+                        {/* Sidebar (Right) - Slide overlay on mobile */}
+                        <div className={`bg-white/95 dark:bg-slate-900/90 backdrop-blur-xl border-slate-200 dark:border-white/5 flex flex-col transition-all duration-500 z-50 shadow-2xl ${isMobile ? `fixed bottom-0 left-0 right-0 border-t rounded-t-[3rem] h-[60vh] transform ${isSidebarMinimized ? 'translate-y-full' : 'translate-y-0'}` : (isSidebarMinimized ? 'w-16 border-l shrink-0' : 'w-64 border-l shrink-0')}`}>
+                            <div className={`${isMobile ? 'h-14' : 'h-16'} flex items-center justify-between px-8 border-b border-slate-100 dark:border-white/5 shrink-0`}>
+                                <span className={`font-black text-slate-800 dark:text-white ${isMobile ? 'text-sm' : 'text-xs'} uppercase tracking-[0.2em]`}>航行日志</span>
+                                <button onClick={() => setIsSidebarMinimized(true)} className="p-2 text-slate-400 hover:text-teal-600 dark:text-slate-500 dark:hover:text-teal-400 transition-colors"><ChevronRight size={24} className={isMobile ? 'rotate-90' : ''} /></button>
+                            </div>
+                            {!isSidebarMinimized ? (
+                                <div className="flex-1 flex flex-col overflow-hidden">
+                                    <div
+                                        className={`overflow-y-auto custom-scrollbar p-3 transition-all duration-300 ${gameState.players.length > 6 ? 'space-y-1.5' : 'space-y-3'}`}
+                                        style={{ maxHeight: '65%' }}
+                                    >
+                                        {[...gameState.players].sort((a, b) => (b.trustScore + b.insightScore + b.expressionScore) - (a.trustScore + a.insightScore + a.expressionScore)).map((p) => {
+                                            const total = p.trustScore + p.insightScore + p.expressionScore;
+                                            const isCompact = gameState.players.length > 6;
+                                            return (
+                                                <div key={p.id} className={`rounded-xl border transition-all ${isCompact ? 'p-2' : 'p-3'} ${p.id === currentPlayer.id ? 'bg-slate-50 dark:bg-slate-800 border-teal-500/30 shadow-lg' : 'bg-transparent border-slate-100 dark:border-slate-800/50'}`}>
+                                                    <div className="flex justify-between items-center mb-1.5">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className={`rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-slate-700 dark:text-white overflow-hidden ring-1 ring-slate-300 dark:ring-slate-600 ${isCompact ? 'w-6 h-6 text-[9px]' : 'w-8 h-8 text-[10px]'}`}>
+                                                                {p.avatar.startsWith('data:') ? <img src={p.avatar} className="w-full h-full object-cover" /> : p.name[0]}
                                                             </div>
-                                                            <div className={`font-bold text-amber-500 ${isCompact ? 'text-xs' : 'text-sm'}`}>{total}</div>
+                                                            <div className="leading-tight">
+                                                                <div className={`font-bold text-slate-700 dark:text-slate-200 ${isCompact ? 'text-[10px]' : 'text-xs'}`}>{p.name}</div>
+                                                                <div className="text-[9px] text-slate-400 dark:text-slate-500">{p.mbti}</div>
+                                                            </div>
                                                         </div>
-                                                        <div className="flex gap-1 text-[9px] text-slate-500">
-                                                            <div className="flex-1 bg-slate-100 dark:bg-slate-900/40 rounded px-1.5 py-0.5 flex justify-between"><span>信</span><span className="text-blue-500 dark:text-blue-400">{p.trustScore}</span></div>
-                                                            <div className="flex-1 bg-slate-100 dark:bg-slate-900/40 rounded px-1.5 py-0.5 flex justify-between"><span>觉</span><span className="text-purple-500 dark:text-purple-400">{p.insightScore}</span></div>
-                                                            <div className="flex-1 bg-slate-100 dark:bg-slate-900/40 rounded px-1.5 py-0.5 flex justify-between"><span>表</span><span className="text-orange-500 dark:text-orange-400">{p.expressionScore}</span></div>
-                                                        </div>
+                                                        <div className={`font-bold text-amber-500 ${isCompact ? 'text-xs' : 'text-sm'}`}>{total}</div>
                                                     </div>
-                                                )
-                                            })}
-                                        </div>
-                                        <div className="flex-1 bg-slate-50/50 dark:bg-slate-950/50 border-t border-slate-200 dark:border-slate-800 p-3 overflow-y-auto custom-scrollbar text-[10px] space-y-1.5 min-h-[150px]">
-                                            {gameState.logs.slice(-30).map(l => (
-                                                <div key={l.id} className="text-slate-500 dark:text-slate-400 leading-snug mb-1.5 border-b border-slate-200 dark:border-slate-900/50 pb-1">
-                                                    <span className="text-teal-600 dark:text-teal-500 font-bold mr-1">{l.author || '•'}</span>
-                                                    {l.text}
-                                                    {l.taskDetails && <div className="text-[9px] text-slate-400 dark:text-slate-600 mt-0.5 italic line-clamp-2">{l.taskDetails}</div>}
+                                                    <div className="flex gap-1 text-[9px] text-slate-500">
+                                                        <div className="flex-1 bg-slate-100 dark:bg-slate-900/40 rounded px-1.5 py-0.5 flex justify-between"><span>信</span><span className="text-blue-500 dark:text-blue-400">{p.trustScore}</span></div>
+                                                        <div className="flex-1 bg-slate-100 dark:bg-slate-900/40 rounded px-1.5 py-0.5 flex justify-between"><span>觉</span><span className="text-purple-500 dark:text-purple-400">{p.insightScore}</span></div>
+                                                        <div className="flex-1 bg-slate-100 dark:bg-slate-900/40 rounded px-1.5 py-0.5 flex justify-between"><span>表</span><span className="text-orange-500 dark:text-orange-400">{p.expressionScore}</span></div>
+                                                    </div>
                                                 </div>
-                                            ))}
-                                        </div>
+                                            )
+                                        })}
                                     </div>
-                                ) : (
-                                    <div className="flex flex-col items-center gap-4 py-4">
-                                        {gameState.players.map(p => (
-                                            <div key={p.id} className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-[10px] border ${p.id === currentPlayer.id ? 'border-teal-500 text-teal-500' : 'border-slate-300 dark:border-slate-700 text-slate-400'}`}>{p.name[0]}</div>
+                                    <div className="flex-1 bg-slate-50/50 dark:bg-slate-950/50 border-t border-slate-200 dark:border-slate-800 p-3 overflow-y-auto custom-scrollbar text-[10px] space-y-1.5 min-h-[150px]">
+                                        {gameState.logs.slice(-30).map(l => (
+                                            <div key={l.id} className="text-slate-500 dark:text-slate-400 leading-snug mb-1.5 border-b border-slate-200 dark:border-slate-900/50 pb-1">
+                                                <span className="text-teal-600 dark:text-teal-500 font-bold mr-1">{l.author || '•'}</span>
+                                                {l.text}
+                                                {l.taskDetails && <div className="text-[9px] text-slate-400 dark:text-slate-600 mt-0.5 italic line-clamp-2">{l.taskDetails}</div>}
+                                            </div>
                                         ))}
                                     </div>
-                                )}
-                            </div>
-                        )}
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center gap-4 py-4">
+                                    {gameState.players.map(p => (
+                                        <div key={p.id} className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-[10px] border ${p.id === currentPlayer.id ? 'border-teal-500 text-teal-500' : 'border-slate-300 dark:border-slate-700 text-slate-400'}`}>{p.name[0]}</div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 )}
                 {showConfig && <AIConfigModal onClose={() => setShowConfig(false)} />}
