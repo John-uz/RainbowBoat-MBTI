@@ -21,29 +21,29 @@ const QUESTIONS = [
     {
         id: 1,
         text: "社交狂欢结束回到家，你的电量...",
-        left: "耗尽 (需独处回血)",
-        right: "满格 (还想再嗨)",
+        left: "耗尽 (回血需独处)",
+        right: "满格 (还能再嗨)",
         dimension: "E-I"
     },
     {
         id: 2,
         text: "做饭时，你通常...",
-        left: "严格按食谱称重",
-        right: "凭感觉‘适量’发挥",
+        left: "严格按食谱",
+        right: "凭感觉‘适量’",
         dimension: "S-N"
     },
     {
         id: 3,
         text: "朋友哭着找你倾诉，你第一反应...",
-        left: "分析原因找对策",
-        right: "先抱抱陪TA哭",
+        left: "理性分析给对策",
+        right: "感性共情先抱抱",
         dimension: "T-F"
     },
     {
         id: 4,
         text: "关于旅行计划...",
-        left: "Excel精确到小时",
-        right: "到了目的地再说",
+        left: "Excel 精确到分钟",
+        right: "说走就走看心情",
         dimension: "J-P"
     }
 ];
