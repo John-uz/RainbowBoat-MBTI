@@ -23,6 +23,8 @@ const TaskSolo: React.FC<Props> = ({ onBack, isMobile, isDarkMode }) => {
 
     // Task Cache: key = `${type}-${functionId}`
     const [taskCache, setTaskCache] = useState<Record<string, Record<string, TaskOption>>>({});
+    // AI-generated tasks cache (separate from local)
+    const [aiTaskCache, setAiTaskCache] = useState<Record<string, Record<string, TaskOption>>>({});
 
     // Execution States
     const [phase, setPhase] = useState<'SELECTING' | 'EXECUTING' | 'FEEDBACK'>('SELECTING');
@@ -63,69 +65,54 @@ const TaskSolo: React.FC<Props> = ({ onBack, isMobile, isDarkMode }) => {
         position: 0, previousPosition: null, stackIndex: currentFunctionIndex, skipUsedCount: 0, color: 'teal'
     };
 
-    const fetchTasks = async (funcId: string, type: string, forceRefresh = false) => {
+    // STRATEGY: Load local tasks immediately, call AI only when user starts challenge
+    const fetchTasks = (funcId: string, type: string) => {
         const cacheKey = `${type}-${funcId}`;
 
-        // Step 1: Check cache first for instant load
+        // Check if we have AI-generated tasks first (highest priority)
+        const aiCached = aiTaskCache[cacheKey];
+        if (aiCached) {
+            console.log(`✅ Using AI-generated tasks for ${cacheKey}`);
+            setTasks(aiCached);
+            setLoading(false);
+            setPhase('SELECTING');
+            setCurrentTask(null);
+            setCompletedTasks(new Set());
+            setCarouselIndex(0);
+            return;
+        }
+
+        // Check local cache
         const cached = taskCache[cacheKey];
-        if (cached && !forceRefresh) {
-            console.log(`✅ Using cached tasks for ${cacheKey}`);
+        if (cached) {
+            console.log(`✅ Using cached local tasks for ${cacheKey}`);
             setTasks(cached);
             setLoading(false);
             setPhase('SELECTING');
             setCurrentTask(null);
             setCompletedTasks(new Set());
             setCarouselIndex(0);
-        } else {
-            // No cache - Use local library as instant fallback
-            console.log(`📚 Loading local tasks from library for ${funcId}...`);
-            const localTasks = getTasksByFunction(funcId, 4);
-            const localTasksMap: Record<string, TaskOption> = {};
-            const categories: ('standard' | 'truth' | 'dare' | 'deep')[] = ['standard', 'truth', 'dare', 'deep'];
-            localTasks.forEach((task, idx) => {
-                localTasksMap[categories[idx]] = task;
-            });
-
-            // Show local tasks immediately
-            setTasks(localTasksMap);
-            setLoading(true); // Still show loading indicator while AI generates better tasks
-            setPhase('SELECTING');
-            setCurrentTask(null);
-            setCompletedTasks(new Set());
-            setCarouselIndex(0);
+            return;
         }
 
-        // Step 2: Fetch fresh AI tasks in background (always, unless using fresh cache)
-        if (!cached || forceRefresh) {
-            try {
-                console.log(`🤖 Fetching AI-generated tasks for ${cacheKey}...`);
-                const res = await generateAllTaskOptions(funcId, [mockPlayer], { ...mockPlayer, mbti: type });
+        // Load from local library immediately - NO AI call until user starts challenge!
+        console.log(`📚 Instantly loading local tasks for ${funcId}...`);
+        const localTasks = getTasksByFunction(funcId, 4);
+        const localTasksMap: Record<string, TaskOption> = {};
+        const categories: ('standard' | 'truth' | 'dare' | 'deep')[] = ['standard', 'truth', 'dare', 'deep'];
+        localTasks.forEach((task, idx) => {
+            localTasksMap[categories[idx]] = task;
+        });
 
-                // Update cache
-                setTaskCache(prev => ({ ...prev, [cacheKey]: res }));
-                setTasks(res);
-                console.log(`✅ AI tasks loaded for ${cacheKey}`);
-            } catch (e) {
-                console.warn('AI task generation failed, keeping local library tasks:', e);
-                // Local library tasks are already shown, so user experience is not affected
-            } finally {
-                setLoading(false);
-            }
-        }
-
-        // Step 3: Preload next level tasks in background
-        const nextIdx = (stack.indexOf(funcId) + 1) % stack.length;
-        const nextFunc = stack[nextIdx];
-        const nextCacheKey = `${type}-${nextFunc}`;
-        if (!taskCache[nextCacheKey]) {
-            console.log(`⏭️ Preloading next level: ${nextCacheKey}...`);
-            generateAllTaskOptions(nextFunc, [mockPlayer], { ...mockPlayer, mbti: type })
-                .then(res => {
-                    setTaskCache(prev => ({ ...prev, [nextCacheKey]: res }));
-                    console.log(`✅ Preloaded tasks for ${nextCacheKey}`);
-                })
-                .catch(err => console.warn(`Preload failed for ${nextCacheKey}:`, err));
-        }
+        // Cache and display local tasks immediately
+        setTaskCache(prev => ({ ...prev, [cacheKey]: localTasksMap }));
+        setTasks(localTasksMap);
+        setLoading(false);
+        setPhase('SELECTING');
+        setCurrentTask(null);
+        setCompletedTasks(new Set());
+        setCarouselIndex(0);
+        console.log(`✅ Local tasks displayed instantly (<50ms)!`);
     };
 
     useEffect(() => {
@@ -179,11 +166,24 @@ const TaskSolo: React.FC<Props> = ({ onBack, isMobile, isDarkMode }) => {
         };
     }, [isCameraEnabled, phase]);
 
+    // NEW: When user starts a challenge, trigger AI generation in background
     const handleStartChallenge = (task: TaskOption) => {
         setCurrentTask(task);
         setTimer(task.durationSeconds);
         setTranscription("");
         setPhase('EXECUTING');
+
+        // NOW trigger AI generation for better tasks (only after user commits to challenge)
+        const cacheKey = `${selectedType}-${currentFunction}`;
+        if (!aiTaskCache[cacheKey]) {
+            console.log(`🤖 User started challenge! Now generating AI tasks in background for ${cacheKey}...`);
+            generateAllTaskOptions(currentFunction, [mockPlayer], { ...mockPlayer, mbti: selectedType })
+                .then(res => {
+                    setAiTaskCache(prev => ({ ...prev, [cacheKey]: res }));
+                    console.log(`✅ AI tasks generated for future use: ${cacheKey}`);
+                })
+                .catch(err => console.warn(`AI generation failed (not critical):`, err));
+        }
     };
 
     const handleCompleteTask = async () => {
@@ -269,7 +269,7 @@ const TaskSolo: React.FC<Props> = ({ onBack, isMobile, isDarkMode }) => {
                             </button>
                         </>
                     )}
-                    <button onClick={() => fetchTasks(currentFunction, selectedType, true)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition text-slate-400 dark:text-slate-500">
+                    <button onClick={() => fetchTasks(currentFunction, selectedType)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition text-slate-400 dark:text-slate-500">
                         <RefreshCw size={16} className={loading && phase === 'SELECTING' ? 'animate-spin' : ''} />
                     </button>
                 </div>
@@ -298,7 +298,7 @@ const TaskSolo: React.FC<Props> = ({ onBack, isMobile, isDarkMode }) => {
                 })}
             </div>
 
-            {/* Main Content */}
+            {/* Main Content - continuing from previous file... */}
             <main className="flex-1 flex flex-col items-center justify-center px-4 overflow-hidden relative z-10">
                 <AnimatePresence mode="wait">
                     {phase === 'SELECTING' && (
