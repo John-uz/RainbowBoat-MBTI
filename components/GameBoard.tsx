@@ -84,22 +84,37 @@ const GameBoard: React.FC<Props> = ({ players, currentPlayerId, boardLayout, val
                         fillOpacity={isTarget ? 0.6 : 0.2}
                     />
 
-                    <text
-                        x={x}
-                        y={y + 8}
-                        textAnchor="middle"
-                        // Text color switch
-                        className="fill-slate-600 dark:fill-slate-300"
-                        style={{
-                            fill: isTarget ? '#ffffff' : baseColor,
-                            pointerEvents: 'none',
-                            userSelect: 'none'
-                        }}
-                        fontWeight="bold"
-                        fontSize={isCenter ? "24" : "18"}
-                    >
-                        {tile.functionId}
-                    </text>
+                    {tile.functionId === 'Hub' ? (
+                        <g>
+                            <motion.g
+                                animate={{
+                                    scale: [1, 1.15, 1],
+                                    filter: ["drop-shadow(0 0 5px #f43f5e)", "drop-shadow(0 0 15px #f43f5e)", "drop-shadow(0 0 5px #f43f5e)"]
+                                }}
+                                transition={{ duration: 2, repeat: Infinity }}
+                            >
+                                <Heart x={x - 20} y={y - 25} size={40} className="fill-red-500 text-red-500" />
+                            </motion.g>
+                            <text x={x} y={y + 25} textAnchor="middle" className="fill-slate-600 dark:fill-slate-300 font-bold" fontSize="14" style={{ pointerEvents: 'none', userSelect: 'none' }}>海洋之心</text>
+                        </g>
+                    ) : (
+                        <text
+                            x={x}
+                            y={y + 10}
+                            textAnchor="middle"
+                            // Text color switch
+                            className="fill-slate-600 dark:fill-slate-300"
+                            style={{
+                                fill: isTarget ? '#ffffff' : baseColor,
+                                pointerEvents: 'none',
+                                userSelect: 'none'
+                            }}
+                            fontWeight="bold"
+                            fontSize="18"
+                        >
+                            {tile.functionId}
+                        </text>
+                    )}
 
                     {renderPlayers(playersHere, x, y, currentPlayerId, false)}
                 </g>
@@ -121,7 +136,9 @@ const GameBoard: React.FC<Props> = ({ players, currentPlayerId, boardLayout, val
 
             if (currentTile) {
                 distance = Math.abs(tile.q - currentTile.q) + Math.abs(tile.r - currentTile.r);
-                isVisible = distance <= visibilityRadius;
+                isVisible = (distance <= visibilityRadius) || tile.functionId === 'Hub';
+            } else {
+                isVisible = tile.functionId === 'Hub';
             }
 
             const isCenter = tile.zone === 'Hub';

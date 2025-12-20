@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Desktop Packaging
+/desktop/dist
+/desktop/rainbowboat.exe
+*.exe
+

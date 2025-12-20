@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:desktop": "npm run build && powershell -Command \"if(Test-Path desktop/dist) { Remove-Item -Recurse -Force desktop/dist }; Copy-Item -Recurse dist desktop/dist\" && cd desktop && go build -ldflags=\"-H windowsgui\" -o ../彩虹船.exe",
     "preview": "vite preview"
   },
   "engines": {
