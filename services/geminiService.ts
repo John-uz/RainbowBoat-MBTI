@@ -248,7 +248,7 @@ const DEFAULT_CONFIG: AIConfig = {
 
     geminiModel: 'gemini-2.5-flash',
     openRouterModel: 'anthropic/claude-3-haiku',
-    groqModel: 'llama3-70b-8192',
+    groqModel: 'llama-3.3-70b-versatile',
 
     designPhilosophy: DEFAULT_PHILOSOPHY,
     systemPersona: DEFAULT_PERSONA,
