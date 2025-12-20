@@ -70,6 +70,14 @@ export const LOCAL_TASKS: LocalTask[] = [
     { title: "预示符号", description: "随机从桌上选择一个符号或图案（如扑克牌上的花色），说出它在你眼中可能代表的深层或预示性含义。", functionId: "Ni" },
     { title: "创世节日", description: "如果你能立刻创建一个全新的节日，你会命名它为什么？这个节日会庆祝什么？有什么特别的活动？", functionId: "Ne" },
     { title: "谎言机器", description: "假设你发明了一个能读懂思想的机器，但它只能读出谎言。请你构思一个有趣的场景，描述你会用这个机器来做什么，以及它会带来什么意想不到的后果。", functionId: "Ni" },
+    { title: "时间管理大师", description: "请分享一个你在日常生活中用来高效管理时间的技巧或工具。", functionId: "Te" },
+    { title: "逻辑谜题", description: "给出一个简短的逻辑谜题，让其他玩家尝试解答。", functionId: "Ti" },
+    { title: "情感共鸣", description: "描述最近一次让你感动的情景，并说出你的感受。", functionId: "Fe" },
+    { title: "价值观探讨", description: "说出你最看重的一个价值观，并解释其对你的意义。", functionId: "Fi" },
+    { title: "感官体验", description: "闭上眼睛，描述你现在感受到的最强烈的一个感官刺激（如声音、气味）。", functionId: "Se" },
+    { title: "记忆碎片", description: "回忆起童年里的一件小事，详细描述当时的情景。", functionId: "Si" },
+    { title: "创意联想", description: "随机选取两个无关的词语，尝试把它们联系起来并讲述一个小故事。", functionId: "Ne" },
+    { title: "未来愿景", description: "描述你对未来十年生活的一个大胆设想。", functionId: "Ni" },
 ];
 
 export const getTasksByFunction = (functionId: string, count: number = 4): TaskOption[] => {
@@ -77,15 +85,20 @@ export const getTasksByFunction = (functionId: string, count: number = 4): TaskO
     // This is a simplification but helps distribute the tasks
     const matched = LOCAL_TASKS.filter(t => t.functionId === functionId);
 
-    // Shuffle
-    const shuffled = [...matched].sort(() => Math.random() - 0.5);
+    // If not enough tasks for the requested count, fallback to generic pool
+    const fallbackPool = LOCAL_TASKS.filter(t => t.functionId !== functionId);
+    const combined = matched.length >= count ? matched : [...matched, ...fallbackPool];
 
+    // Shuffle the combined pool to ensure randomness
+    const shuffled = combined.sort(() => Math.random() - 0.5);
+
+    // Slice the required number of tasks and assign categories in a round‑robin fashion
     return shuffled.slice(0, count).map((t, i) => ({
         category: (['standard', 'truth', 'dare', 'deep'] as const)[i % 4],
         title: t.title,
         description: t.description,
         multiplier: [1.0, 1.2, 1.2, 1.5][i % 4],
         scoreType: ['expression', 'insight', 'expression', 'trust'][i % 4] as any,
-        durationSeconds: 60
+        durationSeconds: 60,
     }));
 };
