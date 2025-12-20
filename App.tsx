@@ -431,8 +431,8 @@ function App() {
     const audioRef = useRef<HTMLAudioElement | null>(null);
 
     useEffect(() => {
-        // Updated to a brighter, light music track
-        audioRef.current = new Audio('https://cdn.pixabay.com/audio/2024/09/25/audio_731ee076e0.mp3');
+        // Updated to a brighter, light music track (Stable Source: GitHub Raw Content - 'Domino')
+        audioRef.current = new Audio('https://raw.githubusercontent.com/muhammederdem/mini-player/master/mp3/5.mp3');
         audioRef.current.loop = true;
         audioRef.current.volume = 0.15;
     }, []);
@@ -705,6 +705,17 @@ function App() {
                     // Pick one randomly
                     const randomTile = typeTiles[Math.floor(Math.random() * typeTiles.length)];
                     startPos = randomTile.index;
+                }
+            } else if (mode === GameMode.JUNG_8) {
+                // Jung 8 Mode: Start on Dominant Function Tile
+                const stack = MBTI_STACKS[p.mbti];
+                if (stack && stack.length > 0) {
+                    const domFunc = stack[0]; // e.g. 'Ni' for INTJ
+                    const domTiles = newBoard.filter(t => t.functionId === domFunc);
+                    if (domTiles.length > 0) {
+                        const randomTile = domTiles[Math.floor(Math.random() * domTiles.length)];
+                        startPos = randomTile.index;
+                    }
                 }
             }
 
