@@ -114,6 +114,7 @@ const Onboarding: React.FC<Props> = ({ onComplete, isDarkMode, toggleTheme, init
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [answers, setAnswers] = useState<{ [key: number]: number }>({ 1: 50, 2: 50, 3: 50, 4: 50 });
     const [analysisResults, setAnalysisResults] = useState<MBTIAnalysisResult[]>([]);
+    const [playerHistory, setPlayerHistory] = useState<Record<number, { count: number, summary: string }>>({});
 
     const [selectedMode, setSelectedMode] = useState<GameMode>(GameMode.JUNG_8);
     const [botCount, setBotCount] = useState<number>(0);
@@ -166,10 +167,45 @@ const Onboarding: React.FC<Props> = ({ onComplete, isDarkMode, toggleTheme, init
         }
     };
 
+    const checkHistory = async (index: number, name: string, mbti: string) => {
+        if ((window as any).nativeGetHistory && name && mbti) {
+            try {
+                const res = await (window as any).nativeGetHistory(name, mbti);
+                const data = JSON.parse(res);
+                if (data.exists) {
+                    setPlayerHistory(prev => ({
+                        ...prev,
+                        [index]: { count: data.count, summary: data.summary }
+                    }));
+                } else {
+                    setPlayerHistory(prev => {
+                        const next = { ...prev };
+                        delete next[index];
+                        return next;
+                    });
+                }
+            } catch (e) {
+                console.error("History check failed", e);
+            }
+        }
+    };
+
     const addHumanPlayer = () => { if (humanPlayers.length < 16) setHumanPlayers([...humanPlayers, { id: `p${Date.now()}`, name: '', mbti: '' }]); };
     const removeHumanPlayer = (index: number) => { if (humanPlayers.length > 1) { const newPlayers = [...humanPlayers]; newPlayers.splice(index, 1); setHumanPlayers(newPlayers); } };
-    const updatePlayerName = (index: number, name: string) => { const newPlayers = [...humanPlayers]; newPlayers[index].name = name; setHumanPlayers(newPlayers); };
-    const updatePlayerMbti = (index: number, mbti: string) => { const newPlayers = [...humanPlayers]; newPlayers[index].mbti = mbti; setHumanPlayers(newPlayers); };
+
+    const updatePlayerName = (index: number, name: string) => {
+        const newPlayers = [...humanPlayers];
+        newPlayers[index].name = name;
+        setHumanPlayers(newPlayers);
+        checkHistory(index, name, newPlayers[index].mbti);
+    };
+
+    const updatePlayerMbti = (index: number, mbti: string) => {
+        const newPlayers = [...humanPlayers];
+        newPlayers[index].mbti = mbti;
+        setHumanPlayers(newPlayers);
+        checkHistory(index, newPlayers[index].name, mbti);
+    };
 
     const startQuizForPlayer = (index: number) => { setCurrentPlayerConfigIndex(index); setAnswers({ 1: 50, 2: 50, 3: 50, 4: 50 }); setStep('quiz'); };
 
@@ -325,7 +361,12 @@ const Onboarding: React.FC<Props> = ({ onComplete, isDarkMode, toggleTheme, init
                         <div className="flex items-center justify-between"><h4 className="text-teal-600 dark:text-teal-400 font-bold flex items-center gap-2"><Users size={18} /> 玩家配置 ({humanPlayers.length}/16)</h4>{humanPlayers.length < 16 && (<button onClick={addHumanPlayer} className="text-xs bg-teal-50 hover:bg-teal-100 dark:bg-teal-900/50 dark:hover:bg-teal-900 text-teal-700 dark:text-teal-200 px-3 py-1.5 rounded-full flex items-center gap-1 transition"><Plus size={12} /> 添加玩家</button>)}</div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
                             {humanPlayers.map((player, idx) => (
-                                <div key={player.id} className="bg-slate-100/60 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700 relative transition hover:border-slate-400 dark:hover:border-slate-600 flex gap-4 items-start">
+                                <div key={player.id} className={`bg-slate-100/60 dark:bg-slate-900/50 p-4 rounded-xl border relative transition hover:border-slate-400 dark:hover:border-slate-600 flex gap-4 items-start ${playerHistory[idx] ? 'border-amber-400 dark:border-amber-600 shadow-[0_0_10px_rgba(251,191,36,0.2)]' : 'border-slate-200 dark:border-slate-700'}`}>
+                                    {playerHistory[idx] && (
+                                        <div className="absolute -top-3 left-4 bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-700/50 shadow-sm flex items-center gap-1 animate-in slide-in-from-bottom-2 z-20">
+                                            <Trophy size={10} /> 老船员 (Lv.{playerHistory[idx].count})
+                                        </div>
+                                    )}
                                     {humanPlayers.length > 1 && (<button onClick={() => removeHumanPlayer(idx)} className="absolute top-2 right-2 text-slate-400 hover:text-red-500 dark:text-slate-600 dark:hover:text-red-400 transition"><Trash2 size={14} /></button>)}
                                     <div className="shrink-0 flex flex-col items-center gap-2">
                                         <div className="w-16 h-16 rounded-full bg-slate-200 dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 overflow-hidden flex items-center justify-center relative group">

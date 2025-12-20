@@ -179,6 +179,18 @@ const GameReport: React.FC<Props> = ({ players, report, onReturnHome, startTime,
         URL.revokeObjectURL(url);
     };
 
+    // Auto-save to Local Vault (for Desktop users)
+    React.useEffect(() => {
+        if ((window as any).nativeSaveResult) {
+            players.forEach(p => {
+                const analysis = report.playerAnalysis[p.id] || "";
+                const totalScore = p.trustScore + p.insightScore + p.expressionScore;
+                (window as any).nativeSaveResult(p.name, p.mbti, analysis, JSON.stringify(report), totalScore);
+            });
+            console.log("Game results archived to local soul-vault.");
+        }
+    }, [players, report]);
+
     return (
         <div className="min-h-screen w-full overflow-y-auto p-8 bg-slate-50/80 dark:bg-slate-900/80 text-slate-800 dark:text-white custom-scrollbar transition-colors duration-300 backdrop-blur-sm">
             <div className="max-w-6xl mx-auto space-y-8 pb-20">

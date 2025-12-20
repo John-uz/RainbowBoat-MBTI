@@ -219,7 +219,7 @@ const AIConfigModal: React.FC<Props> = ({ onClose }) => {
 
                             {/* Gemini */}
                             {renderKeyInput(
-                                "5. Gemini (Flash 2.0) - 全球通用",
+                                "5. Gemini (Flash 2.5) - 全球通用",
                                 "text-teal-400",
                                 config.geminiKey,
                                 (v) => setConfig({ ...config, geminiKey: v }),

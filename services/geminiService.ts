@@ -795,6 +795,20 @@ export const generateAllTaskOptions = async (
     // [核心：注入心理动力学张力]
     const tensionContext = getFunctionalTension(currentPlayer, functionId);
 
+    // [桌面版特有：注入灵魂历史历史 (Only in Lorca/Desktop mode)]
+    let soulHistoryPrompt = "";
+    try {
+        if ((window as any).nativeGetHistory) {
+            const historyRaw = await (window as any).nativeGetHistory(currentPlayer.name, currentPlayer.mbti);
+            const historyObj = JSON.parse(historyRaw);
+            if (historyObj.exists && historyObj.summary) {
+                soulHistoryPrompt = `\n[老船员回归：灵魂航行志 (此玩家的历史表现总结)]\n该玩家曾进行过 ${historyObj.count} 次航行。历史画像显示：\n${historyObj.summary}\n请结合这些历史特征，设计能引导其进一步进化或突破固有瓶颈的任务。\n`;
+            }
+        }
+    } catch (e) {
+        console.warn("Native history fetch failed:", e);
+    }
+
     // Customize logic for MBTI 16 Characters
     let tileContext = `所处功能格: "${functionId}" (人格动力学建议: ${tensionContext}).`;
 
@@ -863,6 +877,8 @@ ${currentConfig.designPhilosophy}
 [当前场景设定]
 行动玩家: ${currentPlayer.name} (类型: ${currentPlayer.mbti}).
 所处位置: ${tileContext}
+
+${soulHistoryPrompt}
 
 ${knowledgeBase}
 
