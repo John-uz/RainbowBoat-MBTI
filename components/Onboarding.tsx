@@ -218,8 +218,15 @@ const Onboarding: React.FC<Props> = ({ onComplete, isDarkMode, toggleTheme, init
     };
 
     const handleSelectResult = (mbti: string) => {
-        updatePlayerMbti(currentPlayerConfigIndex, mbti);
-        setStep('setup');
+        if (isSoloTest) {
+            // In Solo Test mode, clicking a result card shows the detailed report
+            setSelectedMbtiForReport(mbti);
+            setShowQuickReport(true);
+        } else {
+            // In Game Setup mode, clicking a result card selects it for the player
+            updatePlayerMbti(currentPlayerConfigIndex, mbti);
+            setStep('setup');
+        }
     }
 
     const isSetupValid = () => humanPlayers.every(p => p.name.trim() !== '' && p.mbti !== '');
