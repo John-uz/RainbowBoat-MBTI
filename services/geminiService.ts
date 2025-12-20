@@ -549,7 +549,16 @@ const getDetectedRegion = (): 'china' | 'overseas' => {
 
 // --- MAIN FALLBACK CONTROLLER ---
 
-const unifiedAICall = async (userPrompt: string, systemPromptOverride?: string, imageData?: string): Promise<string> => {
+const PROVIDER_NICKNAMES: Record<string, string> = {
+    'Groq': '小G',
+    'Gemini': '小F',
+    'OpenRouter': '小O',
+    'Zhipu': '小Z',
+    'DeepSeek': '小D',
+    'Pollinations': '小P'
+};
+
+const unifiedAICall = async (userPrompt: string, systemPromptOverride?: string, imageData?: string, onStatusChange?: (status: string) => void): Promise<string> => {
     let system = systemPromptOverride || currentConfig.systemPersona;
 
     if (!system.toLowerCase().includes("json")) {
@@ -585,7 +594,8 @@ const unifiedAICall = async (userPrompt: string, systemPromptOverride?: string, 
     } else {
         process.env.NODE_ENV !== 'production' && console.log("[环境路由] 检测到位于海外，优化为国际主流链路...");
         providers = [
-            { name: 'Groq', call: () => callGroq(system, userPrompt, true, imageData) },
+            // 注意：如果包含图片，直接跳过 Groq，因为它的一致性较差(400 error)
+            ...(isMultimodal ? [] : [{ name: 'Groq', call: () => callGroq(system, userPrompt, true, imageData) }]),
             { name: 'Gemini', call: () => callGemini(system, userPrompt, true, imageData) },
             { name: 'OpenRouter', call: () => callOpenRouter(system, userPrompt, true, imageData) },
             { name: 'Pollinations', call: () => callPollinations(system, userPrompt, true) }
@@ -601,7 +611,7 @@ const unifiedAICall = async (userPrompt: string, systemPromptOverride?: string, 
             providers.unshift(gemini);
         }
     } else if (region === 'overseas') {
-        // 海外普通文本首选 Groq
+        // 海外普通文本首选 Groq (如果它还在列表中)
         const groqIndex = providers.findIndex(p => p.name === 'Groq');
         if (groqIndex > 0) {
             const [groq] = providers.splice(groqIndex, 1);
@@ -612,6 +622,10 @@ const unifiedAICall = async (userPrompt: string, systemPromptOverride?: string, 
     for (const provider of providers) {
         try {
             console.log(`Calling [${provider.name}]...`);
+            if (onStatusChange) {
+                const nick = PROVIDER_NICKNAMES[provider.name] || provider.name;
+                onStatusChange(nick);
+            }
             return await provider.call();
         } catch (e) {
             errors.push(`${provider.name}: ${(e as Error).message}`);
@@ -725,7 +739,7 @@ ${highlightLogs || "航行刚刚开始，等待第一束光..."}
 `.trim();
 };
 
-export const analyzePersonality = async (answers: { q: string, val: number }[]): Promise<MBTIAnalysisResult[]> => {
+export const analyzePersonality = async (answers: { q: string, val: number }[], onStatusChange?: (status: string) => void): Promise<MBTIAnalysisResult[]> => {
     const system = `
     你是一位言辞犀利、直击灵魂的人格分析师。
     任务：基于 4 个场景的数据，洞察用户的人格底色。
@@ -736,21 +750,32 @@ export const analyzePersonality = async (answers: { q: string, val: number }[]):
     3. 原因（reason）字段必须“一箭穿心”，用 20 字以内揭示其最深层的认知偏好或内在矛盾，拒绝平庸的描述。
 
     [输出格式]
-    纯 JSON 数组：
-    [
-      { "type": "INTJ", "percentage": 85, "reason": "你用坚硬的逻辑构筑护城河，因预见未来而孤独。" },
-      ...
-    ]
+    纯 JSON 对象，包含 "result" 数组：
+    {
+      "result": [
+        { "type": "INTJ", "percentage": 85, "reason": "你用坚硬的逻辑构筑护城河，因预见未来而孤独。" },
+        ...
+      ]
+    }
   `.trim();
 
     const user = answers.map(a => `${a.q}: ${a.val}`).join('\n');
 
     try {
-        const res = await unifiedAICall(user, system);
+        const res = await unifiedAICall(user, system, undefined, onStatusChange);
         const parsed = JSON.parse(extractJSON(res));
+
+        let results = [];
+        // Handle various formats (Array direct or Object wrapper)
+        if (Array.isArray(parsed)) {
+            results = parsed;
+        } else if (parsed.result && Array.isArray(parsed.result)) {
+            results = parsed.result;
+        }
+
         // Fallback validation
-        if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].type) {
-            return parsed;
+        if (results.length > 0 && results[0].type) {
+            return results;
         }
         throw new Error("Invalid format");
     } catch (e) {

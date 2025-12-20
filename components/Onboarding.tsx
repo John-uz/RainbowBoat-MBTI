@@ -209,14 +209,6 @@ const Onboarding: React.FC<Props> = ({ onComplete, isDarkMode, toggleTheme, init
 
     const startQuizForPlayer = (index: number) => { setCurrentPlayerConfigIndex(index); setAnswers({ 1: 50, 2: 50, 3: 50, 4: 50 }); setStep('quiz'); };
 
-    const handleQuizSubmit = async () => {
-        setStep('analyzing');
-        const formattedAnswers = QUESTIONS.map(q => ({ q: q.text, val: answers[q.id] }));
-        const results = await analyzePersonality(formattedAnswers);
-        setAnalysisResults(results);
-        setStep('results');
-    };
-
     const handleSelectResult = (mbti: string) => {
         if (isSoloTest) {
             // In Solo Test mode, clicking a result card shows the detailed report
@@ -232,39 +224,9 @@ const Onboarding: React.FC<Props> = ({ onComplete, isDarkMode, toggleTheme, init
     const isSetupValid = () => humanPlayers.every(p => p.name.trim() !== '' && p.mbti !== '');
     const handleFinalStart = () => { if (isSetupValid()) onComplete(humanPlayers, selectedMode, botCount, targetScore); };
 
-    // --- SUB-RENDERERS ---
-
-    if (step === 'quiz') return (
-        <div className="flex flex-col items-center justify-center h-full p-4 overflow-y-auto">
-            <div className="w-full max-w-xl bg-white dark:bg-slate-800/90 backdrop-blur p-8 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl">
-                <h3 className="text-xl font-bold mb-6 text-center text-teal-600 dark:text-teal-300">{humanPlayers[currentPlayerConfigIndex].name || '玩家'} 的趣味测评</h3>
-                <div className="space-y-8">
-                    {QUESTIONS.map((q) => (
-                        <div key={q.id} className="space-y-3">
-                            <div className="text-slate-800 dark:text-white font-medium text-lg">{q.text}</div>
-                            <div className="relative pt-1">
-                                <input type="range" min="0" max="100" value={answers[q.id]} onChange={(e) => setAnswers({ ...answers, [q.id]: parseInt(e.target.value) })} className="w-full h-2 bg-slate-200 dark:bg-slate-600 rounded-lg appearance-none cursor-pointer accent-teal-500 relative z-10" />
-                                <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400 font-bold mt-2">
-                                    <span>{q.left}</span>
-                                    <span>{q.right}</span>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-                <div className="flex gap-4 mt-10">
-                    <button onClick={() => isSoloTest ? (onBackToHub && onBackToHub()) : setStep('setup')} className="flex-1 py-3 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-slate-700/50 rounded-xl">
-                        {isSoloTest ? '返回主页' : '取消'}
-                    </button>
-                    <button onClick={handleQuizSubmit} className="flex-1 py-3 bg-teal-600 rounded-xl font-bold text-white hover:bg-teal-500 shadow-lg shadow-teal-500/20">生成画像</button>
-                </div>
-            </div>
-        </div>
-    );
-
     // --- DYNAMIC AI NAME & LOADING TEXT ---
     const aiConfig = getAIConfig();
-    let aiName = "AI 船长";
+    let initialAiName = "AI";
 
     // Helper to check if a key exists in Config OR System Env
     const hasKey = (configKey: string | undefined, systemKey: string) => {
@@ -272,24 +234,35 @@ const Onboarding: React.FC<Props> = ({ onComplete, isDarkMode, toggleTheme, init
     };
 
     // Determine nickname based on backend priority (Text Mode)
-    // China: DeepSeek > Zhipu
-    // Overseas: Groq > Gemini > OpenRouter > Pollinations
     if (aiConfig.regionMode === 'china') {
-        if (hasKey(aiConfig.deepseekKey, SYSTEM_KEYS.deepseek)) aiName = "小D"; // DeepSeek
-        else if (hasKey(aiConfig.zhipuKey, SYSTEM_KEYS.zhipu)) aiName = "小Z"; // Zhipu
-        else aiName = "小D"; // Default fallback
+        if (hasKey(aiConfig.deepseekKey, SYSTEM_KEYS.deepseek)) initialAiName = "小D";
+        else if (hasKey(aiConfig.zhipuKey, SYSTEM_KEYS.zhipu)) initialAiName = "小Z";
+        else initialAiName = "小D";
     } else {
-        if (hasKey(aiConfig.groqKey, SYSTEM_KEYS.groq)) aiName = "小G"; // Groq
-        else if (hasKey(aiConfig.geminiKey, SYSTEM_KEYS.gemini)) aiName = "小F"; // Gemini (Flash)
-        else if (hasKey(aiConfig.openRouterKey, SYSTEM_KEYS.openRouter)) aiName = "小O"; // OpenRouter
-        else aiName = "小P"; // Pollinations
+        if (hasKey(aiConfig.groqKey, SYSTEM_KEYS.groq)) initialAiName = "小G";
+        else if (hasKey(aiConfig.geminiKey, SYSTEM_KEYS.gemini)) initialAiName = "小F";
+        else if (hasKey(aiConfig.openRouterKey, SYSTEM_KEYS.openRouter)) initialAiName = "小O";
+        else initialAiName = "小P";
     }
+
+    const [aiStatus, setAiStatus] = useState(initialAiName);
+
+    const handleQuizSubmit = async () => {
+        setStep('analyzing');
+        const formattedAnswers = QUESTIONS.map(q => ({ q: q.text, val: answers[q.id] }));
+        // Pass the callback to update UI based on actual AI being called
+        const results = await analyzePersonality(formattedAnswers, (currentAiName) => {
+            setAiStatus(currentAiName);
+        });
+        setAnalysisResults(results);
+        setStep('results');
+    };
 
     if (step === 'analyzing') return (
         <div className="flex flex-col items-center justify-center h-full">
             <Loader2 size={48} className="text-teal-500 animate-spin mb-4" />
             <p className="text-xl text-slate-600 dark:text-slate-300 font-medium animate-pulse">
-                {aiName} 正在对话你的潜意识...
+                {aiStatus} 正在对话你的潜意识...
             </p>
         </div>
     );
