@@ -287,25 +287,46 @@ export const updateAIConfig = (newConfig: Partial<AIConfig>) => {
 // --- AI PROVIDER CALLERS ---
 
 // 1. Groq (Little G)
+// 1. Groq (Little G)
 const callGroq = async (system: string, user: string, jsonMode: boolean, imageData?: string): Promise<string> => {
     const effectiveKey = currentConfig.groqKey || SYSTEM_KEYS.groq;
     if (!effectiveKey) throw new Error("Skipped: No Groq Key");
 
-    const content: any[] = [{ type: "text", text: user }];
+    // Fix for Groq 400 Error: Llama 3 models on Groq expect 'content' to be a string, not an array of objects
+    // unless using specific vision models (which we aren't routing here yet).
+    // Even if we were, it's safer to use string for text-only requests.
+    let content: any = user;
+
+    // Only use array format if we actually have an image (though Groq is usually skipped for images upstream)
     if (imageData) {
-        content.push({ type: "image_url", image_url: { url: imageData.startsWith('data:') ? imageData : `data: image / jpeg; base64, ${imageData} ` } });
+        content = [
+            { type: "text", text: user },
+            { type: "image_url", image_url: { url: imageData.startsWith('data:') ? imageData : `data:image/jpeg;base64,${imageData}` } }
+        ];
     }
 
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${effectiveKey} `, 'Content-Type': 'application/json' },
+        headers: {
+            'Authorization': `Bearer ${effectiveKey}`,
+            'Content-Type': 'application/json'
+        },
         body: JSON.stringify({
             model: currentConfig.groqModel,
-            messages: [{ role: 'system', content: system }, { role: 'user', content: content }],
+            messages: [
+                { role: 'system', content: system },
+                { role: 'user', content: content }
+            ],
             response_format: jsonMode ? { type: "json_object" } : undefined
         })
     });
-    if (!response.ok) throw new Error(`Groq ${response.statusText} `);
+
+    if (!response.ok) {
+        const errText = await response.text();
+        console.error("Groq Error Details:", errText);
+        throw new Error(`Groq ${response.status} ${response.statusText}`);
+    }
+
     const data = await response.json();
     return data.choices?.[0]?.message?.content || "{}";
 };
