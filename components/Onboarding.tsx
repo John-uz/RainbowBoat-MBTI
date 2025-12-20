@@ -282,6 +282,93 @@ const Onboarding: React.FC<Props> = ({ onComplete, isDarkMode, toggleTheme, init
         );
     }
 
+    if (step === 'quiz') return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-50 dark:bg-slate-900 p-4 animate-in fade-in zoom-in-95 duration-300">
+            <div className="w-full max-w-2xl bg-white dark:bg-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-slate-200 dark:border-slate-700">
+                <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
+                    <div>
+                        <h3 className="text-xl font-black text-slate-800 dark:text-white flex items-center gap-2">
+                            <Sparkles className="text-teal-500" />
+                            {isSoloTest ? "AI 趣味快测" : "人格原型扫描"}
+                        </h3>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mt-1">
+                            {isSoloTest ? "请直觉作答，无需纠结" : `正在分析: ${humanPlayers[currentPlayerConfigIndex]?.name || '玩家'}`}
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => {
+                            if (isSoloTest && onBackToHub) onBackToHub();
+                            else setStep('setup');
+                        }}
+                        className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+                    >
+                        <X size={20} />
+                    </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 custom-scrollbar">
+                    {QUESTIONS.map((q) => (
+                        <div key={q.id} className="space-y-4 animate-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: `${q.id * 100}ms` }}>
+                            <div className="flex justify-between items-center">
+                                <h4 className="font-bold text-slate-700 dark:text-slate-200 text-lg">
+                                    <span className="text-teal-500 mr-2">0{q.id}.</span>
+                                    {q.text}
+                                </h4>
+                                <span className="text-[10px] font-black uppercase text-slate-300 dark:text-slate-600 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">
+                                    {q.dimension}
+                                </span>
+                            </div>
+
+                            <div className="relative pt-6 pb-2">
+                                {/* Track */}
+                                <div className="absolute top-1/2 left-0 right-0 h-2 bg-slate-100 dark:bg-slate-700 rounded-full -translate-y-1/2" />
+
+                                {/* Range Input */}
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="100"
+                                    step="10"
+                                    value={answers[q.id]}
+                                    onChange={(e) => setAnswers({ ...answers, [q.id]: parseInt(e.target.value) })}
+                                    className="relative z-10 w-full h-8 opacity-0 cursor-pointer"
+                                />
+
+                                {/* Custom Thumb & Progress */}
+                                <div
+                                    className="absolute top-1/2 left-0 h-2 bg-gradient-to-r from-teal-400 to-blue-500 rounded-full -translate-y-1/2 transition-all duration-150 pointer-events-none"
+                                    style={{ width: `${answers[q.id]}%` }}
+                                />
+                                <div
+                                    className="absolute top-1/2 w-6 h-6 bg-white dark:bg-slate-800 border-2 border-teal-500 rounded-full shadow-lg -translate-y-1/2 -translate-x-1/2 transition-all duration-150 pointer-events-none flex items-center justify-center z-20"
+                                    style={{ left: `${answers[q.id]}%` }}
+                                >
+                                    <div className="w-2 h-2 bg-teal-500 rounded-full" />
+                                </div>
+
+                                {/* Labels */}
+                                <div className="flex justify-between mt-2 text-xs font-bold text-slate-400 dark:text-slate-500 select-none">
+                                    <span className={`transition-colors ${answers[q.id] < 50 ? 'text-teal-600 dark:text-teal-400 scale-105' : ''}`}>{q.left}</span>
+                                    <span className={`transition-colors ${answers[q.id] > 50 ? 'text-blue-600 dark:text-blue-400 scale-105' : ''}`}>{q.right}</span>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                <div className="p-6 border-t border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
+                    <button
+                        onClick={handleQuizSubmit}
+                        className="w-full py-4 bg-gradient-to-r from-teal-500 to-blue-600 hover:from-teal-600 hover:to-blue-700 text-white rounded-xl font-black text-lg shadow-lg shadow-teal-500/20 hover:shadow-teal-500/30 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                    >
+                        <Sparkles size={20} />
+                        召唤 AI 解析灵魂
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+
     if (step === 'results') return (
         <div className="flex flex-col items-center justify-center h-full p-4 overflow-y-auto">
             <div className="w-full max-w-xl bg-white dark:bg-slate-800/90 backdrop-blur p-8 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl">
