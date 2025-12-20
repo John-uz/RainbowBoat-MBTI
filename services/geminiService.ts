@@ -583,7 +583,7 @@ const unifiedAICall = async (userPrompt: string, systemPromptOverride?: string, 
     let system = systemPromptOverride || currentConfig.systemPersona;
 
     if (!system.toLowerCase().includes("json")) {
-        system += "\n\n重要：你必须严格以有效的 JSON 原始格式返回结果，不要包含任何 Markdown 标记或多余的解释。";
+        system += "\n\n[输出要求 - 强制]\n1. 必须返回合法的 JSON 格式字符串。\n2. 严禁使用 ```json 与 ``` 代码块包裹。\n3. 【内容质量】：请保持“荣格心理分析师”的深邃与温度。尽管输出格式是 JSON，但字段内容必须详实、具体、富有文学色彩（拒绝简短枯燥的机器回复）。";
     }
 
     const errors: string[] = [];
