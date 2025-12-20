@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { MBTI_TYPES, MBTI_GROUPS, GameMode } from '../types';
-import { analyzePersonality, MBTIAnalysisResult } from '../services/geminiService';
+import { analyzePersonality, MBTIAnalysisResult, getAIConfig, SYSTEM_KEYS } from '../services/geminiService';
 import { Anchor, Loader2, ArrowRight, Users, LayoutGrid, Plus, Trash2, User, Sparkles, Trophy, Camera, CircleHelp, Settings, Check, BookOpen, Sun, Moon, X, Monitor } from 'lucide-react';
 import { motion } from 'framer-motion';
 import AIConfigModal from './AIConfigModal';
@@ -262,7 +262,37 @@ const Onboarding: React.FC<Props> = ({ onComplete, isDarkMode, toggleTheme, init
         </div>
     );
 
-    if (step === 'analyzing') return (<div className="flex flex-col items-center justify-center h-full"><Loader2 size={48} className="text-teal-500 animate-spin mb-4" /><p className="text-xl text-slate-600 dark:text-slate-300">AI 正在连接你的潜意识...</p></div>);
+    // --- DYNAMIC AI NAME & LOADING TEXT ---
+    const aiConfig = getAIConfig();
+    let aiName = "AI 船长";
+
+    // Helper to check if a key exists in Config OR System Env
+    const hasKey = (configKey: string | undefined, systemKey: string) => {
+        return (configKey && configKey.length > 0) || (systemKey && systemKey.length > 0);
+    };
+
+    // Determine nickname based on backend priority (Text Mode)
+    // China: DeepSeek > Zhipu
+    // Overseas: Groq > Gemini > OpenRouter > Pollinations
+    if (aiConfig.regionMode === 'china') {
+        if (hasKey(aiConfig.deepseekKey, SYSTEM_KEYS.deepseek)) aiName = "小D"; // DeepSeek
+        else if (hasKey(aiConfig.zhipuKey, SYSTEM_KEYS.zhipu)) aiName = "小Z"; // Zhipu
+        else aiName = "小D"; // Default fallback
+    } else {
+        if (hasKey(aiConfig.groqKey, SYSTEM_KEYS.groq)) aiName = "小G"; // Groq
+        else if (hasKey(aiConfig.geminiKey, SYSTEM_KEYS.gemini)) aiName = "小F"; // Gemini (Flash)
+        else if (hasKey(aiConfig.openRouterKey, SYSTEM_KEYS.openRouter)) aiName = "小O"; // OpenRouter
+        else aiName = "小P"; // Pollinations
+    }
+
+    if (step === 'analyzing') return (
+        <div className="flex flex-col items-center justify-center h-full">
+            <Loader2 size={48} className="text-teal-500 animate-spin mb-4" />
+            <p className="text-xl text-slate-600 dark:text-slate-300 font-medium animate-pulse">
+                {aiName} 正在对话你的潜意识...
+            </p>
+        </div>
+    );
 
     // Show Quick Test Report if triggered
     if (showQuickReport && selectedMbtiForReport) {

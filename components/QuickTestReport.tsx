@@ -151,15 +151,18 @@ const MBTI_DESCRIPTIONS: Record<string, {
 };
 
 const QuickTestReport: React.FC<Props> = ({ playerName, mbtiType, analysisResults, onBackToHub }) => {
-    const typeInfo = MBTI_DESCRIPTIONS[mbtiType] || MBTI_DESCRIPTIONS['INTJ'];
-    const character = MBTI_CHARACTERS[mbtiType] || '未知';
-    const stack = MBTI_STACKS[mbtiType] || [];
+    // State to allow user to switch between report types
+    const [activeType, setActiveType] = React.useState(mbtiType);
+
+    const typeInfo = MBTI_DESCRIPTIONS[activeType] || MBTI_DESCRIPTIONS['INTJ'];
+    const character = MBTI_CHARACTERS[activeType] || '未知';
+    const stack = MBTI_STACKS[activeType] || [];
 
     // Find group
     let groupName = '';
     let groupColor = '';
     Object.entries(MBTI_GROUPS).forEach(([name, data]) => {
-        if (data.types.includes(mbtiType)) {
+        if (data.types.includes(activeType)) {
             groupName = name;
             groupColor = data.hexColor;
         }
@@ -186,29 +189,31 @@ const QuickTestReport: React.FC<Props> = ({ playerName, mbtiType, analysisResult
                     <h1 className="text-4xl md:text-5xl font-black mb-4">
                         {playerName || '探索者'}，你好！
                     </h1>
-                    <p className="text-slate-400 text-lg">根据你的选择，AI 认为你最可能是...</p>
+                    <p className="text-slate-400 text-lg">点击下方列表，查看不同可能性的解析</p>
                 </motion.div>
 
                 {/* Main Type Card */}
                 <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
+                    key={activeType} // Re-animate when type changes
+                    initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.2 }}
-                    className="bg-slate-800/50 backdrop-blur-xl rounded-3xl border border-white/10 p-8 mb-8 text-center"
+                    transition={{ duration: 0.3 }}
+                    className="bg-slate-800/50 backdrop-blur-xl rounded-3xl border border-white/10 p-8 mb-8 text-center transition-all bg-gradient-to-b from-white/5 to-transparent"
+                    style={{ borderColor: `${groupColor}40` }}
                 >
                     <div
-                        className="inline-flex items-center justify-center w-24 h-24 rounded-full mb-6 text-4xl font-black"
-                        style={{ backgroundColor: `${groupColor}30`, border: `3px solid ${groupColor}` }}
+                        className="inline-flex items-center justify-center w-24 h-24 rounded-full mb-6 text-4xl font-black bg-slate-900 shadow-xl"
+                        style={{ color: groupColor, boxShadow: `0 0 30px ${groupColor}20` }}
                     >
-                        {mbtiType}
+                        {activeType}
                     </div>
                     <h2 className="text-3xl font-bold mb-2">{typeInfo.title}</h2>
                     <p className="text-slate-400 mb-4">{typeInfo.nickname}</p>
                     <div className="flex justify-center gap-2 mb-6">
-                        <span className="px-3 py-1 bg-slate-700/50 rounded-full text-xs text-slate-300">{groupName}</span>
-                        <span className="px-3 py-1 bg-slate-700/50 rounded-full text-xs text-slate-300">代表角色: {character}</span>
+                        <span className="px-3 py-1 bg-slate-700/50 rounded-full text-xs text-slate-300 border border-white/5">{groupName}</span>
+                        <span className="px-3 py-1 bg-slate-700/50 rounded-full text-xs text-slate-300 border border-white/5">代表角色: {character}</span>
                     </div>
-                    <p className="text-slate-300 leading-relaxed">{typeInfo.description}</p>
+                    <p className="text-slate-300 leading-relaxed max-w-lg mx-auto">{typeInfo.description}</p>
                 </motion.div>
 
                 {/* AI Analysis Results */}
@@ -221,24 +226,28 @@ const QuickTestReport: React.FC<Props> = ({ playerName, mbtiType, analysisResult
                     >
                         <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
                             <Sparkles size={20} className="text-teal-400" />
-                            AI 匹配分析
+                            AI 匹配分析 (点击切换查看)
                         </h3>
                         <div className="space-y-3">
                             {analysisResults.map((result, idx) => (
-                                <div
+                                <button
                                     key={result.type}
-                                    className={`flex items-center justify-between p-3 rounded-xl ${result.type === mbtiType ? 'bg-teal-500/20 border border-teal-500/30' : 'bg-slate-700/30'}`}
+                                    onClick={() => setActiveType(result.type)}
+                                    className={`w-full text-left flex items-center justify-between p-4 rounded-xl transition-all duration-200 group ${result.type === activeType ? 'bg-teal-500/20 border border-teal-500/50 shadow-[0_0_15px_rgba(20,184,166,0.1)]' : 'bg-slate-700/30 border border-transparent hover:bg-slate-700/50 hover:scale-[1.01]'}`}
                                 >
-                                    <div className="flex items-center gap-3">
-                                        <span className={`font-bold ${result.type === mbtiType ? 'text-teal-300' : 'text-slate-400'}`}>
-                                            {result.type}
-                                        </span>
-                                        <span className="text-slate-400 text-sm">{result.reason}</span>
+                                    <div className="flex items-center gap-4">
+                                        <div className={`w-2 h-10 rounded-full ${result.type === activeType ? 'bg-teal-400' : 'bg-slate-600'}`} />
+                                        <div>
+                                            <span className={`font-black text-lg block ${result.type === activeType ? 'text-teal-300' : 'text-slate-300'}`}>
+                                                {result.type}
+                                            </span>
+                                            <span className="text-slate-400 text-xs">{result.reason}</span>
+                                        </div>
                                     </div>
-                                    <span className={`font-mono font-bold ${result.type === mbtiType ? 'text-teal-400' : 'text-slate-500'}`}>
+                                    <span className={`font-mono font-bold text-xl ${result.type === activeType ? 'text-teal-400' : 'text-slate-500'}`}>
                                         {result.percentage}%
                                     </span>
-                                </div>
+                                </button>
                             ))}
                         </div>
                     </motion.div>

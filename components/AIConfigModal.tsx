@@ -108,7 +108,7 @@ const AIConfigModal: React.FC<Props> = ({ onClose }) => {
                         <div className="p-2 bg-teal-500/20 rounded-lg text-teal-400"><Cpu size={24} /></div>
                         <div>
                             <h2 className="text-lg font-bold text-white">AI 神经中枢</h2>
-                            <p className="text-[10px] text-slate-400">灾备调用顺序: Groq &gt; OpenRouter &gt; Zhipu &gt; Gemini &gt; 小P</p>
+                            <p className="text-[10px] text-slate-400">AI路由策略: Groq &gt; OpenRouter &gt; Zhipu &gt; Gemini &gt; 小P</p>
                         </div>
                     </div>
                     <button onClick={onClose} className="text-slate-500 hover:text-white transition"><X size={24} /></button>
@@ -142,7 +142,7 @@ const AIConfigModal: React.FC<Props> = ({ onClose }) => {
                                         <Globe size={14} className="text-teal-400" /> 航行区域配置 (Region Mode)
                                     </label>
                                     <div className="text-[10px] text-slate-500 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
-                                        {config.regionMode === 'auto' ? '自动探测中...' : '手动锁定'}
+                                        {config.regionMode === 'auto' ? '自动探测.' : '手动锁定'}
                                     </div>
                                 </div>
                                 <div className="flex bg-slate-900 p-1 rounded-xl">
