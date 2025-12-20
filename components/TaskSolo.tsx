@@ -6,6 +6,7 @@ import { generateAllTaskOptions, analyzeSoloExecution, analyzeVisualAspect } fro
 import { Player, TaskOption, TASK_CATEGORIES_CONFIG, MBTI_STACKS, JUNG_FUNCTIONS, MBTI_TYPES } from '../types';
 import { startSpeechRecognition, stopSpeechRecognition, isSpeechRecognitionSupported } from '../utils/speechRecognition';
 import { startAudioMonitoring, stopAudioMonitoring } from '../utils/audioAnalyzer';
+import { getTasksByFunction } from '../services/taskLibrary';
 
 interface Props {
     onBack: () => void;
@@ -19,6 +20,9 @@ const TaskSolo: React.FC<Props> = ({ onBack, isMobile, isDarkMode }) => {
     const [tasks, setTasks] = useState<Record<string, TaskOption> | null>(null);
     const [loading, setLoading] = useState(false);
     const [currentTask, setCurrentTask] = useState<TaskOption | null>(null);
+
+    // Task Cache: key = `${type}-${functionId}`
+    const [taskCache, setTaskCache] = useState<Record<string, Record<string, TaskOption>>>({});
 
     // Execution States
     const [phase, setPhase] = useState<'SELECTING' | 'EXECUTING' | 'FEEDBACK'>('SELECTING');
@@ -52,23 +56,75 @@ const TaskSolo: React.FC<Props> = ({ onBack, isMobile, isDarkMode }) => {
         mbti: selectedType,
         isBot: false,
         avatar: 'user',
-        trustScore: 0, insightScore: 0, expressionScore: 0, totalRatingGiven: 0,
+        trustScore: 0,
+        insightScore: 0,
+        expressionScore: 0,
+        totalRatingGiven: 0,
         position: 0, previousPosition: null, stackIndex: currentFunctionIndex, skipUsedCount: 0, color: 'teal'
     };
 
-    const fetchTasks = async (funcId: string, type: string) => {
-        setLoading(true);
-        setCurrentTask(null);
-        setPhase('SELECTING');
-        setCompletedTasks(new Set());
-        setCarouselIndex(0);
-        try {
-            const res = await generateAllTaskOptions(funcId, [mockPlayer], { ...mockPlayer, mbti: type });
-            setTasks(res);
-        } catch (e) {
-            console.error(e);
-        } finally {
+    const fetchTasks = async (funcId: string, type: string, forceRefresh = false) => {
+        const cacheKey = `${type}-${funcId}`;
+
+        // Step 1: Check cache first for instant load
+        const cached = taskCache[cacheKey];
+        if (cached && !forceRefresh) {
+            console.log(`✅ Using cached tasks for ${cacheKey}`);
+            setTasks(cached);
             setLoading(false);
+            setPhase('SELECTING');
+            setCurrentTask(null);
+            setCompletedTasks(new Set());
+            setCarouselIndex(0);
+        } else {
+            // No cache - Use local library as instant fallback
+            console.log(`📚 Loading local tasks from library for ${funcId}...`);
+            const localTasks = getTasksByFunction(funcId, 4);
+            const localTasksMap: Record<string, TaskOption> = {};
+            const categories: ('standard' | 'truth' | 'dare' | 'deep')[] = ['standard', 'truth', 'dare', 'deep'];
+            localTasks.forEach((task, idx) => {
+                localTasksMap[categories[idx]] = task;
+            });
+
+            // Show local tasks immediately
+            setTasks(localTasksMap);
+            setLoading(true); // Still show loading indicator while AI generates better tasks
+            setPhase('SELECTING');
+            setCurrentTask(null);
+            setCompletedTasks(new Set());
+            setCarouselIndex(0);
+        }
+
+        // Step 2: Fetch fresh AI tasks in background (always, unless using fresh cache)
+        if (!cached || forceRefresh) {
+            try {
+                console.log(`🤖 Fetching AI-generated tasks for ${cacheKey}...`);
+                const res = await generateAllTaskOptions(funcId, [mockPlayer], { ...mockPlayer, mbti: type });
+
+                // Update cache
+                setTaskCache(prev => ({ ...prev, [cacheKey]: res }));
+                setTasks(res);
+                console.log(`✅ AI tasks loaded for ${cacheKey}`);
+            } catch (e) {
+                console.warn('AI task generation failed, keeping local library tasks:', e);
+                // Local library tasks are already shown, so user experience is not affected
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        // Step 3: Preload next level tasks in background
+        const nextIdx = (stack.indexOf(funcId) + 1) % stack.length;
+        const nextFunc = stack[nextIdx];
+        const nextCacheKey = `${type}-${nextFunc}`;
+        if (!taskCache[nextCacheKey]) {
+            console.log(`⏭️ Preloading next level: ${nextCacheKey}...`);
+            generateAllTaskOptions(nextFunc, [mockPlayer], { ...mockPlayer, mbti: type })
+                .then(res => {
+                    setTaskCache(prev => ({ ...prev, [nextCacheKey]: res }));
+                    console.log(`✅ Preloaded tasks for ${nextCacheKey}`);
+                })
+                .catch(err => console.warn(`Preload failed for ${nextCacheKey}:`, err));
         }
     };
 
@@ -213,7 +269,7 @@ const TaskSolo: React.FC<Props> = ({ onBack, isMobile, isDarkMode }) => {
                             </button>
                         </>
                     )}
-                    <button onClick={() => fetchTasks(currentFunction, selectedType)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition text-slate-400 dark:text-slate-500">
+                    <button onClick={() => fetchTasks(currentFunction, selectedType, true)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition text-slate-400 dark:text-slate-500">
                         <RefreshCw size={16} className={loading && phase === 'SELECTING' ? 'animate-spin' : ''} />
                     </button>
                 </div>
