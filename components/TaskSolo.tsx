@@ -139,17 +139,16 @@ const TaskSolo: React.FC<Props> = ({ onBack, isMobile, isDarkMode }) => {
             setCompletedTasks(prev => new Set([...prev, currentTask.category]));
         }
 
-        let visualObservation = "";
+        let visualData = "";
         if (isCameraEnabled && videoRef.current && canvasRef.current && currentTask) {
             const ctx = canvasRef.current.getContext('2d');
             if (ctx) {
                 ctx.drawImage(videoRef.current, 0, 0, 300, 300);
-                const frame = canvasRef.current.toDataURL('image/jpeg');
-                visualObservation = await analyzeVisualAspect(frame, currentTask.title);
+                visualData = canvasRef.current.toDataURL('image/jpeg');
             }
         }
 
-        const result = await analyzeSoloExecution(mockPlayer, currentTask!, transcription, visualObservation);
+        const result = await analyzeSoloExecution(mockPlayer, currentTask!, transcription, visualData);
         setAiResult(result);
         setLoading(false);
     };

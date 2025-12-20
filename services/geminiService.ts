@@ -959,58 +959,98 @@ ${currentConfig.taskPromptTemplate}
     }
 };
 
+// [Parallel AI Architecture]
+// Branch A: Pure Text Analysis (Groq acts as the logical left brain)
+const analyzeSoloText = async (
+    player: Player,
+    task: TaskOption,
+    transcription: string
+): Promise<{ tag: string, mood: string, feedback: string, scores: any }> => {
+    const system = `
+    你是一位资深的荣格心理学导师。
+    玩家正在进行“人格功能进阶挑战”，目标是锻炼其 ${player.mbti} 的认知功能。
+    请基于玩家的【语言表达内容】进行深度分析。
+    
+    [任务] ${task.title} (${task.description})
+    [表达] "${transcription || '（沉默或未检测到语音）'}"
+
+    [返回格式]
+    Strict JSON:
+    {
+      "tag": "#关键词标签",
+      "mood": "😍",
+      "feedback": "针对内容的简短点评...",
+      "scores": { "trust": 3, "insight": 3, "expression": 3 }
+    }
+    `.trim();
+
+    try {
+        const res = await unifiedAICall("分析文本", system);
+        return JSON.parse(extractJSON(res));
+    } catch (e) {
+        return { tag: "#信号干扰", mood: "📡", feedback: "思维连接略有波动。", scores: { trust: 3, insight: 3, expression: 3 } };
+    }
+};
+
+// Branch C: Merger (Groq acts as the synthesizer)
+const mergeSoloAnalysis = async (
+    textResult: any,
+    visualDescription: string,
+    player: Player
+): Promise<any> => {
+    const system = `
+    你是一位多模态心理分析师。请将【文本分析】与【视觉神态】融合成一份最终报告。
+    
+    [输入数据]
+    1. 文本洞察: ${JSON.stringify(textResult)}
+    2. 视觉神态: "${visualDescription}" (这是一个独立的视觉模型观察到的)
+    
+    [任务]
+    生成一份最终的、有温度的点评。
+    要求：
+    1. 必须巧妙结合“听到的”和“看到的”。例如：“虽然你说...但在那一瞬间你的眼神流露出了...”
+    2. 更新 tag 和 feedback 字段。保留 scores。
+    3. JSON 返回。
+    `.trim();
+
+    const res = await unifiedAICall("融合分析报告", system);
+    const parsed = JSON.parse(extractJSON(res));
+    return { ...textResult, ...parsed, scores: textResult.scores };
+};
+
+
 export const analyzeSoloExecution = async (
     player: Player,
     task: TaskOption,
     transcription: string,
-    visualObservation?: string
+    visualData?: string // Changed from 'visualObservation' string to 'visualData' base64 or string
 ): Promise<{ tag: string, mood: string, feedback: string, scores: { trust: number, insight: number, expression: number } }> => {
-    const system = `
-    你是一位资深的荣格心理学导师。
-    玩家正在进行“人格功能进阶挑战”，目标是锻炼其 ${player.mbti} 的认知功能。
-    
-    [任务内容]
-    标题: ${task.title}
-    描述: ${task.description}
-    主要锻炼方向: ${task.scoreType}
 
-    [玩家表现]
-    表达文本: "${transcription || '（未检测到有效表达）'}"
-    ${visualObservation ? `AI 观测到的神态: "${visualObservation}"` : ''}
+    const isParallel = !!visualData && visualData.length > 100; // Simple check if it's actual image data
 
-    [任务要求 - 强制!]
-    1. 必须要引用证据：点评中必须包含玩家说过的某个【关键词】或【视觉神态】，例如：“当你提到‘[关键词]’时，我捕捉到了你[视觉证据]的瞬间...”。
-    2. 动机升华：利用巴纳姆效应，将玩家的行为解读为深层的心理动机（如：这是你 Fi 价值观在闪光的证据）。
-    3. 拒绝平庸：使用有温度、口语化的中文，不要像说明书。
-
-    [返回格式]
-    严格按此 JSON 结构：
-    {
-      "tag": "#一针见血的短标签",
-      "mood": "🤩(表情符号)",
-      "feedback": "引用了证据的深度点评文字(80字内)...",
-      "scores": { "trust": 3, "insight": 4, "expression": 2 }
+    // [Mode 1: Text Only]
+    if (!isParallel) {
+        // If passed a short string, it might be legacy 'visualObservation'. Handle gracefully? 
+        // For now assume strictly new calling convention.
+        return analyzeSoloText(player, task, transcription);
     }
-    `.trim();
 
-    const user = "请评估此次表现并给出反馈。";
-
+    // [Mode 2: Parallel Multimodal]
+    // "Dispatching agents..."
     try {
-        const res = await unifiedAICall(user, system);
-        const parsed = JSON.parse(extractJSON(res));
-        return {
-            tag: parsed.tag || "#独特存在",
-            mood: parsed.mood || "✨",
-            feedback: parsed.feedback || "你的表达如晨雾般轻盈，虽然模糊但充满灵性。继续探索你的内心世界吧。",
-            scores: parsed.scores || { trust: 3, insight: 3, expression: 3 }
-        };
+        // Parallel Call: Text Agent (Fast) + Vision Agent (Slow)
+        const [textResult, visualDesc] = await Promise.all([
+            analyzeSoloText(player, task, transcription),
+            analyzeVisualAspect(visualData!, task.title)
+        ]);
+
+        // Merge Phase
+        return await mergeSoloAnalysis(textResult, visualDesc, player);
+
     } catch (e) {
-        return {
-            tag: "#神秘航行",
-            mood: "🚢",
-            feedback: "时空信号略微不稳定，但你的心跳已经引起了共鸣。这次尝试本身就是一次伟大的航行。",
-            scores: { trust: 3, insight: 3, expression: 3 }
-        };
+        console.error("Parallel analysis failed", e);
+        // Fallback to text only if vision chain fails
+        return analyzeSoloText(player, task, transcription);
     }
 };
 
