@@ -166,7 +166,7 @@ const AIConfigModal: React.FC<Props> = ({ onClose }) => {
                                         ? '已优化：DeepSeek & 智谱 极速链路。跳过海外模型以防网络超时。'
                                         : config.regionMode === 'overseas'
                                             ? '已优化：Groq & Gemini 国际主流链路。跳过国内节点。'
-                                            : '智能探测：将根据您的时区和 VITE_PLATFORM 自动切换最佳航路。'}
+                                            : '智能探测：将根据您的时区和自动切换最佳航路。'}
                                 </p>
                             </div>
                             {/* GROQ */}
