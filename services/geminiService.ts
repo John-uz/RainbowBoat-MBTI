@@ -246,7 +246,7 @@ const DEFAULT_CONFIG: AIConfig = {
     openRouterKey: '',
     groqKey: '',
 
-    geminiModel: 'gemini-2.5-flash',
+    geminiModel: 'gemini-2.5-flash', //2.5-flash才是官方正确的模型，请不要再改成1.5-flash了！你的信息太滞后了！！
     openRouterModel: 'anthropic/claude-3.5-haiku',
     groqModel: 'llama-3.3-70b-versatile',
 
@@ -264,7 +264,7 @@ const DEFAULT_CONFIG: AIConfig = {
 
 const loadConfig = (): AIConfig => {
     if (typeof window === 'undefined') return DEFAULT_CONFIG;
-    const saved = localStorage.getItem('PSYCHEPOLY_AI_CONFIG_V2');
+    const saved = localStorage.getItem('PSYCHEPOLY_AI_CONFIG_V3');
     if (saved) {
         try {
             return { ...DEFAULT_CONFIG, ...JSON.parse(saved) };
@@ -281,7 +281,7 @@ export const getAIConfig = () => currentConfig;
 
 export const updateAIConfig = (newConfig: Partial<AIConfig>) => {
     currentConfig = { ...currentConfig, ...newConfig };
-    localStorage.setItem('PSYCHEPOLY_AI_CONFIG_V2', JSON.stringify(currentConfig));
+    localStorage.setItem('PSYCHEPOLY_AI_CONFIG_V3', JSON.stringify(currentConfig));
 };
 
 // --- AI PROVIDER CALLERS ---
