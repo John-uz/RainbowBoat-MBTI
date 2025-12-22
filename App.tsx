@@ -816,7 +816,7 @@ function App() {
                 avatar: p.avatarImage || 'user', color: COLORS[i % COLORS.length],
                 trustScore: 0, insightScore: 0, expressionScore: 0, totalRatingGiven: 0, position: startPos,
                 previousPosition: null, stackIndex: 0, skipUsedCount: 0,
-                behaviorStats: { truth: 0, dare: 0, deep: 0, standard: 0, totalMultiplier: 0, interactions: {} }
+                behaviorStats: { truth: 0, dare: 0, deep: 0, standard: 0, totalMultiplier: 0, highEnergyCount: 0, interactions: {} }
             };
         });
 
@@ -838,7 +838,7 @@ function App() {
                 avatar: 'bot', color: COLORS[(players.length) % COLORS.length],
                 trustScore: 0, insightScore: 0, expressionScore: 0, totalRatingGiven: 0, position: startPos,
                 previousPosition: null, stackIndex: 0, skipUsedCount: 0,
-                behaviorStats: { truth: 0, dare: 0, deep: 0, standard: 0, totalMultiplier: 0, interactions: {} }
+                behaviorStats: { truth: 0, dare: 0, deep: 0, standard: 0, totalMultiplier: 0, highEnergyCount: 0, interactions: {} }
             });
         }
 
@@ -1423,6 +1423,8 @@ function App() {
         if (highEnergyBonus) {
             basePoints += 5;
             breakdown.push({ label: '全场沸腾', value: '+5', color: 'text-red-500' });
+            // Track High Energy stats
+            player.behaviorStats.highEnergyCount++;
         }
 
         // Apply Scores
@@ -1530,7 +1532,7 @@ function App() {
             trustScore: 0, insightScore: 0, expressionScore: 0, totalRatingGiven: 0,
             position: 0, previousPosition: null, stackIndex: 0, skipUsedCount: 0,
             color: 'teal',
-            behaviorStats: { truth: 0, dare: 0, deep: 0, standard: 0, totalMultiplier: 0, interactions: {} }
+            behaviorStats: { truth: 0, dare: 0, deep: 0, standard: 0, totalMultiplier: 0, highEnergyCount: 0, interactions: {} }
         };
 
         setGameState(prev => ({

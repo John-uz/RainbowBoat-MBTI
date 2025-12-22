@@ -754,6 +754,10 @@ const formatBehaviorStats = (players: Player[]): string => {
 
         const riskProfile = (s.totalMultiplier / total).toFixed(2);
 
+        // Detailed Metrics
+        const avgGiven = (p.totalRatingGiven / Math.max(1, total)).toFixed(1);
+        const energyStats = s.highEnergyCount > 0 ? `, 高能时刻[${s.highEnergyCount}次]` : "";
+
         // Social Topology
         const interactions = Object.entries(s.interactions)
             .map(([targetId, count]) => {
@@ -762,7 +766,7 @@ const formatBehaviorStats = (players: Player[]): string => {
             })
             .join(", ");
 
-        return `- ${p.name}: 偏好[${preferences.join(', ')}], 风险系数[${riskProfile}x], 依赖对象[${interactions || '独立'}]`;
+        return `- ${p.name}: 偏好[${preferences.join(', ')}], 风险系数[${riskProfile}x], 平均给分[${avgGiven}]${energyStats}, 依赖对象[${interactions || '独立'}]`;
     }).filter(Boolean).join('\n');
 };
 

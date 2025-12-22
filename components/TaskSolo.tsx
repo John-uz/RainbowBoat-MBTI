@@ -63,7 +63,7 @@ const TaskSolo: React.FC<Props> = ({ onBack, isMobile, isDarkMode }) => {
         expressionScore: 0,
         totalRatingGiven: 0,
         position: 0, previousPosition: null, stackIndex: currentFunctionIndex, skipUsedCount: 0, color: 'teal',
-        behaviorStats: { truth: 0, dare: 0, deep: 0, standard: 0, totalMultiplier: 0, interactions: {} }
+        behaviorStats: { truth: 0, dare: 0, deep: 0, standard: 0, totalMultiplier: 0, highEnergyCount: 0, interactions: {} }
     };
 
     // STRATEGY: Load local tasks immediately, call AI only when user starts challenge

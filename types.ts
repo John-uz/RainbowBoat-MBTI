@@ -33,6 +33,7 @@ export interface Player {
     deep: number;
     standard: number;
     totalMultiplier: number;
+    highEnergyCount: number;
     interactions: Record<string, number>; // TargetID -> Count (Who did they ask for help?)
   };
 }
