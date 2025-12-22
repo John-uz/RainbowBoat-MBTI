@@ -160,7 +160,7 @@ const PeerReviewModal: React.FC<{
                     ))}
                 </div>
 
-                <div className="text-xl font-bold text-yellow-500 mb-8">{rating} 星 - {rating === 5 ? "直击灵魂" : rating >= 3 ? "真诚分享" : rating > 0 ? "继续加油" : "沉默是金"}</div>
+                <div className="text-xl font-bold text-yellow-500 mb-8">{rating} 星 - {rating === 5 ? "直击灵魂" : rating >= 3 ? "真诚分享" : rating > 0 ? "继续加油" : "弃权（不计分）"}</div>
 
                 <button onClick={() => onSubmit(rating)} className="w-full py-4 bg-gradient-to-r from-teal-500 to-blue-600 rounded-xl font-bold text-white text-lg shadow-lg">
                     提交评分
@@ -1373,10 +1373,10 @@ function App() {
 
     const handleScoreTargetSelect = (targetId: string) => {
         setGameState(prev => ({ ...prev, scoreTargetPlayerId: targetId }));
-        finalizeTurn(-1);
+        finalizeTurn(-1, targetId);
     };
 
-    const finalizeTurn = (lastRating: number) => {
+    const finalizeTurn = (lastRating: number, overrideTargetId?: string) => {
         const player = gameState.players[gameState.currentPlayerIndex];
         const task = gameState.selectedTask;
         if (!task) return;
@@ -1444,6 +1444,8 @@ function App() {
                 }
             };
 
+            const targetId = overrideTargetId || prev.scoreTargetPlayerId;
+
             if (ability === 'SUBSTITUTE' && prev.helperId) {
                 applyScoreToPlayer(prev.helperId, basePoints);
             }
@@ -1458,12 +1460,12 @@ function App() {
                 applyScoreToPlayer(prev.helperId, hPoints);
             }
             else {
-                if (modifier === 'TRANSFER' && prev.scoreTargetPlayerId) {
-                    applyScoreToPlayer(prev.scoreTargetPlayerId, basePoints);
+                if (modifier === 'TRANSFER' && targetId) {
+                    applyScoreToPlayer(targetId, basePoints);
                 } else {
                     applyScoreToPlayer(currentPlayer.id, basePoints);
-                    if (modifier === 'CLONE' && prev.scoreTargetPlayerId) {
-                        applyScoreToPlayer(prev.scoreTargetPlayerId, basePoints);
+                    if (modifier === 'CLONE' && targetId) {
+                        applyScoreToPlayer(targetId, basePoints);
                     }
                 }
             }
@@ -2063,6 +2065,7 @@ function App() {
                             <AnimatePresence>
                                 {gameState.subPhase === 'PEER_REVIEW' && currentReviewer && (
                                     <PeerReviewModal
+                                        key={currentReviewer.id}
                                         reviewer={currentReviewer}
                                         actor={currentPlayer}
                                         hasHighEnergyBonus={highEnergyBonus}
