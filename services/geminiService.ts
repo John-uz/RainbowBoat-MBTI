@@ -735,6 +735,40 @@ export const analyzeVisualAspect = async (imageData: string, taskTitle: string):
 /**
  * [情感快照 (Emotional Snapshot)] 提取高光时刻和关键互动
  */
+/**
+ * [行为特征转化 (Behavioral DNA)]
+ * 将统计数据转化为 AI 易读的人格画像描述
+ */
+const formatBehaviorStats = (players: Player[]): string => {
+    return players.map(p => {
+        const s = p.behaviorStats;
+        if (!s) return "";
+
+        const total = s.truth + s.dare + s.deep + s.standard;
+        if (total === 0) return "";
+
+        const preferences = [];
+        if (s.truth > 0) preferences.push(`真心话(${s.truth})`);
+        if (s.dare > 0) preferences.push(`大冒险(${s.dare})`);
+        if (s.deep > 0) preferences.push(`深度(${s.deep})`);
+
+        const riskProfile = (s.totalMultiplier / total).toFixed(2);
+
+        // Social Topology
+        const interactions = Object.entries(s.interactions)
+            .map(([targetId, count]) => {
+                const targetName = players.find(pl => pl.id === targetId)?.name || targetId;
+                return `${targetName}(${count}次)`;
+            })
+            .join(", ");
+
+        return `- ${p.name}: 偏好[${preferences.join(', ')}], 风险系数[${riskProfile}x], 依赖对象[${interactions || '独立'}]`;
+    }).filter(Boolean).join('\n');
+};
+
+/**
+ * [情感快照 (Emotional Snapshot)] 提取高光时刻和关键互动
+ */
 const buildGameContext = (players: Player[], historyLogs: LogEntry[]) => {
     const playerMatrix = serializePlayers(players);
 
@@ -753,7 +787,11 @@ const buildGameContext = (players: Player[], historyLogs: LogEntry[]) => {
     return `
 [第三层：动态上下文 - 实时情感快照]
 [玩家矩阵(ID|Name|MBTI|Trust|Insight|Expr)]
+[玩家矩阵(ID|Name|MBTI|Trust|Insight|Expr)]
 ${playerMatrix}
+
+[行为学特征 (Behavioral DNA)]
+${formatBehaviorStats(players)}
 
 [情感快照(高光时刻记录)]
 ${highlightLogs || "航行刚刚开始，等待第一束光..."}

@@ -27,6 +27,14 @@ export interface Player {
   previousPosition: number | null;
   stackIndex: number;
   skipUsedCount: number; // For tracking skip cost
+  behaviorStats: {
+    truth: number;
+    dare: number;
+    deep: number;
+    standard: number;
+    totalMultiplier: number;
+    interactions: Record<string, number>; // TargetID -> Count (Who did they ask for help?)
+  };
 }
 
 export interface GameState {

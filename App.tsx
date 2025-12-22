@@ -167,8 +167,53 @@ const PeerReviewModal: React.FC<{
                 </button>
             </div>
         </motion.div>
-    )
-}
+    );
+};
+
+const TurnScoreModal: React.FC<{
+    data: { score: number, breakdown: { label: string, value: string | number, color?: string }[], player: Player };
+    onNext: () => void;
+}> = ({ data, onNext }) => {
+    return (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
+            <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="bg-slate-900 border border-slate-700 p-8 rounded-3xl shadow-2xl max-w-sm w-full text-center relative overflow-hidden"
+            >
+                {/* Background Glow */}
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-32 bg-gradient-to-b from-teal-500/20 to-transparent pointer-events-none"></div>
+
+                <div className="relative z-10">
+                    <div className="w-20 h-20 mx-auto rounded-full border-4 border-slate-700 shadow-xl overflow-hidden mb-4 bg-slate-800">
+                        {data.player.avatar.startsWith('data:') ? <img src={data.player.avatar} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center font-bold text-3xl text-white">{data.player.name[0]}</div>}
+                    </div>
+
+                    <h3 className="text-xl font-bold text-slate-400 mb-1">{data.player.name} 本轮得分</h3>
+                    <div className="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-blue-500 mb-6 drop-shadow-sm">
+                        +{data.score}
+                    </div>
+
+                    <div className="space-y-2 mb-8 bg-slate-800/50 p-4 rounded-xl border border-slate-700/50">
+                        {data.breakdown.map((item, i) => (
+                            <div key={i} className="flex justify-between items-center text-sm">
+                                <span className="text-slate-400">{item.label}</span>
+                                <span className={`font-bold ${item.color || 'text-white'}`}>{item.value}</span>
+                            </div>
+                        ))}
+                    </div>
+
+                    <button
+                        onClick={onNext}
+                        className="w-full py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-bold transition-all border border-slate-600 hover:border-slate-500"
+                    >
+                        继续航行
+                    </button>
+                </div>
+            </motion.div>
+        </div>
+    );
+};
 
 const generateMap = (mode: GameMode): BoardTile[] => {
     let tiles: BoardTile[] = [];
@@ -416,6 +461,9 @@ function App() {
     // Host Tools
     const [isManualMode, setIsManualMode] = useState(false);
     const [isQuickTestMode, setIsQuickTestMode] = useState(false);
+
+    // Turn Summary Logic
+    const [turnSummary, setTurnSummary] = useState<{ score: number, breakdown: { label: string, value: string | number, color?: string }[], player: Player } | null>(null);
 
     // Multimodal Vision State
     const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -767,7 +815,8 @@ function App() {
                 id: `user-${i}`, name: p.name || `P${i + 1}`, mbti: p.mbti, isBot: false,
                 avatar: p.avatarImage || 'user', color: COLORS[i % COLORS.length],
                 trustScore: 0, insightScore: 0, expressionScore: 0, totalRatingGiven: 0, position: startPos,
-                previousPosition: null, stackIndex: 0, skipUsedCount: 0
+                previousPosition: null, stackIndex: 0, skipUsedCount: 0,
+                behaviorStats: { truth: 0, dare: 0, deep: 0, standard: 0, totalMultiplier: 0, interactions: {} }
             };
         });
 
@@ -788,7 +837,8 @@ function App() {
                 id: `bot-${i}`, name: names[0], mbti: botMbti, isBot: true,
                 avatar: 'bot', color: COLORS[(players.length) % COLORS.length],
                 trustScore: 0, insightScore: 0, expressionScore: 0, totalRatingGiven: 0, position: startPos,
-                previousPosition: null, stackIndex: 0, skipUsedCount: 0
+                previousPosition: null, stackIndex: 0, skipUsedCount: 0,
+                behaviorStats: { truth: 0, dare: 0, deep: 0, standard: 0, totalMultiplier: 0, interactions: {} }
             });
         }
 
@@ -1135,7 +1185,26 @@ function App() {
     };
 
     const handleChooseHelper = (helperId: string) => {
-        setGameState(prev => ({ ...prev, helperId, sharedHelpUsedCount: prev.sharedHelpUsedCount + 1, subPhase: 'VIEWING_TASK' }));
+        setGameState(prev => {
+            // Track Social Interaction (Who asked Whom)
+            const newPlayers = [...prev.players];
+            const currentPlayer = newPlayers[prev.currentPlayerIndex];
+
+            // Safe increment interaction count
+            const currentCount = currentPlayer.behaviorStats.interactions[helperId] || 0;
+            currentPlayer.behaviorStats.interactions = {
+                ...currentPlayer.behaviorStats.interactions,
+                [helperId]: currentCount + 1
+            };
+
+            return {
+                ...prev,
+                players: newPlayers,
+                helperId,
+                sharedHelpUsedCount: prev.sharedHelpUsedCount + 1,
+                subPhase: 'VIEWING_TASK'
+            };
+        });
     };
 
     const handleStartTask = async () => {
@@ -1313,18 +1382,6 @@ function App() {
         if (!task) return;
 
         const reviewerCount = Math.max(1, gameState.players.length - 1);
-        const lastIsSelfTest = reviewerCount === 1 && gameState.players.length === 1; // Solo play case
-
-        // Handle the last rating (passed directly to finalizeTurn)
-        // Usually finalizeTurn is called by handlePeerScoreSubmit for the LAST person.
-        // But handlePeerScoreSubmit hasn't added the last rating to state yet when it calls finalizeTurn?
-        // Wait, looking at handlePeerScoreSubmit logic:
-        // It calls SET STATE first, but state updates are async.
-        // Then it checks queue length. If queue empty (or 1 left?), it calls finalizeTurn.
-        // Actually, my code in handlePeerScoreSubmit calls finalizeTurn(rating) AT THE END.
-        // And it DOES NOT await the state update.
-        // So `gameState.accumulatedRating` DOES NOT include `lastRating` yet.
-        // `lastRating` is passed as arg.
 
         // We need to check if lastRating is 0 and handle it.
         const validLastRating = lastRating > 0;
@@ -1340,27 +1397,35 @@ function App() {
 
         let basePoints = Math.ceil(avgRating * task.multiplier * 2);
 
-        // [Tension Multiplier] 
-        // Based on "Hero's Journey": Comfort(1.0) -> Growth(1.2) -> Breakthrough(1.5)
-        const tensionMult = calculateTensionMultiplier(player, gameState.currentTile?.functionId || '', gameState.gameMode);
-        basePoints = Math.ceil(basePoints * tensionMult);
+        // Breakdown Collection
+        const breakdown: { label: string, value: string | number, color?: string }[] = [];
+        breakdown.push({ label: '基础表现', value: `${basePoints} (Rating ${avgRating.toFixed(1)})` });
 
-        // Optional: Log if bonus applied (can be removed if too noisy)
-        if (tensionMult > 1.0 && tensionMult < 1.4) {
-            // addLog(`${player.name} 处于成长区，获得 1.2x 奖励系数！`, 'system');
-        } else if (tensionMult >= 1.4) {
-            // addLog(`${player.name} 突破核心挑战，获得 1.5x 奖励系数！`, 'system');
+        // [Tension Multiplier] 
+        const tensionMult = calculateTensionMultiplier(player, gameState.currentTile?.functionId || '', gameState.gameMode);
+        if (tensionMult > 1.0) {
+            basePoints = Math.ceil(basePoints * tensionMult);
+            breakdown.push({ label: '成长区奖励', value: `x${tensionMult}`, color: 'text-yellow-400' });
         }
+
         const mod = gameState.activeModifier;
         const ability = gameState.activeSpecialAbility;
 
-        if (mod === 'DOUBLE') basePoints *= 2;
-        if (mod === 'HALF') basePoints = Math.floor(basePoints / 2);
+        if (mod === 'DOUBLE') {
+            basePoints *= 2;
+            breakdown.push({ label: '双倍格', value: 'x2', color: 'text-purple-400' });
+        }
+        if (mod === 'HALF') {
+            basePoints = Math.floor(basePoints / 2);
+            breakdown.push({ label: '迷雾减半', value: '/2', color: 'text-red-400' });
+        }
 
         if (highEnergyBonus) {
             basePoints += 5;
+            breakdown.push({ label: '全场沸腾', value: '+5', color: 'text-red-500' });
         }
 
+        // Apply Scores
         setGameState(prev => {
             let newPlayers = prev.players.map(p => ({ ...p }));
             const currentPlayer = newPlayers[prev.currentPlayerIndex];
@@ -1400,10 +1465,19 @@ function App() {
                     }
                 }
             }
+            // Update Behavior Stats (Task Type & Multiplier)
+            if (task.category) {
+                const cat = task.category as 'truth' | 'dare' | 'deep' | 'standard';
+                const currentVal = currentPlayer.behaviorStats[cat] || 0;
+                currentPlayer.behaviorStats[cat] = currentVal + 1;
+                currentPlayer.behaviorStats.totalMultiplier += task.multiplier;
+            }
+
             return { ...prev, players: newPlayers };
         });
 
-        nextTurn();
+        // Show Summary instead of immediate nextTurn
+        setTurnSummary({ score: basePoints, breakdown, player });
     };
 
     const nextTurn = () => {
@@ -1455,7 +1529,8 @@ function App() {
             avatar: 'user',
             trustScore: 0, insightScore: 0, expressionScore: 0, totalRatingGiven: 0,
             position: 0, previousPosition: null, stackIndex: 0, skipUsedCount: 0,
-            color: 'teal'
+            color: 'teal',
+            behaviorStats: { truth: 0, dare: 0, deep: 0, standard: 0, totalMultiplier: 0, interactions: {} }
         };
 
         setGameState(prev => ({
@@ -1564,6 +1639,17 @@ function App() {
                     <MBTIHub onSelectMode={handleHubSelect} onOpenConfig={() => setShowConfig(true)} isMobile={isMobile} />
                 </main>
                 {showConfig && <AIConfigModal onClose={() => setShowConfig(false)} />}
+
+                {/* Score Summary Modal */}
+                {turnSummary && (
+                    <TurnScoreModal
+                        data={turnSummary}
+                        onNext={() => {
+                            setTurnSummary(null);
+                            nextTurn();
+                        }}
+                    />
+                )}
             </div>
         );
     }
