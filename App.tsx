@@ -311,6 +311,49 @@ const generateMap = (mode: GameMode): BoardTile[] => {
     return tiles;
 };
 
+// --- SCORING LOGIC HELPERS ---
+
+const calculateTensionMultiplier = (player: Player, tileFunctionId: string, mode: GameMode): number => {
+    // 1. Jung 8 Mode
+    if (mode === GameMode.JUNG_8) {
+        const stack = MBTI_STACKS[player.mbti];
+        if (!stack) return 1.0;
+
+        const funcIndex = stack.indexOf(tileFunctionId);
+        if (funcIndex === -1) return 1.0;
+
+        // Index 0-1: Dom/Aux (Comfort Zone) - Baseline
+        if (funcIndex <= 1) return 1.0;
+
+        // Index 2: Tert (Growth Zone) - Steady progress
+        if (funcIndex === 2) return 1.2;
+
+        // Index 3: Inf (Breakthrough Zone) - The "Boss Fight", highest reward
+        if (funcIndex === 3) return 1.5;
+
+        // Index 4-7: Shadow Zone - Unknown territory, high reward
+        return 1.3;
+    }
+
+    // 2. MBTI 16 Mode
+    if (mode === GameMode.MBTI_16) {
+        if (tileFunctionId === 'Hub') return 1.0;
+
+        let diffCount = 0;
+        if (player.mbti && tileFunctionId && tileFunctionId.length === 4) {
+            for (let i = 0; i < 4; i++) {
+                if (player.mbti[i] !== tileFunctionId[i]) diffCount++;
+            }
+        }
+
+        if (diffCount <= 1) return 1.0; // Same or similar
+        if (diffCount <= 3) return 1.2; // Different
+        return 1.5; // Opposite (Mirror)
+    }
+
+    return 1.0;
+};
+
 function App() {
     const [board, setBoard] = useState<BoardTile[]>([]);
     const [validMoves, setValidMoves] = useState<number[]>([]);
@@ -1264,6 +1307,18 @@ function App() {
         const avgRating = totalRating / reviewerCount;
 
         let basePoints = Math.ceil(avgRating * task.multiplier * 2);
+
+        // [Tension Multiplier] 
+        // Based on "Hero's Journey": Comfort(1.0) -> Growth(1.2) -> Breakthrough(1.5)
+        const tensionMult = calculateTensionMultiplier(player, gameState.currentTile?.functionId || '', gameState.gameMode);
+        basePoints = Math.ceil(basePoints * tensionMult);
+
+        // Optional: Log if bonus applied (can be removed if too noisy)
+        if (tensionMult > 1.0 && tensionMult < 1.4) {
+            // addLog(`${player.name} 处于成长区，获得 1.2x 奖励系数！`, 'system');
+        } else if (tensionMult >= 1.4) {
+            // addLog(`${player.name} 突破核心挑战，获得 1.5x 奖励系数！`, 'system');
+        }
         const mod = gameState.activeModifier;
         const ability = gameState.activeSpecialAbility;
 

@@ -118,7 +118,8 @@ const Onboarding: React.FC<Props> = ({ onComplete, isDarkMode, toggleTheme, init
 
     const [selectedMode, setSelectedMode] = useState<GameMode>(GameMode.JUNG_8);
     const [botCount, setBotCount] = useState<number>(0);
-    const [targetScore, setTargetScore] = useState<number>(40);
+    const [targetScore, setTargetScore] = useState<number>(60);
+    const [isInfiniteMode, setIsInfiniteMode] = useState(false);
 
     // New State for Config Modal
     const [showConfig, setShowConfig] = useState(false);
@@ -222,7 +223,7 @@ const Onboarding: React.FC<Props> = ({ onComplete, isDarkMode, toggleTheme, init
     }
 
     const isSetupValid = () => humanPlayers.every(p => p.name.trim() !== '' && p.mbti !== '');
-    const handleFinalStart = () => { if (isSetupValid()) onComplete(humanPlayers, selectedMode, botCount, targetScore); };
+    const handleFinalStart = () => { if (isSetupValid()) onComplete(humanPlayers, selectedMode, botCount, isInfiniteMode ? 9999 : targetScore); };
 
     // --- DYNAMIC AI NAME & LOADING TEXT ---
     const aiConfig = getAIConfig();
@@ -506,7 +507,31 @@ const Onboarding: React.FC<Props> = ({ onComplete, isDarkMode, toggleTheme, init
                             </div>
                         </div>
                         <div><h4 className="text-orange-500 dark:text-orange-400 font-bold mb-3 flex items-center gap-2 text-sm"><User size={16} /> 电脑玩家: {botCount}</h4><input type="range" min="0" max="5" value={botCount} onChange={(e) => setBotCount(parseInt(e.target.value))} className="w-full h-1.5 bg-slate-300 dark:bg-slate-600 rounded-lg appearance-none cursor-pointer accent-orange-500" /><div className="flex justify-between text-[10px] text-slate-500 mt-2"><span>无 Bot</span><span>5 Bots</span></div></div>
-                        <div><h4 className="text-yellow-500 dark:text-yellow-400 font-bold mb-3 flex items-center gap-2 text-sm"><Trophy size={16} /> 目标分数: {targetScore}</h4><input type="range" min="20" max="100" step="10" value={targetScore} onChange={(e) => setTargetScore(parseInt(e.target.value))} className="w-full h-1.5 bg-slate-300 dark:bg-slate-600 rounded-lg appearance-none cursor-pointer accent-yellow-500" /><div className="flex justify-between text-[10px] text-slate-500 mt-2"><span>快节奏 (20)</span><span>深度游 (100)</span></div></div>
+                        <div>
+                            <div className="flex justify-between items-center mb-3">
+                                <h4 className="text-yellow-500 dark:text-yellow-400 font-bold flex items-center gap-2 text-sm"><Trophy size={16} /> 目标分数: {isInfiniteMode ? '∞' : targetScore}</h4>
+                                <button
+                                    onClick={() => setIsInfiniteMode(!isInfiniteMode)}
+                                    className={`text-[10px] px-2 py-1 rounded border transition ${isInfiniteMode ? 'bg-yellow-500 text-white border-yellow-600' : 'bg-transparent text-slate-400 border-slate-300'}`}
+                                >
+                                    {isInfiniteMode ? '已开启无限' : '开启无限模式'}
+                                </button>
+                            </div>
+                            <input
+                                type="range"
+                                min="40"
+                                max="120"
+                                step="10"
+                                value={targetScore}
+                                disabled={isInfiniteMode}
+                                onChange={(e) => setTargetScore(parseInt(e.target.value))}
+                                className={`w-full h-1.5 rounded-lg appearance-none cursor-pointer ${isInfiniteMode ? 'bg-slate-200 dark:bg-slate-700 accent-slate-400' : 'bg-slate-300 dark:bg-slate-600 accent-yellow-500'}`}
+                            />
+                            <div className="flex justify-between text-[10px] text-slate-500 mt-2">
+                                <span>快节奏 (40)</span>
+                                <span>深度游 (120)</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <button onClick={handleFinalStart} disabled={!isSetupValid()} className="w-full mt-8 py-3.5 bg-gradient-to-r from-teal-600 to-blue-600 hover:from-teal-500 hover:to-blue-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-bold text-white text-lg transition shadow-lg hover:shadow-teal-500/20 flex items-center justify-center gap-2">踏上彩虹船 <ArrowRight size={20} /></button>
