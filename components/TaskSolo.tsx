@@ -351,6 +351,11 @@ const TaskSolo: React.FC<Props> = ({ onBack, isMobile, isDarkMode }) => {
                                                                         </div>
                                                                         <span className="text-teal-600 dark:text-teal-400 font-black tracking-widest text-[10px]">已征服该领域</span>
                                                                     </div>
+                                                                    {task.source === 'ai' && (
+                                                                        <div className="absolute top-6 right-6 flex items-center gap-1.5 px-3 py-1 bg-teal-500/10 rounded-full text-[10px] font-black text-teal-600 dark:text-teal-400 border border-teal-500/20 animate-pulse z-10">
+                                                                            <Sparkles size={12} fill="currentColor" /> AI 赋能
+                                                                        </div>
+                                                                    )}
 
                                                                     <div className="relative z-10">
                                                                         <div className="text-5xl mb-6">{config.icon}</div>

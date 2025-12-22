@@ -902,7 +902,9 @@ ${currentConfig.taskPromptTemplate}
     `.trim();
 
     try {
+        console.log(`📡 [AI 任务引擎] 正在为格集合 {${functionIds.join(', ')}} 发起 AI 批量请求...`);
         const text = await unifiedAICall(userPrompt);
+        console.log("✨ [AI 任务引擎] AI 响应成功，正在注入实时灵感！");
         const raw = JSON.parse(extractJSON(text));
         const finalBatch: Record<string, Record<string, TaskOption>> = {};
 
@@ -920,7 +922,8 @@ ${currentConfig.taskPromptTemplate}
                     description: item.description || `针对 ${fid} 的即兴挑战。`,
                     scoreType: item.scoreType || "expression",
                     durationSeconds: item.durationSeconds || 60,
-                    multiplier: config.multiplier
+                    multiplier: config.multiplier,
+                    source: 'ai'
                 };
             });
             finalBatch[fid] = result;
@@ -928,7 +931,8 @@ ${currentConfig.taskPromptTemplate}
 
         return finalBatch;
     } catch (e) {
-        console.warn("Batch AI generation failed, using local library fallback.");
+        console.error("🚨 ALL AI Providers Failed in Disaster Recovery Chain!", e);
+        console.warn("⚠️ Falling back to Local Library as the last line of defense.");
         const finalBatch: Record<string, Record<string, TaskOption>> = {};
         functionIds.forEach(fid => {
             const localTasks = getTasksByFunction(fid, 4);
@@ -942,7 +946,8 @@ ${currentConfig.taskPromptTemplate}
                     description: task.description,
                     scoreType: task.scoreType as any,
                     durationSeconds: task.durationSeconds,
-                    multiplier: config.multiplier
+                    multiplier: config.multiplier,
+                    source: 'local'
                 };
             });
             finalBatch[fid] = result;

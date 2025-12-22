@@ -13,7 +13,7 @@ import {
 } from "./services/geminiService";
 import { speak } from './utils/tts';
 import { startSpeechRecognition, stopSpeechRecognition, isSpeechRecognitionSupported } from './utils/speechRecognition';
-import { Map as MapIcon, LogOut, Music, VideoOff, Dices, ChevronRight, ChevronLeft, BrainCircuit, Heart, Lightbulb, Mic, CircleHelp, X, Timer, CheckCircle, SkipForward, Users, RefreshCw, Star, Play, Power, Compass, Footprints, Loader, Zap, Repeat, Divide, Copy, Move, UserPlus, UsersRound, Settings, Flag, Radio, Sun, Moon, Volume2, Eye, ArrowRight, Ship, Layers } from 'lucide-react';
+import { Map as MapIcon, LogOut, Music, VideoOff, Dices, ChevronRight, ChevronLeft, BrainCircuit, Heart, Lightbulb, Mic, CircleHelp, X, Timer, CheckCircle, SkipForward, Users, RefreshCw, Star, Play, Power, Compass, Footprints, Loader, Zap, Repeat, Divide, Copy, Move, UserPlus, UsersRound, Settings, Flag, Radio, Sun, Moon, Volume2, Eye, ArrowRight, Ship, Layers, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AIConfigModal from './components/AIConfigModal';
 import MBTIHub from './components/MBTIHub';
@@ -1952,7 +1952,12 @@ function App() {
                                                     {(['standard', 'truth', 'dare', 'deep'] as const).map((cat) => {
                                                         const config = TASK_CATEGORIES_CONFIG[cat];
                                                         return (
-                                                            <button key={cat} onClick={() => handleSelectCategory(cat)} className={`w-40 h-48 rounded-2xl flex flex-col items-center justify-center gap-4 transition-all hover:-translate-y-2 hover:shadow-xl border ${config.color} bg-opacity-20 hover:bg-opacity-30 group`}>
+                                                            <button key={cat} onClick={() => handleSelectCategory(cat)} className={`w-40 h-48 rounded-2xl flex flex-col items-center justify-center gap-4 transition-all hover:-translate-y-2 hover:shadow-xl border ${config.color} bg-opacity-20 hover:bg-opacity-30 group relative overflow-hidden`}>
+                                                                {gameState.pregeneratedTasks && gameState.pregeneratedTasks[currentPlayer.position.toString()]?.[cat]?.source === 'ai' && (
+                                                                    <div className="absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 bg-teal-500/10 rounded-full text-[8px] font-black text-teal-600 dark:text-teal-400 border border-teal-500/20 animate-pulse">
+                                                                        <Sparkles size={8} fill="currentColor" /> AI
+                                                                    </div>
+                                                                )}
                                                                 <div className="text-5xl group-hover:scale-110 transition">{config.icon}</div>
                                                                 <div className="text-center"><div className="font-bold text-slate-800 dark:text-white">{config.name}</div><div className="text-[10px] text-slate-500 dark:text-white/60">x{config.multiplier} 倍能量</div></div>
                                                             </button>
@@ -1977,10 +1982,14 @@ function App() {
                                                     <>
                                                         <div className={`p-8 ${TASK_CATEGORIES_CONFIG[gameState.selectedTask.category].color} bg-opacity-20 text-center relative`}>
                                                             <div className="text-5xl mb-3">{TASK_CATEGORIES_CONFIG[gameState.selectedTask.category].icon}</div>
-                                                            <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-2">{gameState.selectedTask.title}</h2>
+                                                            <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-2 flex items-center justify-center gap-2">
+                                                                {gameState.selectedTask.title}
+                                                                {gameState.selectedTask.source === 'ai' && <Sparkles size={16} className="text-teal-500 animate-pulse" fill="currentColor" />}
+                                                            </h2>
                                                             <div className="flex justify-center gap-2">
                                                                 <span className="px-2 py-0.5 bg-black/10 dark:bg-black/20 rounded-full text-[10px] text-slate-600 dark:text-white/90">⏱ {gameState.selectedTask.durationSeconds}s</span>
                                                                 <span className="px-2 py-0.5 bg-black/10 dark:bg-black/20 rounded-full text-[10px] text-slate-600 dark:text-white/90">✨ {gameState.selectedTask.scoreType}</span>
+                                                                {gameState.selectedTask.source === 'ai' && <span className="px-2 py-0.5 bg-teal-500/20 rounded-full text-[10px] font-bold text-teal-600 dark:text-teal-400 border border-teal-500/30">AI 生成</span>}
                                                             </div>
                                                             <button onClick={() => setGameState(prev => ({ ...prev, subPhase: 'SELECTING_CARD' }))} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:text-white/50 dark:hover:text-white"><X size={18} /></button>
                                                         </div>
@@ -2176,7 +2185,7 @@ function App() {
                                 <div className="flex-1 flex flex-col overflow-hidden">
                                     <div
                                         className={`overflow-y-auto custom-scrollbar p-3 transition-all duration-300 ${gameState.players.length > 6 ? 'space-y-1.5' : 'space-y-3'}`}
-                                        style={{ maxHeight: '65%' }}
+                                        style={{ maxHeight: '55%' }}
                                     >
                                         {[...gameState.players].sort((a, b) => (b.trustScore + b.insightScore + b.expressionScore) - (a.trustScore + a.insightScore + a.expressionScore)).map((p) => {
                                             const total = p.trustScore + p.insightScore + p.expressionScore;

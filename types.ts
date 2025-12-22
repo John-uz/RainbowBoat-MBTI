@@ -102,6 +102,7 @@ export interface TaskOption {
   multiplier: number;
   scoreType: 'trust' | 'insight' | 'expression';
   durationSeconds: number;
+  source?: 'ai' | 'local';
 }
 
 export interface GameEventOption {
