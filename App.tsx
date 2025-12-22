@@ -131,7 +131,7 @@ const PeerReviewModal: React.FC<{
     onSubmit: (score: number) => void;
     hasHighEnergyBonus: boolean;
 }> = ({ reviewer, actor, onSubmit, hasHighEnergyBonus }) => {
-    const [rating, setRating] = useState(5);
+    const [rating, setRating] = useState(0);
 
     return (
         <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="absolute inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md">
@@ -160,7 +160,7 @@ const PeerReviewModal: React.FC<{
                     ))}
                 </div>
 
-                <div className="text-xl font-bold text-yellow-500 mb-8">{rating} 星 - {rating === 5 ? "直击灵魂" : rating >= 3 ? "真诚分享" : "继续加油"}</div>
+                <div className="text-xl font-bold text-yellow-500 mb-8">{rating} 星 - {rating === 5 ? "直击灵魂" : rating >= 3 ? "真诚分享" : rating > 0 ? "继续加油" : "沉默是金"}</div>
 
                 <button onClick={() => onSubmit(rating)} className="w-full py-4 bg-gradient-to-r from-teal-500 to-blue-600 rounded-xl font-bold text-white text-lg shadow-lg">
                     提交评分
@@ -1373,7 +1373,7 @@ function App() {
 
     const handleScoreTargetSelect = (targetId: string) => {
         setGameState(prev => ({ ...prev, scoreTargetPlayerId: targetId }));
-        finalizeTurn(0);
+        finalizeTurn(-1);
     };
 
     const finalizeTurn = (lastRating: number) => {
@@ -2219,6 +2219,17 @@ function App() {
                     </div>
                 )}
                 {showConfig && <AIConfigModal onClose={() => setShowConfig(false)} />}
+
+                {/* Score Summary Modal - Now accessible in Game Loop */}
+                {turnSummary && (
+                    <TurnScoreModal
+                        data={turnSummary}
+                        onNext={() => {
+                            setTurnSummary(null);
+                            nextTurn();
+                        }}
+                    />
+                )}
             </main>
         </div>
     );
