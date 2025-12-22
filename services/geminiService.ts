@@ -856,170 +856,109 @@ import { LOCAL_TASKS, getTasksByFunction } from "./taskLibrary";
 
 // ... existing code ...
 
-export const generateAllTaskOptions = async (
-    functionId: string,
+/**
+ * [批量任务生成架构] 一次调用为多个功能格生成任务
+ */
+export const generateBatchTaskOptions = async (
+    functionIds: string[],
     players: Player[],
     currentPlayer: Player,
     historyLogs: LogEntry[] = []
-): Promise<Record<string, TaskOption>> => {
+): Promise<Record<string, Record<string, TaskOption>>> => {
     const context = buildGameContext(players, historyLogs);
-
-    // [Few-Shot Example Injection]
-    // Get 2 relevant tasks from local library to guide the AI
-    const relevantLocalTasks = LOCAL_TASKS
-        .filter(t => t.functionId === functionId)
-        .sort(() => Math.random() - 0.5)
-        .slice(0, 2);
-
-    const examplesPrompt = relevantLocalTasks.length > 0
-        ? `\n[高质量任务范本 (请参考其调性和趣味性)]:\n${relevantLocalTasks.map(t => `- ${t.title}: ${t.description}`).join('\n')}\n`
-        : "";
-
-    // Inject Specific MBTI Profile Data for the Current Player
-    const playerProfile = MBTI_PROFILE_DATA[currentPlayer.mbti]
-        ? `\n[当前行动玩家 ${currentPlayer.mbti} 的深度画像 (参考此资料定制任务)]\n${MBTI_PROFILE_DATA[currentPlayer.mbti]}\n`
-        : "";
-
-    // [核心：注入心理动力学张力]
-    const tensionContext = getFunctionalTension(currentPlayer, functionId);
-
-    // [桌面版特有：注入灵魂历史历史 (Only in Lorca/Desktop mode)]
-    let soulHistoryPrompt = "";
-    try {
-        if ((window as any).nativeGetHistory) {
-            const historyRaw = await (window as any).nativeGetHistory(currentPlayer.name, currentPlayer.mbti);
-            const historyObj = JSON.parse(historyRaw);
-            if (historyObj.exists && historyObj.summary) {
-                soulHistoryPrompt = `\n[老船员回归：灵魂航行志 (此玩家的历史表现总结)]\n该玩家曾进行过 ${historyObj.count} 次航行。历史画像显示：\n${historyObj.summary}\n请结合这些历史特征，设计能引导其进一步进化或突破固有瓶颈的任务。\n`;
-            }
-        }
-    } catch (e) {
-        console.warn("Native history fetch failed:", e);
-    }
-
-    // Customize logic for MBTI 16 Characters
-    let tileContext = `所处功能格: "${functionId}" (人格动力学建议: ${tensionContext}).`;
-
-    // Check if it's an MBTI Type
-    const mbtiCharacter = MBTI_CHARACTERS[functionId];
-    if (mbtiCharacter) {
-        if (functionId === 'Hub') {
-            const SPIRITUAL_ANCHORS: Record<string, string> = {
-                // SJ - 守护者: 核心是“恒久与安息”
-                'ISTJ': '关键词：【时间里的基石】。肯定其坚守的意义，引导其体验“即便不奔跑，也依然被接纳”的安稳。',
-                'ISFJ': '关键词：【无名的守护】。肯定其细碎的付出，引导其发现“自己的每一个微小善意都被宇宙铭记”。',
-                'ESTJ': '关键词：【慈爱的秩序】。引导其思考规则背后的温情，鼓励展现“守护者在卸下铠甲后的柔软”。',
-                'ESFJ': '关键词：【灵魂的交织】。肯定其联结他人的天赋，引导其确认“自己是生命体中不可或缺的一部分”。',
-
-                // SP - 探险家: 核心是“真实与恩典”
-                'ISTP': '关键词：【造物的匠心】。引导其从逻辑走向对万物精密之美的惊叹，体验从细节中透出的生命奥秘。',
-                'ISFP': '关键词：【流动的色彩】。肯定其灵敏的核心，引导其体验“自己也是世界这幅画卷中最独特的笔触”。',
-                'ESTP': '关键词：【真实的触碰】。引导其在当下的行动中，体验一种超越感知的、更庞大的托举力量。',
-                'ESFP': '关键词：【生命的庆典】。引导其挥洒纯粹的喜乐，在分享快乐中体验到生命本身就是一场无条件的礼物。',
-
-                // NF - 理想主义: 核心是“救赎与看见”
-                'INFJ': '关键词：【旷野的慰藉】。引导其进入内心深处的宁静，在寂静中听见那个一直陪伴自己的微小声音。',
-                'INFP': '关键词：【裂缝中的光】。肯定其脆弱中的勇气，引导其体验“完全被看见、完全被接纳”的灵魂自由。',
-                'ENFJ': '关键词：【停杯的安息】。引导其暂时放下拯救者的包容，去体验并领受那份属于他自己的、被照顾的爱。',
-                'ENFP': '关键词：【新生的无限】。引导其发现生命中的新可能，体验一种“万物皆在更新”的生命活力。',
-
-                // NT - 分析家: 核心是“敬畏与交托”
-                'INTJ': '关键词：【超越的视角】。引导其从个人规划走向对客观规律的敬畏，学习在未知中寻找终极的平安。',
-                'INTP': '关键词：【活着的真理】。引导其意识到真理不只是抽象概念，更是真实的生活与爱。',
-                'ENTJ': '关键词：【服务者的权柄】。引导其思考权柄的真正来源是服务。设计关于“承认软弱即是力量”的体验。',
-                'ENTP': '关键词：【更高维度的跃迁】。引导其打破逻辑的围墙，在对未知的探索中遇见那个更有生命力的自己。'
-            };
-
-            const anchor = SPIRITUAL_ANCHORS[currentPlayer.mbti] || "关键词：【爱与接纳】。引导玩家感受当下的安宁与连接。";
-
-            tileContext = `
-                [核心场景：海洋之心 (The Sanctuary)]
-                玩家处于地图中央。这是一个象征【完整性】、【疗愈】与【真实连接】的区域，指向一位【完美人格、深度同在】的超越者。
-                在这里，面具被卸下，灵魂得到安息。
-                
-                [当前玩家]: ${currentPlayer.mbti}
-                [灵魂导向指南]: ${anchor}
-
-                [任务设计要求]
-                1. 使用“温润如玉”的中文，具有人文深度和文学美感。
-                2. 任务要像“光”一样照进裂缝，触碰该人格最深层的渴望或软弱。
-                3. 移除任何生硬的传教用词，转而传递关于“勇气、牺牲、无条件的爱、诚实与敬畏”的普世人类经验。
-                4. "deep" (走心) 任务应当具有强烈的治愈性和生命连接感。
-            `;
-        } else {
-            // For MBTI Character tiles, we can also pick examples from the dominant/aux functions of that type
-            tileContext = `
-                [特殊场景]
-                玩家处于“${functionId}”人格格，代表人物是“${mbtiCharacter}”。
-                请结合该 MBTI 类型 (${functionId}) 的特点以及 ${mbtiCharacter} 的性格特质来设计任务。
-                重点：关注人与人之间的关系建立，而不仅仅是内在思考。
-            `;
-        }
-    }
-
     const knowledgeBase = getRelevantKnowledge([currentPlayer]);
+
+    // 构造批量 Tile 上下文
+    const tilesContext = functionIds.map(fid => {
+        const tension = getFunctionalTension(currentPlayer, fid);
+        const mbtiChar = MBTI_CHARACTERS[fid];
+        let detail = `功能格: "${fid}" (建议: ${tension}).`;
+        if (mbtiChar) detail += ` 代表人物: ${mbtiChar}.`;
+        return detail;
+    }).join('\n');
 
     const userPrompt = `
 ${currentConfig.designPhilosophy}
 
 [当前场景设定]
 行动玩家: ${currentPlayer.name} (类型: ${currentPlayer.mbti}).
-所处位置: ${tileContext}
-
-${soulHistoryPrompt}
+批量生成目标格:
+${tilesContext}
 
 ${knowledgeBase}
-
 ${context}
+
+[输出要求]
+请为上述每一个功能格分别生成 4 个社交挑战任务。
+返回格式必须是一个 JSON 对象，Key 是功能格 ID，Value 是对应的 4 类任务。
+
+[输出示例格式]
+{
+  "Ti": { "standard": {...}, "truth": {...}, "dare": {...}, "deep": {...} },
+  "Fe": { ... }
+}
 
 ${currentConfig.taskPromptTemplate}
     `.trim();
 
     try {
-        const text = await unifiedAICall(userPrompt); // Use default Persona
+        const text = await unifiedAICall(userPrompt);
         const raw = JSON.parse(extractJSON(text));
-        const result: Record<string, TaskOption> = {};
+        const finalBatch: Record<string, Record<string, TaskOption>> = {};
 
-        const categories = ['standard', 'truth', 'dare', 'deep'] as const;
-        categories.forEach(cat => {
-            const item = raw[cat] || {};
-            const config = TASK_CATEGORIES_CONFIG[cat];
-            result[cat] = {
-                category: cat,
-                title: item.title || "信号丢失",
-                description: item.description || "AI 连接断开，请即兴发挥。",
-                scoreType: item.scoreType || "expression",
-                durationSeconds: item.durationSeconds || 60,
-                multiplier: config.multiplier
-            };
+        functionIds.forEach(fid => {
+            const tileData = raw[fid] || {};
+            const result: Record<string, TaskOption> = {};
+            const categories = ['standard', 'truth', 'dare', 'deep'] as const;
+
+            categories.forEach(cat => {
+                const item = tileData[cat] || {};
+                const config = TASK_CATEGORIES_CONFIG[cat];
+                result[cat] = {
+                    category: cat,
+                    title: item.title || "信号丢失",
+                    description: item.description || `针对 ${fid} 的即兴挑战。`,
+                    scoreType: item.scoreType || "expression",
+                    durationSeconds: item.durationSeconds || 60,
+                    multiplier: config.multiplier
+                };
+            });
+            finalBatch[fid] = result;
         });
-        return result;
 
+        return finalBatch;
     } catch (e) {
-        console.warn("Falling back to Static Data from Local Library");
-        // Fallback Logic: Use our robust local library instead of generic placeholders
-        const localTasks = getTasksByFunction(functionId, 4);
-        const result: Record<string, TaskOption> = {};
-
-        ['standard', 'truth', 'dare', 'deep'].forEach((cat, i) => {
-            const task = localTasks[i] || {
-                title: "随机挑战",
-                description: "请向大家分享一个你认为最能代表你性格的小故事。",
-                scoreType: "expression",
-                durationSeconds: 60
-            };
-            const config = TASK_CATEGORIES_CONFIG[cat as keyof typeof TASK_CATEGORIES_CONFIG];
-            result[cat] = {
-                category: cat as any,
-                title: task.title,
-                description: task.description,
-                scoreType: task.scoreType as any,
-                durationSeconds: task.durationSeconds,
-                multiplier: config.multiplier
-            };
+        console.warn("Batch AI generation failed, using local library fallback.");
+        const finalBatch: Record<string, Record<string, TaskOption>> = {};
+        functionIds.forEach(fid => {
+            const localTasks = getTasksByFunction(fid, 4);
+            const result: Record<string, TaskOption> = {};
+            ['standard', 'truth', 'dare', 'deep'].forEach((cat, i) => {
+                const task = localTasks[i] || { title: "随机挑战", description: "即兴发挥", scoreType: "expression", durationSeconds: 60 };
+                const config = TASK_CATEGORIES_CONFIG[cat as keyof typeof TASK_CATEGORIES_CONFIG];
+                result[cat] = {
+                    category: cat as any,
+                    title: task.title,
+                    description: task.description,
+                    scoreType: task.scoreType as any,
+                    durationSeconds: task.durationSeconds,
+                    multiplier: config.multiplier
+                };
+            });
+            finalBatch[fid] = result;
         });
-        return result;
+        return finalBatch;
     }
+};
+
+export const generateAllTaskOptions = async (
+    functionId: string,
+    players: Player[],
+    currentPlayer: Player,
+    historyLogs: LogEntry[] = []
+): Promise<Record<string, TaskOption>> => {
+    const batch = await generateBatchTaskOptions([functionId], players, currentPlayer, historyLogs);
+    return batch[functionId];
 };
 
 // [Parallel AI Architecture]

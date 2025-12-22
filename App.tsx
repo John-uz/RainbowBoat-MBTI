@@ -5,6 +5,7 @@ import GameBoard from './components/GameBoard';
 import GameReport from './components/GameReport';
 import {
     generateAllTaskOptions,
+    generateBatchTaskOptions,
     generateProfessionalReport,
     analyzeVisualAspect,
     generateQuickReport,
@@ -962,9 +963,6 @@ function App() {
                 finishMovementAndTriggerEvent(targetTile, isTeleportLanding);
             } else {
                 setGameState(prev => {
-                    // PREDICTIVE FETCHING for subsequent steps
-                    const nextSteps = calculateValidNextSteps(prev.players[prev.currentPlayerIndex], board);
-                    prefetchTasks(nextSteps, prev.players, prev.logs);
                     return { ...prev, movementState: 'IDLE' };
                 });
             }
@@ -973,35 +971,37 @@ function App() {
 
     const prefetchTasks = async (tileIndices: number[], players: Player[], logs: LogEntry[]) => {
         const currentPlayer = players[gameState.currentPlayerIndex];
+        if (!currentPlayer) return;
 
-        tileIndices.forEach(async (idx) => {
-            const tile = board.find(t => t.index === idx);
-            if (!tile) return;
+        // 获取这些格子的功能 ID 集合
+        const functionIds = Array.from(new Set(
+            tileIndices.map(idx => board.find(t => t.index === idx)?.functionId).filter(Boolean) as string[]
+        ));
 
-            // Check if already in cache or being fetched
-            const cacheKey = idx.toString();
-            // Note: In a real app we might want a 'fetching' state to avoid duplicate requests
-            // but for simplicity we'll just check if it exists
+        if (functionIds.length === 0) return;
 
-            setGameState(prev => {
-                if (prev.pregeneratedTasks?.[cacheKey]) return prev;
+        try {
+            const batchResults = await generateBatchTaskOptions(functionIds, players, currentPlayer, logs);
 
-                // Stagger requests slightly to avoid hitting strict rate limits (like Groq's 429)
-                setTimeout(() => {
-                    generateAllTaskOptions(tile.functionId, prev.players, currentPlayer, prev.logs).then(tasks => {
-                        setGameState(latest => ({
-                            ...latest,
-                            pregeneratedTasks: {
-                                ...(latest.pregeneratedTasks || {}),
-                                [cacheKey]: tasks
-                            }
-                        }));
-                    });
-                }, tileIndices.indexOf(idx) * 300); // 300ms gap between each prefetch call
+            setGameState(latest => {
+                const newPregenerated = { ...(latest.pregeneratedTasks || {}) };
 
-                return prev;
+                // 将结果映射回 tileIndex
+                tileIndices.forEach(idx => {
+                    const fid = board.find(t => t.index === idx)?.functionId;
+                    if (fid && batchResults[fid]) {
+                        newPregenerated[idx.toString()] = batchResults[fid];
+                    }
+                });
+
+                return {
+                    ...latest,
+                    pregeneratedTasks: newPregenerated
+                };
             });
-        });
+        } catch (e) {
+            console.warn("Batch prefetch failed:", e);
+        }
     };
 
     const finishMovementAndTriggerEvent = (tile: BoardTile, justTeleported: boolean) => {
