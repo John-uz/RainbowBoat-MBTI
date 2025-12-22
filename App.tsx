@@ -986,16 +986,19 @@ function App() {
             setGameState(prev => {
                 if (prev.pregeneratedTasks?.[cacheKey]) return prev;
 
-                // Trigger generation
-                generateAllTaskOptions(tile.functionId, prev.players, currentPlayer, prev.logs).then(tasks => {
-                    setGameState(latest => ({
-                        ...latest,
-                        pregeneratedTasks: {
-                            ...(latest.pregeneratedTasks || {}),
-                            [cacheKey]: tasks
-                        }
-                    }));
-                });
+                // Stagger requests slightly to avoid hitting strict rate limits (like Groq's 429)
+                setTimeout(() => {
+                    generateAllTaskOptions(tile.functionId, prev.players, currentPlayer, prev.logs).then(tasks => {
+                        setGameState(latest => ({
+                            ...latest,
+                            pregeneratedTasks: {
+                                ...(latest.pregeneratedTasks || {}),
+                                [cacheKey]: tasks
+                            }
+                        }));
+                    });
+                }, tileIndices.indexOf(idx) * 300); // 300ms gap between each prefetch call
+
                 return prev;
             });
         });
