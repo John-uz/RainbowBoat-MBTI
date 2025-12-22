@@ -60,6 +60,7 @@ export interface GameState {
   peerReviewQueue: string[];
   currentReviewerId: string | null;
   accumulatedRating: number;
+  validReviewCount: number;
 
   // Pre-generation Cache
   pregeneratedTasks: Record<string, Record<string, TaskOption>> | null;

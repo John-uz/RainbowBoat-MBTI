@@ -386,7 +386,8 @@ function App() {
         startTime: Date.now(),
         peerReviewQueue: [],
         currentReviewerId: null,
-        accumulatedRating: 0
+        accumulatedRating: 0,
+        validReviewCount: 0
     });
 
     const [isMobile, setIsMobile] = useState(false);
@@ -1255,17 +1256,22 @@ function App() {
 
         const reviewers = gameState.players.filter(p => p.id !== gameState.players[gameState.currentPlayerIndex].id);
         if (reviewers.length === 0) { handlePeerScoreSubmit(5); return; }
-        setGameState(prev => ({ ...prev, subPhase: 'PEER_REVIEW', peerReviewQueue: reviewers.map(r => r.id), currentReviewerId: reviewers[0].id, accumulatedRating: 0 }));
+        setGameState(prev => ({ ...prev, subPhase: 'PEER_REVIEW', peerReviewQueue: reviewers.map(r => r.id), currentReviewerId: reviewers[0].id, accumulatedRating: 0, validReviewCount: 0 }));
     };
 
     const handlePeerScoreSubmit = (rating: number) => {
         const currentReviewerId = gameState.currentReviewerId;
 
         if (currentReviewerId) {
+            // Update "totalRatingGiven" for the reviewer (keep tracking all given ratings, even 0 if intended as feedback, but score calculation ignores 0)
+            // Actually user said "ignore 0 score", implying it shouldn't affect the average.
+            // Let's assume 0 means "abstain" or "invalid".
             setGameState(prev => {
                 const newPlayers = [...prev.players];
                 const reviewerIndex = newPlayers.findIndex(p => p.id === currentReviewerId);
-                if (reviewerIndex !== -1) {
+                if (reviewerIndex !== -1 && rating > 0) {
+                    // Only track generic stats if rating > 0? Or track all?
+                    // Let's track all for "participated", but for scoring only > 0.
                     newPlayers[reviewerIndex] = {
                         ...newPlayers[reviewerIndex],
                         totalRatingGiven: (newPlayers[reviewerIndex].totalRatingGiven || 0) + rating
@@ -1279,8 +1285,12 @@ function App() {
             setGameState(prev => {
                 const newQueue = prev.peerReviewQueue.filter(id => id !== currentReviewerId);
                 const nextReviewerId = newQueue.length > 0 ? newQueue[0] : null;
-                if (nextReviewerId) return { ...prev, accumulatedRating: prev.accumulatedRating + rating, peerReviewQueue: newQueue, currentReviewerId: nextReviewerId };
-                else return { ...prev, accumulatedRating: prev.accumulatedRating + rating, peerReviewQueue: [], currentReviewerId: null };
+
+                const newAccumulated = rating > 0 ? prev.accumulatedRating + rating : prev.accumulatedRating;
+                const newValidCount = rating > 0 ? (prev.validReviewCount || 0) + 1 : (prev.validReviewCount || 0);
+
+                if (nextReviewerId) return { ...prev, accumulatedRating: newAccumulated, validReviewCount: newValidCount, peerReviewQueue: newQueue, currentReviewerId: nextReviewerId };
+                else return { ...prev, accumulatedRating: newAccumulated, validReviewCount: newValidCount, peerReviewQueue: [], currentReviewerId: null };
             });
             if (gameState.peerReviewQueue.length > 1) return;
         }
@@ -1303,8 +1313,30 @@ function App() {
         if (!task) return;
 
         const reviewerCount = Math.max(1, gameState.players.length - 1);
-        const totalRating = gameState.accumulatedRating + lastRating;
-        const avgRating = totalRating / reviewerCount;
+        const lastIsSelfTest = reviewerCount === 1 && gameState.players.length === 1; // Solo play case
+
+        // Handle the last rating (passed directly to finalizeTurn)
+        // Usually finalizeTurn is called by handlePeerScoreSubmit for the LAST person.
+        // But handlePeerScoreSubmit hasn't added the last rating to state yet when it calls finalizeTurn?
+        // Wait, looking at handlePeerScoreSubmit logic:
+        // It calls SET STATE first, but state updates are async.
+        // Then it checks queue length. If queue empty (or 1 left?), it calls finalizeTurn.
+        // Actually, my code in handlePeerScoreSubmit calls finalizeTurn(rating) AT THE END.
+        // And it DOES NOT await the state update.
+        // So `gameState.accumulatedRating` DOES NOT include `lastRating` yet.
+        // `lastRating` is passed as arg.
+
+        // We need to check if lastRating is 0 and handle it.
+        const validLastRating = lastRating > 0;
+
+        const finalAccumulated = validLastRating ? gameState.accumulatedRating + lastRating : gameState.accumulatedRating;
+        const finalValidCount = validLastRating ? (gameState.validReviewCount || 0) + 1 : (gameState.validReviewCount || 0);
+
+        // Avoid division by zero
+        const effectiveCount = finalValidCount === 0 ? 1 : finalValidCount;
+
+        // If NO valid ratings were given (all 0), average is 0.
+        const avgRating = finalValidCount === 0 ? 0 : finalAccumulated / effectiveCount;
 
         let basePoints = Math.ceil(avgRating * task.multiplier * 2);
 
@@ -1396,7 +1428,8 @@ function App() {
                 turn: nextIndex === 0 ? prev.turn + 1 : prev.turn,
                 currentReviewerId: null,
                 peerReviewQueue: [],
-                accumulatedRating: 0
+                accumulatedRating: 0,
+                validReviewCount: 0
             };
         });
     };
@@ -1473,7 +1506,8 @@ function App() {
             startTime: Date.now(),
             peerReviewQueue: [],
             currentReviewerId: null,
-            accumulatedRating: 0
+            accumulatedRating: 0,
+            validReviewCount: 0
         }));
         setLoadingProgress(0);
         // We'll increment progress only if mic has some input or just rely on a timer + mic enabling

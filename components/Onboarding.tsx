@@ -54,47 +54,106 @@ const CaptainManualModal: React.FC<{ onClose: () => void }> = ({ onClose }) => (
             <div className="flex justify-between items-center p-5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
                 <div className="flex items-center gap-2">
                     <BookOpen className="text-teal-600 dark:text-teal-400" />
-                    <h2 className="text-lg font-bold text-slate-800 dark:text-white">船长必读手册</h2>
+                    <h2 className="text-lg font-bold text-slate-800 dark:text-white">彩虹船游戏手册 & 开发者指南</h2>
                 </div>
                 <button onClick={onClose} className="text-slate-500 hover:text-slate-800 dark:hover:text-white transition"><X size={24} /></button>
             </div>
             <div className="p-8 overflow-y-auto custom-scrollbar prose dark:prose-invert max-w-none text-slate-700 dark:text-slate-300 space-y-8">
-                <div className="bg-teal-50 dark:bg-teal-900/20 p-6 rounded-2xl border border-teal-100 dark:border-teal-800/50">
-                    <h3 className="mt-0 text-teal-800 dark:text-teal-200 flex items-center gap-2">⚓ 尊敬的船长</h3>
-                    <p className="mb-0 text-sm leading-relaxed">
-                        你是这场航行的“灵魂领航员”。请利用本手册快速掌握主持技巧，确保每一位船员都能顺利抵达心灵深处。
+
+                {/* 游戏介绍部分 */}
+                <div className="space-y-4">
+                    <div className="p-6 rounded-2xl bg-gradient-to-br from-teal-50 to-blue-50 dark:from-teal-900/20 dark:to-blue-900/20 border border-teal-100 dark:border-teal-800/50">
+                        <h3 className="mt-0 text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-teal-600 to-blue-600 dark:from-teal-400 dark:to-blue-400">
+                            🌊 彩虹船 (Rainbow Boat)
+                        </h3>
+                        <p className="font-bold text-slate-600 dark:text-slate-300">
+                            一款结合 MBTI 荣格心理学与 AI 实时互动的桌面角色扮演游戏。
+                        </p>
+                        <p className="text-sm">
+                            在这个游戏中，每位玩家都是一艘在潜意识海洋中航行的船。你们的目标不是击败对手，而是探索自我、理解他人，收集象征心灵成长的“灵魂粒子”。
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+                            <h4 className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 mt-0"><Trophy size={18} /> 胜利目标</h4>
+                            <p className="text-sm mb-0">
+                                率先收集到目标数量的“灵魂粒子”（默认60分）。<br />
+                                或在“无限模式”下，享受纯粹的探索乐趣直至船长宣布靠岸。
+                            </p>
+                        </div>
+                        <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+                            <h4 className="flex items-center gap-2 text-amber-600 dark:text-amber-400 mt-0"><LayoutGrid size={18} /> 核心机制</h4>
+                            <p className="text-sm mb-0">
+                                掷骰子移动 → 触发人格格位 → 选择挑战卡牌 → AI 实时观测表演 → 伙伴评分。
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <hr className="border-slate-200 dark:border-slate-700" />
+
+                {/* 详细规则 */}
+                <div className="space-y-4">
+                    <h3 className="flex items-center gap-2 mb-2"><BookOpen size={20} /> 航海法则</h3>
+
+                    <h4 className="text-base font-bold text-slate-800 dark:text-white mt-2">1. 挑战与难度</h4>
+                    <p className="text-sm">
+                        当你停留在某个格子时，你不仅面临任务的挑战，还面临心理舒适区的挑战。
+                    </p>
+                    <ul className="text-sm list-disc pl-5 space-y-1">
+                        <li><strong>舒适区 (x1.0)</strong>：任务如果是你的主导/辅助功能（例如 INTJ 做逻辑规划），你会觉得得心应手。</li>
+                        <li><strong>成长区 (x1.2)</strong>：任务涉及你的第三功能，稍显生涩但充满乐趣。</li>
+                        <li><strong>突破区 (x1.5)</strong>：你的劣势功能（第四功能）或阴影人格。这是你最大的弱点，也是最大的得分机会！</li>
+                    </ul>
+
+                    <h4 className="text-base font-bold text-slate-800 dark:text-white mt-4">2. 任务类型系数</h4>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="bg-emerald-100 dark:bg-emerald-900/30 p-2 rounded text-emerald-800 dark:text-emerald-300">🌱 暖身 (x1.0): 轻松的破冰问答</div>
+                        <div className="bg-sky-100 dark:bg-sky-900/30 p-2 rounded text-sky-800 dark:text-sky-300">🕊️ 真心 (x1.2): 触及内心的自我披露</div>
+                        <div className="bg-amber-100 dark:bg-amber-900/30 p-2 rounded text-amber-800 dark:text-amber-300">🔥 挑战 (x1.2): 需要勇气的整活大冒险</div>
+                        <div className="bg-indigo-100 dark:bg-indigo-900/30 p-2 rounded text-indigo-800 dark:text-indigo-300">✨ 走心 (x1.5): 深度灵魂拷问与演绎</div>
+                    </div>
+
+                    <h4 className="text-base font-bold text-slate-800 dark:text-white mt-4">3. 评分系统</h4>
+                    <p className="text-sm">
+                        任务完成后，其他船员会根据你的真诚与投入程度给出 1-5 星评价。
+                        <br />
+                        <span className="text-slate-500 italic">注：如果不忍心打分或想弃权，可以滑到 0 星，系统会自动忽略该评分，不拉低平均分。</span>
                     </p>
                 </div>
 
+                <hr className="border-slate-200 dark:border-slate-700" />
+
+                {/* 开发者指南 */}
                 <div className="space-y-4">
-                    <h4 className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 mb-0"><Monitor size={20} /> 1. 开船前：硬件与配置</h4>
-                    <ul className="text-sm space-y-2">
-                        <li><strong>AI 智能检查</strong>：点击右上角 <Settings size={14} className="inline" /> 确保 API Key 已配置。如在海外建议用 Gemini/Groq，国内环境推荐 <strong>Zhipu (智谱)</strong>。</li>
-                        <li><strong>视觉对齐</strong>：调整屏幕或摄像头，确保挑战者的脸位于光线充足处。画面右侧的“观测舱”将捕捉非语言信息。</li>
-                        <li><strong>沉浸声场</strong>：建议连接音箱。系统会自动朗读任务及 AI 实时评语，仪式感是社交破冰的关键。</li>
-                    </ul>
+                    <h3 className="flex items-center gap-2 text-slate-500 dark:text-slate-400 font-mono text-base bg-slate-100 dark:bg-slate-800 p-2 rounded-lg">
+                        <Monitor size={16} /> Developer Guide / 开发者指南
+                    </h3>
+
+                    <div className="text-xs font-mono bg-slate-900 text-slate-300 p-4 rounded-xl overflow-x-auto">
+                        <p className="text-teal-400 mb-2">// Tech Stack</p>
+                        <ul className="list-disc pl-4 space-y-1 mb-4">
+                            <li>Frontend: React 18, Vite, TailwindCSS, Framer Motion</li>
+                            <li>AI Integration: Google Gemini / Groq / Zhipu (via OpenAI Compatible API)</li>
+                            <li>Speech & Vision: Web Speech API, Canvas API, MediaDevices API</li>
+                            <li>State: Local React State (No external DB required for basic gameplay)</li>
+                        </ul>
+
+                        <p className="text-teal-400 mb-2">// Key Configuration</p>
+                        <p className="mb-2">
+                            API Keys are managed in <code>AIConfigModal</code>. They are stored in <code>localStorage</code> for persistence.
+                            Ensure your network can access Google/Groq APIs, or switch to Zhipu for CN regions.
+                        </p>
+
+                        <p className="text-teal-400 mb-2">// Customizing Tasks</p>
+                        <p>
+                            Tasks are dynamically generated by AI based on prompts in <code>services/geminiService.ts</code>.
+                            You can tweak the standard task library in <code>data/MBTI_Tasks.csv</code> (if implemented) or modify the prompt structure to change the game's flavor.
+                        </p>
+                    </div>
                 </div>
 
-                <div className="space-y-4">
-                    <h4 className="flex items-center gap-2 text-amber-600 dark:text-amber-400 mb-0"><Sparkles size={20} /> 2. 航行中：核心规则提醒</h4>
-                    <ul className="text-sm space-y-2">
-                        <li><strong>认知功能轮询</strong>（荣格模式）：点击骰子后，系统会自动根据玩家功能栈轮询周围格子。如果没有当前功能，会自动顺延至下一个可用功能。</li>
-                        <li><strong>神秘格 (?)</strong>：踩中问号会触发随机特权或反转。作为船长，可以适时解释这是“命运的波动”。</li>
-                        <li><strong>共振伙伴</strong>：玩家遇到困难可请求他人协助，这会消耗全局共享的“连接次数”。鼓励大家在卡壳时“连线”队友。</li>
-                    </ul>
-                </div>
-
-                <div className="space-y-4">
-                    <h4 className="flex items-center gap-2 text-teal-600 dark:text-teal-400 mb-0"><Trophy size={20} /> 3. 终点站：报告与纪念</h4>
-                    <ul className="text-sm space-y-2">
-                        <li><strong>深度报告生成</strong>：点击“查看报告后”，AI 将汇总全程的语言、视觉和评分表现。生成的文字可以点击进行微调或再次呼叫 AI 润色。</li>
-                        <li><strong>专属扫码</strong>：在报告页面点击“手机查看”，会为每位玩家生成专属二维码。扫码后可直接在手机上保存带有人格属性的航行日志。</li>
-                    </ul>
-                </div>
-
-                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl text-[11px] text-slate-500 border border-slate-200 dark:border-slate-700 italic">
-                    💡 忘记规则了？随时点击右上角图标，航行中的规则逻辑会根据当前阶段智能更新。
-                </div>
             </div>
             <div className="p-5 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex justify-end">
                 <button onClick={onClose} className="px-6 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-lg font-bold">我已了解</button>
