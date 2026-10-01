@@ -14,6 +14,8 @@ export interface AIConfig {
     geminiModel: string;
     openRouterModel: string;
     groqModel: string;
+    // Number of retry attempts for Groq when quota exceeded or transient errors
+    groqRetryAttempts: number;
 
     // Custom Prompts
     designPhilosophy: string;   // The "Soul" and core values
@@ -249,6 +251,8 @@ const DEFAULT_CONFIG: AIConfig = {
     geminiModel: 'gemini-flash-latest',
     openRouterModel: 'openrouter/free',
     groqModel: 'openai/gpt-oss-20b',
+    // Number of retry attempts for Groq when quota exceeded or transient errors
+    groqRetryAttempts: 2,
 
     designPhilosophy: DEFAULT_PHILOSOPHY,
     systemPersona: DEFAULT_PERSONA,
@@ -621,9 +625,32 @@ const unifiedAICall = async (userPrompt: string, systemPromptOverride?: string, 
         }
     } else {
         process.env.NODE_ENV !== 'production' && console.log("[环境路由] 检测到位于海外，优化为国际主流链路...");
+        // 注意：如果包含图片，直接跳过 Groq，因为它的一致性较差(400 error)
+        // Groq 超额时（429/400）会自动重试，最多 groqRetryAttempts 次，再失败才切到下一个提供商
+        const groqProvider = isMultimodal ? [] : [{
+            name: 'Groq',
+            call: async (): Promise<string> => {
+                const attempts = currentConfig.groqRetryAttempts ?? 2;
+                let lastErr: Error = new Error('Groq: no attempts');
+                for (let i = 0; i < attempts; i++) {
+                    try {
+                        return await callGroq(system, userPrompt, true, imageData);
+                    } catch (e) {
+                        lastErr = e as Error;
+                        // 仅在配额超限错误时重试（429 / 400）
+                        if (i < attempts - 1 && (lastErr.message.includes('429') || lastErr.message.includes('400'))) {
+                            console.warn(`Groq 第 ${i + 1} 次失败 (${lastErr.message})，500ms 后重试...`);
+                            await new Promise(res => setTimeout(res, 500));
+                            continue;
+                        }
+                        throw lastErr;
+                    }
+                }
+                throw lastErr;
+            }
+        }];
         providers = [
-            // 注意：如果包含图片，直接跳过 Groq，因为它的一致性较差(400 error)
-            ...(isMultimodal ? [] : [{ name: 'Groq', call: () => callGroq(system, userPrompt, true, imageData) }]),
+            ...groqProvider,
             { name: 'Gemini', call: () => callGemini(system, userPrompt, true, imageData) },
             { name: 'OpenRouter', call: () => callOpenRouter(system, userPrompt, true, imageData) },
             { name: 'Pollinations', call: () => callPollinations(system, userPrompt, true) }
