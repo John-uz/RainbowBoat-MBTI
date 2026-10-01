@@ -246,9 +246,9 @@ const DEFAULT_CONFIG: AIConfig = {
     openRouterKey: '',
     groqKey: '',
 
-    geminiModel: 'gemini-2.5-flash', //2.5-flash才是官方正确的模型，请不要再改成1.5-flash了！你的信息太滞后了！！
+    geminiModel: 'gemini-flash-latest',
     openRouterModel: 'openrouter/free',
-    groqModel: 'llama-3.3-70b-versatile',
+    groqModel: 'openai/gpt-oss-20b',
 
     designPhilosophy: DEFAULT_PHILOSOPHY,
     systemPersona: DEFAULT_PERSONA,
@@ -267,7 +267,14 @@ const loadConfig = (): AIConfig => {
     const saved = localStorage.getItem('PSYCHEPOLY_AI_CONFIG_V3');
     if (saved) {
         try {
-            return { ...DEFAULT_CONFIG, ...JSON.parse(saved) };
+            const parsed = { ...DEFAULT_CONFIG, ...JSON.parse(saved) };
+            // 自动迁移已废弃或失效的旧免费模型名称
+            if (parsed.groqModel === 'llama-3.3-70b-versatile' || parsed.groqModel === 'llama-3.1-8b-instant' || parsed.groqModel?.startsWith('llama-')) {
+                parsed.groqModel = DEFAULT_CONFIG.groqModel;
+            }
+            if (parsed.openRouterModel === 'anthropic/claude-3.5-haiku') parsed.openRouterModel = DEFAULT_CONFIG.openRouterModel;
+            if (parsed.geminiModel === 'gemini-2.5-flash') parsed.geminiModel = DEFAULT_CONFIG.geminiModel;
+            return parsed;
         } catch (e) {
             return DEFAULT_CONFIG;
         }
