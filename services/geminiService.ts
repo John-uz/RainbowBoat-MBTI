@@ -247,7 +247,7 @@ const DEFAULT_CONFIG: AIConfig = {
     groqKey: '',
 
     geminiModel: 'gemini-2.5-flash', //2.5-flash才是官方正确的模型，请不要再改成1.5-flash了！你的信息太滞后了！！
-    openRouterModel: 'anthropic/claude-3.5-haiku',
+    openRouterModel: 'openrouter/free',
     groqModel: 'llama-3.3-70b-versatile',
 
     designPhilosophy: DEFAULT_PHILOSOPHY,
@@ -400,7 +400,7 @@ const callZhipu = async (system: string, user: string, jsonMode: boolean, imageD
     if (!key) throw new Error("Skipped: No Zhipu Key");
 
     const isVision = !!imageData;
-    const model = isVision ? "glm-4v" : "glm-4-flash";
+    const model = isVision ? "glm-4v-flash" : "glm-4-flash";
 
     const content: any[] = [{ type: "text", text: user }];
     if (imageData) {
