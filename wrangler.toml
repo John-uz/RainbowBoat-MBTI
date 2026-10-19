@@ -1,0 +1,21 @@
+name = "rainbowboat-mbti"
+compatibility_date = "2024-09-23"
+pages_build_output_dir = "./dist"
+
+# Cloudflare D1 数据库绑定
+[[d1_databases]]
+binding = "DB"
+database_name = "rainbowboat_db"
+database_id = "your-d1-database-id-here" # 在 Cloudflare Dashboard 创建 D1 后填入
+
+# 环境变量 (机密密钥通过 wrangler secret put 注入，或在 Cloudflare Pages 后台配置)
+[vars]
+DEFAULT_REGION_MODE = "auto"
+# GROQ_API_KEY = ""
+# GEMINI_API_KEY = ""
+# DEEPSEEK_API_KEY = ""
+# ZHIPU_API_KEY = ""
+# TELEGRAM_BOT_TOKEN = ""
+# FEISHU_APP_ID = ""
+# FEISHU_APP_SECRET = ""
+# FEISHU_VERIFICATION_TOKEN = ""

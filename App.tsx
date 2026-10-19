@@ -20,6 +20,8 @@ import MBTIHub from './components/MBTIHub';
 import TaskSolo from './components/TaskSolo';
 import LZString from 'lz-string';
 import { startAudioMonitoring, stopAudioMonitoring } from './utils/audioAnalyzer';
+import { initTelegramMiniApp, syncTelegramUser, tgHaptic } from './utils/telegram';
+import { syncFeishuUser } from './utils/feishu';
 
 const COLORS = [
     '#ef4444', '#f97316', '#eab308', '#84cc16', '#06b6d4', '#8b5cf6', '#d946ef', '#f43f5e', '#be123c', '#0f766e',
@@ -504,12 +506,49 @@ function App() {
     }, [isMobile, validMoves, gameState.phase, gameState.movementState, gameState.remainingSteps]);
 
     useEffect(() => {
+        // 1. 初始化 Telegram Mini App (全屏展开、主题色适配)
+        initTelegramMiniApp();
+
+        // 2. 尝试无感鉴权同步 Telegram / 飞书 登录用户
+        syncTelegramUser().then(user => {
+            if (user) console.log("Telegram user synced:", user.nickname);
+        });
+        syncFeishuUser().then(user => {
+            if (user) console.log("Feishu user synced:", user.nickname);
+        });
+
         const params = new URLSearchParams(window.location.search);
+
+        // 3. 支持 Telegram / 飞书卡片直接通过 ?mode=test/tasks/party 呼出对应模块
+        const modeParam = params.get('mode');
+        if (modeParam === 'test') {
+            setIsQuickTestMode(true);
+            setGameState(prev => ({ ...prev, phase: 'ONBOARDING' }));
+        } else if (modeParam === 'tasks') {
+            setIsQuickTestMode(false);
+            setGameState(prev => ({ ...prev, phase: 'SOLO_TASKS' }));
+        } else if (modeParam === 'party') {
+            setIsQuickTestMode(false);
+            setGameState(prev => ({ ...prev, phase: 'ONBOARDING' }));
+        }
+
+        // 4. 支持通过短码 ?r=xxxx 读取 Cloudflare D1 存储的测评报告
+        const shortCode = params.get('r');
+        if (shortCode) {
+            fetch(`/api/profile/record/${shortCode}`)
+                .then(res => res.json())
+                .then((json: any) => {
+                    if (json.success && json.data) {
+                        setSharedReviewData(json.data.score_summary);
+                    }
+                })
+                .catch(err => console.warn("Failed to fetch short record", err));
+        }
+
+        // 5. 原生兼容旧版超长 URL share_data
         const data = params.get('share_data');
         if (data) {
             try {
-                // Determine if it was compressed or just encoded
-                // We will assume compressed for short URLs
                 const decompressed = LZString.decompressFromEncodedURIComponent(data);
                 if (decompressed) {
                     const parsed = JSON.parse(decompressed);
@@ -873,9 +912,11 @@ function App() {
     const handleStartTurn = (manualValue?: number) => {
         const player = gameState.players[gameState.currentPlayerIndex];
 
+        tgHaptic('medium');
         setGameState(prev => ({ ...prev, movementState: 'ROLLING' }));
 
         setTimeout(() => {
+            tgHaptic('light');
             // Dice 1-6 for MBTI mode maybe better? Let's keep 1-8 but 33 tiles is small. 1-4?
             // Keeping 1-8 for now for fun chaos.
             const roll = manualValue ? manualValue : (Math.floor(Math.random() * 8) + 1); // 1-8 standard

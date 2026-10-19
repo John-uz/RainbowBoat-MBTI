@@ -16,6 +16,7 @@
     "@google/genai": "^1.33.0",
     "@types/lz-string": "^1.3.34",
     "framer-motion": "^12.0.0",
+    "hono": "^4.13.13",
     "lucide-react": "^0.460.0",
     "lz-string": "^1.5.0",
     "qrcode.react": "^4.2.0",
@@ -23,6 +24,7 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261019.1",
     "@types/node": "^22.0.0",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",

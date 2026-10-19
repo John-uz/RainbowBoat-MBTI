@@ -606,6 +606,39 @@ const unifiedAICall = async (userPrompt: string, systemPromptOverride?: string, 
     // 确定当前生效区域
     const region = currentConfig.regionMode === 'auto' ? getDetectedRegion() : currentConfig.regionMode;
 
+    // 0. 优先尝试 Cloudflare Edge 网关 (隐藏 Key、自动重试与边缘缓存)
+    try {
+        const edgeRes = await fetch('/api/ai/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userPrompt,
+                systemPrompt: system,
+                imageData,
+                preferredProvider: region === 'china' ? 'deepseek' : 'groq',
+                groqModel: currentConfig.groqModel,
+                geminiModel: currentConfig.geminiModel,
+                deepseekModel: currentConfig.deepseekModel,
+                clientGroqKey: currentConfig.groqKey || SYSTEM_KEYS.groq,
+                clientGeminiKey: currentConfig.geminiKey || SYSTEM_KEYS.gemini,
+                clientDeepseekKey: currentConfig.deepseekKey || SYSTEM_KEYS.deepseek
+            })
+        });
+
+        if (edgeRes.ok) {
+            const edgeJson: any = await edgeRes.json();
+            if (edgeJson.success && edgeJson.data) {
+                if (onStatusChange) {
+                    const nick = PROVIDER_NICKNAMES[edgeJson.provider] || edgeJson.provider;
+                    onStatusChange(nick);
+                }
+                return edgeJson.data;
+            }
+        }
+    } catch (e) {
+        // 本地离线开发或网关不可达时，平滑降级到客户端直连链路
+    }
+
     // 1. 根据区域确定可用供应商列表 (严格遵循用户需求)
     let providers = [];
     if (region === 'china') {
