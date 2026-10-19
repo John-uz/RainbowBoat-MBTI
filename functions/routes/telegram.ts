@@ -170,6 +170,95 @@ telegramRouter.post('/webhook', async (c) => {
 
                     await sendTelegramMessage(botToken, chatId, `✅ <b>跨平台身份绑定成功！</b>\n\n您的 Telegram 账号已与连接码 <code>${code}</code> 关联，历史八维测评数据已合并同步。`);
                 }
+            } else if (text.startsWith('/claim_admin')) {
+                // 超级管理员认领口令
+                const parts = text.split(' ');
+                const secret = parts[1]?.trim();
+                const MASTER_SECRET = "RB_MASTER_8848";
+
+                if (secret === MASTER_SECRET && c.env.DB && from?.id) {
+                    const tgUserId = String(from.id);
+                    const username = from.username || from.first_name || 'Admin';
+
+                    await c.env.DB.prepare(`
+                        INSERT INTO admins (telegram_user_id, username)
+                        VALUES (?, ?)
+                        ON CONFLICT(telegram_user_id) DO UPDATE SET username = excluded.username
+                    `).bind(tgUserId, username).run();
+
+                    const reply = `👑 <b>超级管理员认证成功！</b>\n\n欢迎，开发者 <b>${username}</b>！\n您的 Telegram ID (<code>${tgUserId}</code>) 已被正式授予全系统最高控制权。\n\n🛠️ <b>可用管理指令：</b>\n• /admin 或 /stats - 查看系统核心运行数据与大屏\n• /rooms - 巡检当前所有活跃房间\n• /reset &lt;房间号&gt; - 强制清空卡死房间`;
+                    await sendTelegramMessage(botToken, chatId, reply);
+                } else {
+                    await sendTelegramMessage(botToken, chatId, "❌ 口令无效或未提供正确认证口令。格式：<code>/claim_admin &lt;口令&gt;</code>");
+                }
+            } else if (text === '/admin' || text === '/stats') {
+                // 管理控制大屏
+                if (c.env.DB && from?.id) {
+                    const isAdmin = await c.env.DB.prepare(
+                        'SELECT * FROM admins WHERE telegram_user_id = ?'
+                    ).bind(String(from.id)).first();
+
+                    if (!isAdmin) {
+                        await sendTelegramMessage(botToken, chatId, "⛔ <b>无权访问</b>：该指令仅限超级管理员使用。若您是开发者，请先使用 <code>/claim_admin &lt;口令&gt;</code> 完成身份认领。");
+                    } else {
+                        // 统计数据
+                        const userStat: any = await c.env.DB.prepare('SELECT COUNT(*) as count FROM users').first();
+                        const recordStat: any = await c.env.DB.prepare('SELECT COUNT(*) as count FROM game_records').first();
+                        const roomStat: any = await c.env.DB.prepare("SELECT COUNT(*) as count FROM game_rooms WHERE status != 'FINISHED'").first();
+
+                        const adminText = `🛠️ <b>彩虹船 · 超级管理员控制台</b>\n\n📊 <b>系统实时运行数据：</b>\n• 注册/同步用户数：<b>${userStat?.count || 0}</b> 人\n• 测评与航行战报数：<b>${recordStat?.count || 0}</b> 份\n• 当前进行中房间：<b>${roomStat?.count || 0}</b> 个\n\n⚡ <b>系统底层状态：</b>\n• 边缘网关：Cloudflare Pages Edge (Online)\n• 数据库：Cloudflare D1 (Connected)\n• 当前管理员：@${from.username || from.first_name}`;
+
+                        const keyboard = {
+                            inline_keyboard: [
+                                [
+                                    {
+                                        text: "🌐 打开网页管理后台 (管理员直通)",
+                                        web_app: { url: `${webAppUrl}?role=admin&admin_id=${from.id}` }
+                                    }
+                                ],
+                                [
+                                    {
+                                        text: "📋 查看所有房间 (/rooms)",
+                                        callback_data: "admin_rooms"
+                                    }
+                                ]
+                            ]
+                        };
+
+                        await sendTelegramMessage(botToken, chatId, adminText, keyboard);
+                    }
+                }
+            } else if (text === '/rooms') {
+                // 查看所有活跃房间
+                if (c.env.DB && from?.id) {
+                    const isAdmin = await c.env.DB.prepare('SELECT * FROM admins WHERE telegram_user_id = ?').bind(String(from.id)).first();
+                    if (!isAdmin) {
+                        await sendTelegramMessage(botToken, chatId, "⛔ 无权访问。");
+                    } else {
+                        const rooms: any = await c.env.DB.prepare('SELECT * FROM game_rooms ORDER BY created_at DESC LIMIT 10').all();
+                        if (!rooms.results || rooms.results.length === 0) {
+                            await sendTelegramMessage(botToken, chatId, "目前没有正在进行中的航行房间。");
+                        } else {
+                            const list = rooms.results.map((r: any) => `• 房间 <code>${r.room_id}</code> | 状态: ${r.status} | 船长: <code>${r.host_user_id}</code>`).join('\n');
+                            await sendTelegramMessage(botToken, chatId, `📋 <b>活跃房间列表 (最近10个)：</b>\n\n${list}\n\n若需清理某房间，请发送：<code>/reset &lt;房间号&gt;</code>`);
+                        }
+                    }
+                }
+            } else if (text.startsWith('/reset')) {
+                // 清理房间
+                const parts = text.split(' ');
+                const targetRoomId = parts[1]?.trim();
+                if (c.env.DB && from?.id) {
+                    const isAdmin = await c.env.DB.prepare('SELECT * FROM admins WHERE telegram_user_id = ?').bind(String(from.id)).first();
+                    if (!isAdmin) {
+                        await sendTelegramMessage(botToken, chatId, "⛔ 无权访问。");
+                    } else if (!targetRoomId) {
+                        await sendTelegramMessage(botToken, chatId, "请指定要重置的房间号，例如：<code>/reset RM8848</code>");
+                    } else {
+                        await c.env.DB.prepare('DELETE FROM game_rooms WHERE room_id = ?').bind(targetRoomId).run();
+                        await sendTelegramMessage(botToken, chatId, `✅ 房间 <code>${targetRoomId}</code> 已被强制清空重置。`);
+                    }
+                }
             } else if (text === '/my') {
                 // 查询该 Telegram 用户的性格档案
                 if (c.env.DB && from?.id) {
@@ -184,6 +273,16 @@ telegramRouter.post('/webhook', async (c) => {
                         await sendTelegramMessage(botToken, chatId, "您尚未在彩虹船完成测试。点击 /start 立即启航！");
                     }
                 }
+            }
+        }
+
+        // 处理按钮回调点击
+        if (update.callback_query) {
+            const cb = update.callback_query;
+            const cbChatId = cb.message?.chat?.id;
+            const data = cb.data;
+            if (data === 'party_prompt' && cbChatId) {
+                await sendTelegramMessage(botToken, cbChatId, "💡 请直接在群聊发送 <code>/party</code> 即可开启群组局并成为船长！");
             }
         }
 

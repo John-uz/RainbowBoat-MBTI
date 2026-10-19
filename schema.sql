@@ -50,6 +50,13 @@ CREATE TABLE IF NOT EXISTS bind_codes (
     expires_at DATETIME NOT NULL
 );
 
+-- 6. 超级管理员名单表 (用于开发者直接在 Telegram Bot 掌握全部控制权)
+CREATE TABLE IF NOT EXISTS admins (
+    telegram_user_id TEXT PRIMARY KEY,
+    username TEXT,
+    granted_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 -- 索引加速
 CREATE INDEX IF NOT EXISTS idx_records_user ON game_records(user_id);
 CREATE INDEX IF NOT EXISTS idx_bindings_user ON user_bindings(user_id);
