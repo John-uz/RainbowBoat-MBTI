@@ -13,11 +13,12 @@ import {
 } from "./services/geminiService";
 import { speak } from './utils/tts';
 import { startSpeechRecognition, stopSpeechRecognition, isSpeechRecognitionSupported } from './utils/speechRecognition';
-import { Map as MapIcon, LogOut, Music, VideoOff, Dices, ChevronRight, ChevronLeft, BrainCircuit, Heart, Lightbulb, Mic, CircleHelp, X, Timer, CheckCircle, SkipForward, Users, RefreshCw, Star, Play, Power, Compass, Footprints, Loader, Zap, Repeat, Divide, Copy, Move, UserPlus, UsersRound, Settings, Flag, Radio, Sun, Moon, Volume2, Eye, ArrowRight, Ship, Layers, Sparkles } from 'lucide-react';
+import { Map as MapIcon, LogOut, Music, VideoOff, Dices, ChevronRight, ChevronLeft, BrainCircuit, Heart, Lightbulb, Mic, CircleHelp, X, Timer, CheckCircle, SkipForward, Users, RefreshCw, Star, Play, Power, Compass, Footprints, Loader, Zap, Repeat, Divide, Copy, Move, UserPlus, UsersRound, Settings, Flag, Radio, Sun, Moon, Volume2, Eye, ArrowRight, Ship, Layers, Sparkles, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AIConfigModal from './components/AIConfigModal';
 import MBTIHub from './components/MBTIHub';
 import TaskSolo from './components/TaskSolo';
+import { UserProfileModal } from './components/UserProfileModal';
 import LZString from 'lz-string';
 import { startAudioMonitoring, stopAudioMonitoring } from './utils/audioAnalyzer';
 import { initTelegramMiniApp, syncTelegramUser, tgHaptic } from './utils/telegram';
@@ -468,6 +469,28 @@ function App() {
     // Turn Summary Logic
     const [turnSummary, setTurnSummary] = useState<{ score: number, breakdown: { label: string, value: string | number, color?: string }[], player: Player } | null>(null);
 
+    // Current User Profile State (Connected to Cloudflare D1)
+    const [currentUser, setCurrentUser] = useState<{
+        id: string;
+        nickname: string;
+        primary_mbti?: string;
+        platform_source?: string;
+        avatar_url?: string;
+    }>(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('RAINBOW_BOAT_USER');
+            if (saved) {
+                try { return JSON.parse(saved); } catch (e) { }
+            }
+            const newId = 'web_' + Math.random().toString(36).substring(2, 10);
+            const initial = { id: newId, nickname: '潜意识船员', platform_source: 'web' };
+            localStorage.setItem('RAINBOW_BOAT_USER', JSON.stringify(initial));
+            return initial;
+        }
+        return { id: 'web_guest', nickname: '潜意识船员', platform_source: 'web' };
+    });
+    const [showUserProfile, setShowUserProfile] = useState(false);
+
     // Multimodal Vision State
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -511,13 +534,31 @@ function App() {
 
         // 2. 尝试无感鉴权同步 Telegram / 飞书 登录用户
         syncTelegramUser().then(user => {
-            if (user) console.log("Telegram user synced:", user.nickname);
+            if (user) {
+                setCurrentUser(prev => {
+                    const u = { ...prev, ...user };
+                    localStorage.setItem('RAINBOW_BOAT_USER', JSON.stringify(u));
+                    return u;
+                });
+            }
         });
         syncFeishuUser().then(user => {
-            if (user) console.log("Feishu user synced:", user.nickname);
+            if (user) {
+                setCurrentUser(prev => {
+                    const u = { ...prev, ...user };
+                    localStorage.setItem('RAINBOW_BOAT_USER', JSON.stringify(u));
+                    return u;
+                });
+            }
         });
 
         const params = new URLSearchParams(window.location.search);
+
+        // 2.5 角色识别：若是船长(host)，自动激活主持人控制面板权限
+        const roleParam = params.get('role');
+        if (roleParam === 'host') {
+            setIsManualMode(true);
+        }
 
         // 3. 支持 Telegram / 飞书卡片直接通过 ?mode=test/tasks/party 呼出对应模块
         const modeParam = params.get('mode');
@@ -1678,6 +1719,23 @@ function App() {
                         <Ship className="text-blue-500" /> RAINBOW BOAT
                     </div>
                     <div className="flex items-center gap-3">
+                        {/* User Profile Badge (Connected to Cloudflare D1) */}
+                        <button
+                            onClick={() => setShowUserProfile(true)}
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700/80 text-xs font-bold transition shadow-sm"
+                            title="查看船员档案"
+                        >
+                            <div className="w-5 h-5 rounded-full bg-teal-500/20 text-teal-600 dark:text-teal-400 flex items-center justify-center font-black text-[10px]">
+                                {currentUser.nickname[0] || 'U'}
+                            </div>
+                            <span className="max-w-[100px] truncate">{currentUser.nickname}</span>
+                            {currentUser.primary_mbti && (
+                                <span className="px-1.5 py-0.5 rounded bg-teal-500 text-white text-[9px] font-black uppercase">
+                                    {currentUser.primary_mbti}
+                                </span>
+                            )}
+                        </button>
+
                         <button onClick={toggleTheme} className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 transition">
                             {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
                         </button>
@@ -1687,6 +1745,14 @@ function App() {
                     <MBTIHub onSelectMode={handleHubSelect} onOpenConfig={() => setShowConfig(true)} isMobile={isMobile} />
                 </main>
                 {showConfig && <AIConfigModal onClose={() => setShowConfig(false)} />}
+                <UserProfileModal
+                    isOpen={showUserProfile}
+                    onClose={() => setShowUserProfile(false)}
+                    currentUser={currentUser}
+                    onUpdateUser={(updated) => {
+                        setCurrentUser(prev => ({ ...prev, ...updated }));
+                    }}
+                />
 
                 {/* Score Summary Modal */}
                 {turnSummary && (
@@ -1809,7 +1875,7 @@ function App() {
                     <button onClick={resetGame} className="flex items-center gap-1 text-slate-500 hover:text-teal-600 dark:text-slate-400 dark:hover:text-white transition group" title="Return to Home">
                         <LogOut size={isMobile ? 14 : 16} className="group-hover:-translate-x-1 transition" />
                     </button>
-                    <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800/50 pr-3 rounded-full border border-slate-200 dark:border-slate-700/50 overflow-hidden">
+                    <div onClick={() => setShowUserProfile(true)} className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800/50 pr-3 rounded-full border border-slate-200 dark:border-slate-700/50 overflow-hidden cursor-pointer hover:border-teal-500 transition" title="点击查看/同步船员档案">
                         <div className={`${isMobile ? 'w-7 h-7' : 'w-10 h-10'} rounded-full border-2 border-teal-500/50 overflow-hidden shrink-0`}>
                             {currentPlayer.avatar.startsWith('data:') ? <img src={currentPlayer.avatar} className="w-full h-full object-cover" /> : <div className="bg-slate-200 dark:bg-slate-700 w-full h-full flex items-center justify-center font-bold text-xs">{currentPlayer.name[0]}</div>}
                         </div>
@@ -2275,6 +2341,14 @@ function App() {
                     </div>
                 )}
                 {showConfig && <AIConfigModal onClose={() => setShowConfig(false)} />}
+                <UserProfileModal
+                    isOpen={showUserProfile}
+                    onClose={() => setShowUserProfile(false)}
+                    currentUser={currentUser}
+                    onUpdateUser={(updated) => {
+                        setCurrentUser(prev => ({ ...prev, ...updated }));
+                    }}
+                />
 
                 {/* Score Summary Modal - Now accessible in Game Loop */}
                 {turnSummary && (

@@ -32,6 +32,25 @@ CREATE TABLE IF NOT EXISTS game_records (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 4. 群游戏房间表 (支持权限体系：船长、船员、围观者)
+CREATE TABLE IF NOT EXISTS game_rooms (
+    room_id TEXT PRIMARY KEY,                  -- 房间短号，如 RM8848
+    chat_id TEXT NOT NULL,                     -- Telegram 群组 ID
+    host_user_id TEXT NOT NULL,                -- 船长 (发起人) 的 Telegram User ID
+    status TEXT DEFAULT 'WAITING',             -- 'WAITING' | 'PLAYING' | 'FINISHED'
+    settings TEXT DEFAULT '{}',                -- 房间规则配置 (JSON)
+    crew_members TEXT DEFAULT '[]',            -- 已登船船员列表 (JSON 数组)
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 5. 跨平台互联临时绑定码 (用于打通同一人在 Telegram 与 飞书的档案)
+CREATE TABLE IF NOT EXISTS bind_codes (
+    code TEXT PRIMARY KEY,                     -- 6位连接码，如 839201
+    user_id TEXT NOT NULL,                     -- 关联的 users.id
+    expires_at DATETIME NOT NULL
+);
+
 -- 索引加速
 CREATE INDEX IF NOT EXISTS idx_records_user ON game_records(user_id);
 CREATE INDEX IF NOT EXISTS idx_bindings_user ON user_bindings(user_id);
+CREATE INDEX IF NOT EXISTS idx_rooms_chat ON game_rooms(chat_id);

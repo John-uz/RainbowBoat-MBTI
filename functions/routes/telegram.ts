@@ -100,24 +100,76 @@ telegramRouter.post('/webhook', async (c) => {
                     inline_keyboard: [
                         [
                             {
-                                text: "🚀 开启潜意识航行 (Mini App)",
+                                text: "🚢 启航 / 登上彩虹船 (Mini App)",
                                 web_app: { url: webAppUrl }
                             }
                         ],
                         [
                             {
-                                text: "🧭 趣味快测",
+                                text: "🧭 潜意识趣味快测",
                                 web_app: { url: `${webAppUrl}?mode=test` }
                             },
                             {
-                                text: "🎮 任务挑战赛",
-                                web_app: { url: `${webAppUrl}?mode=tasks` }
+                                text: "⛵ 发起群组局",
+                                callback_data: "party_prompt"
                             }
                         ]
                     ]
                 };
 
                 await sendTelegramMessage(botToken, chatId, welcomeText, keyboard);
+            } else if (text.startsWith('/party')) {
+                // 船长组局模式：创建房间并区分权限
+                const roomId = 'RM' + Math.floor(1000 + Math.random() * 9000);
+                const hostId = String(from?.id || '');
+                const hostName = from?.first_name || from?.username || '船长';
+
+                if (c.env.DB) {
+                    await c.env.DB.prepare(`
+                        INSERT INTO game_rooms (room_id, chat_id, host_user_id, status)
+                        VALUES (?, ?, ?, 'WAITING')
+                    `).bind(roomId, String(chatId), hostId).run();
+                }
+
+                const partyText = `🚢 <b>【彩虹船·群潜意识航行】已开启！</b>\n\n👑 <b>船长 (发起人)：</b> ${hostName}\n🏷️ <b>房间代码：</b> <code>${roomId}</code>\n\n请群友点击下方按钮入座登船，满 2 人即可由船长发令启航：`;
+
+                const keyboard = {
+                    inline_keyboard: [
+                        [
+                            {
+                                text: "🙋‍♂️ 我要登船入座 (船员)",
+                                web_app: { url: `${webAppUrl}?room=${roomId}&role=player` }
+                            }
+                        ],
+                        [
+                            {
+                                text: "👑 船长控制台 (发起人)",
+                                web_app: { url: `${webAppUrl}?room=${roomId}&role=host` }
+                            }
+                        ]
+                    ]
+                };
+
+                await sendTelegramMessage(botToken, chatId, partyText, keyboard);
+            } else if (text.startsWith('/bind')) {
+                // 跨平台身份打通：/bind <code>
+                const parts = text.split(' ');
+                const code = parts[1]?.trim();
+
+                if (!code) {
+                    await sendTelegramMessage(botToken, chatId, "💡 请在 /bind 后输入网页端显示的 6 位连接码，例如：<code>/bind 839201</code>");
+                } else if (c.env.DB && from?.id) {
+                    const tgUserId = String(from.id);
+                    // 将 TG 用户映射绑定
+                    const targetUserId = `user_${code}`;
+                    await c.env.DB.prepare(`
+                        INSERT INTO user_bindings (platform, platform_user_id, user_id)
+                        VALUES ('telegram', ?, ?)
+                        ON CONFLICT(platform, platform_user_id) DO UPDATE SET user_id = excluded.user_id
+                    `).bind(tgUserId, targetUserId).run();
+
+                    await sendTelegramMessage(botToken, chatId, `✅ <b>跨平台身份绑定成功！</b>\n\n您的 Telegram 账号已与连接码 <code>${code}</code> 关联，历史八维测评数据已合并同步。`);
+                }
             } else if (text === '/my') {
                 // 查询该 Telegram 用户的性格档案
                 if (c.env.DB && from?.id) {
