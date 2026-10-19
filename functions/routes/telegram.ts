@@ -171,7 +171,15 @@ telegramRouter.post('/webhook', async (c) => {
                     await sendTelegramMessage(botToken, chatId, `✅ <b>跨平台身份绑定成功！</b>\n\n您的 Telegram 账号已与连接码 <code>${code}</code> 关联，历史八维测评数据已合并同步。`);
                 }
             } else if (text.startsWith('/claim_admin')) {
-                // 超级管理员认领口令
+                // 超级管理员认领口令（只允许首次认领，已有管理员时立刻永久作废）
+                if (c.env.DB) {
+                    const existingAdmin: any = await c.env.DB.prepare('SELECT COUNT(*) as count FROM admins').first();
+                    if (existingAdmin && existingAdmin.count > 0) {
+                        await sendTelegramMessage(botToken, chatId, "⛔ <b>口令已永久作废</b>：系统已被管理员认领绑定，不再接受新的认领。");
+                        return c.text('OK');
+                    }
+                }
+
                 const parts = text.split(' ');
                 const secret = parts[1]?.trim();
                 const MASTER_SECRET = "RB_MASTER_8848";
@@ -186,34 +194,62 @@ telegramRouter.post('/webhook', async (c) => {
                         ON CONFLICT(telegram_user_id) DO UPDATE SET username = excluded.username
                     `).bind(tgUserId, username).run();
 
-                    const reply = `👑 <b>超级管理员认证成功！</b>\n\n欢迎，开发者 <b>${username}</b>！\n您的 Telegram ID (<code>${tgUserId}</code>) 已被正式授予全系统最高控制权。\n\n🛠️ <b>可用管理指令：</b>\n• /admin 或 /stats - 查看系统核心运行数据与大屏\n• /rooms - 巡检当前所有活跃房间\n• /reset &lt;房间号&gt; - 强制清空卡死房间`;
+                    const reply = `👑 <b>超级管理员认证成功！口令已自动永久作废。</b>\n\n欢迎，开发者 <b>${username}</b>！\n您的 Telegram ID (<code>${tgUserId}</code>) 已被正式授予全系统最高控制权。\n\n🛠️ <b>可用管理指令：</b>\n• /admin 或 /stats - 查看系统核心运行数据与网页直登入口\n• /rooms - 巡检当前所有活跃房间\n• /reset &lt;房间号&gt; - 强制清空卡死房间`;
                     await sendTelegramMessage(botToken, chatId, reply);
                 } else {
                     await sendTelegramMessage(botToken, chatId, "❌ 口令无效或未提供正确认证口令。格式：<code>/claim_admin &lt;口令&gt;</code>");
                 }
-            } else if (text === '/admin' || text === '/stats') {
-                // 管理控制大屏
+            } else if (text === '/admin' || text === '/stats' || text === '/login') {
+                // 管理控制大屏 & 免密直登生成
                 if (c.env.DB && from?.id) {
                     const isAdmin = await c.env.DB.prepare(
                         'SELECT * FROM admins WHERE telegram_user_id = ?'
                     ).bind(String(from.id)).first();
 
-                    if (!isAdmin) {
-                        await sendTelegramMessage(botToken, chatId, "⛔ <b>无权访问</b>：该指令仅限超级管理员使用。若您是开发者，请先使用 <code>/claim_admin &lt;口令&gt;</code> 完成身份认领。");
+                    if (!isAdmin && (text === '/admin' || text === '/stats')) {
+                        await sendTelegramMessage(botToken, chatId, "⛔ <b>无权访问</b>：该指令仅限超级管理员使用。");
                     } else {
+                        // 生成 15 分钟有效的一次性登录 Token 与 6 位纯数字 PIN
+                        const authToken = 'tk_' + crypto.randomUUID().replace(/-/g, '');
+                        const loginPin = Math.floor(100000 + Math.random() * 900000).toString();
+                        // 15分钟后过期
+                        const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString().replace('T', ' ').substring(0, 19);
+
+                        const adminUserData = JSON.stringify({
+                            id: `tg_${from.id}`,
+                            nickname: from.username ? `@${from.username}` : (from.first_name || '管理员'),
+                            role: isAdmin ? 'admin' : 'player',
+                            platform_source: 'telegram'
+                        });
+
+                        // 存入两个凭证：长 token (用于链接) 与 6 位数字 pin (用于网页直接输入)
+                        await c.env.DB.prepare(`
+                            INSERT INTO auth_tokens (token, telegram_user_id, user_data, expires_at)
+                            VALUES (?, ?, ?, ?), (?, ?, ?, ?)
+                        `).bind(
+                            authToken, String(from.id), adminUserData, expiresAt,
+                            `pin_${loginPin}`, String(from.id), adminUserData, expiresAt
+                        ).run();
+
                         // 统计数据
                         const userStat: any = await c.env.DB.prepare('SELECT COUNT(*) as count FROM users').first();
                         const recordStat: any = await c.env.DB.prepare('SELECT COUNT(*) as count FROM game_records').first();
                         const roomStat: any = await c.env.DB.prepare("SELECT COUNT(*) as count FROM game_rooms WHERE status != 'FINISHED'").first();
 
-                        const adminText = `🛠️ <b>彩虹船 · 超级管理员控制台</b>\n\n📊 <b>系统实时运行数据：</b>\n• 注册/同步用户数：<b>${userStat?.count || 0}</b> 人\n• 测评与航行战报数：<b>${recordStat?.count || 0}</b> 份\n• 当前进行中房间：<b>${roomStat?.count || 0}</b> 个\n\n⚡ <b>系统底层状态：</b>\n• 边缘网关：Cloudflare Pages Edge (Online)\n• 数据库：Cloudflare D1 (Connected)\n• 当前管理员：@${from.username || from.first_name}`;
+                        const fullLoginUrl = `https://${host}?auth_token=${authToken}`;
+
+                        const adminText = `🛠️ <b>彩虹船 · 管理员控制台 & 网页直登</b>\n\n📊 <b>系统实时运行数据：</b>\n• 注册/同步用户数：<b>${userStat?.count || 0}</b> 人\n• 测评与航行战报数：<b>${recordStat?.count || 0}</b> 份\n• 当前进行中房间：<b>${roomStat?.count || 0}</b> 个\n\n🔗 <b>网页端免密直登入口 (15分钟有效)：</b>\n👉 <a href="${fullLoginUrl}">点击直接在浏览器打开并自动登录</a>\n\n📋 <b>点击下方可一键复制链接 (粘贴至任意浏览器)：</b>\n<code>${fullLoginUrl}</code>\n\n🔢 <b>或在网页端【船员档案中枢】输入 6 位 PIN 码：</b>\n<code>${loginPin}</code>`;
 
                         const keyboard = {
                             inline_keyboard: [
                                 [
                                     {
-                                        text: "🌐 打开网页管理后台 (管理员直通)",
-                                        web_app: { url: `${webAppUrl}?role=admin&admin_id=${from.id}` }
+                                        text: "🌐 TG 内直接打开",
+                                        web_app: { url: fullLoginUrl }
+                                    },
+                                    {
+                                        text: "🚀 外部浏览器直登",
+                                        url: fullLoginUrl
                                     }
                                 ],
                                 [

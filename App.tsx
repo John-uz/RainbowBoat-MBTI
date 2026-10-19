@@ -13,12 +13,13 @@ import {
 } from "./services/geminiService";
 import { speak } from './utils/tts';
 import { startSpeechRecognition, stopSpeechRecognition, isSpeechRecognitionSupported } from './utils/speechRecognition';
-import { Map as MapIcon, LogOut, Music, VideoOff, Dices, ChevronRight, ChevronLeft, BrainCircuit, Heart, Lightbulb, Mic, CircleHelp, X, Timer, CheckCircle, SkipForward, Users, RefreshCw, Star, Play, Power, Compass, Footprints, Loader, Zap, Repeat, Divide, Copy, Move, UserPlus, UsersRound, Settings, Flag, Radio, Sun, Moon, Volume2, Eye, ArrowRight, Ship, Layers, Sparkles, User } from 'lucide-react';
+import { Map as MapIcon, LogOut, Music, VideoOff, Dices, ChevronRight, ChevronLeft, BrainCircuit, Heart, Lightbulb, Mic, CircleHelp, X, Timer, CheckCircle, SkipForward, Users, RefreshCw, Star, Play, Power, Compass, Footprints, Loader, Zap, Repeat, Divide, Copy, Move, UserPlus, UsersRound, Settings, Flag, Radio, Sun, Moon, Volume2, Eye, ArrowRight, Ship, Layers, Sparkles, User, Shield } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AIConfigModal from './components/AIConfigModal';
 import MBTIHub from './components/MBTIHub';
 import TaskSolo from './components/TaskSolo';
 import { UserProfileModal } from './components/UserProfileModal';
+import { AdminDashboardModal } from './components/AdminDashboardModal';
 import LZString from 'lz-string';
 import { startAudioMonitoring, stopAudioMonitoring } from './utils/audioAnalyzer';
 import { initTelegramMiniApp, syncTelegramUser, tgHaptic } from './utils/telegram';
@@ -476,6 +477,7 @@ function App() {
         primary_mbti?: string;
         platform_source?: string;
         avatar_url?: string;
+        role?: string;
     }>(() => {
         if (typeof window !== 'undefined') {
             const saved = localStorage.getItem('RAINBOW_BOAT_USER');
@@ -490,6 +492,8 @@ function App() {
         return { id: 'web_guest', nickname: '潜意识船员', platform_source: 'web' };
     });
     const [showUserProfile, setShowUserProfile] = useState(false);
+    const [showAdminDashboard, setShowAdminDashboard] = useState(false);
+    const [authBanner, setAuthBanner] = useState<string | null>(null);
 
     // Multimodal Vision State
     const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -553,6 +557,42 @@ function App() {
         });
 
         const params = new URLSearchParams(window.location.search);
+
+        // 2.3 消费 URL 中的免密直登一次性 Token (?auth_token=...)
+        const authToken = params.get('auth_token');
+        if (authToken) {
+            fetch('/api/auth/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: authToken })
+            })
+                .then(res => res.json())
+                .then((json: any) => {
+                    if (json.success && json.user) {
+                        setCurrentUser(prev => {
+                            const u = { ...prev, ...json.user };
+                            localStorage.setItem('RAINBOW_BOAT_USER', JSON.stringify(u));
+                            return u;
+                        });
+                        if (json.user.role === 'admin') {
+                            setAuthBanner(`👑 超级管理员免密直登成功！欢迎 ${json.user.nickname}`);
+                            setShowAdminDashboard(true);
+                        } else {
+                            setAuthBanner(`🎉 欢迎登入，${json.user.nickname}`);
+                        }
+                        setTimeout(() => setAuthBanner(null), 6000);
+
+                        // 清除 URL 中的一次性 token，保持地址栏干净
+                        const url = new URL(window.location.href);
+                        url.searchParams.delete('auth_token');
+                        window.history.replaceState({}, document.title, url.toString());
+                    } else if (json.error) {
+                        setAuthBanner(`⚠️ 登录提示: ${json.error}`);
+                        setTimeout(() => setAuthBanner(null), 6000);
+                    }
+                })
+                .catch(err => console.warn("Failed to verify auth_token", err));
+        }
 
         // 2.5 角色识别：若是船长(host)，自动激活主持人控制面板权限
         const roleParam = params.get('role');
@@ -1713,25 +1753,47 @@ function App() {
 
     if (gameState.phase === 'HUB') {
         return (
-            <div className={`h-screen flex flex-col transition-colors duration-300 font-sans ${isDarkMode ? 'dark bg-slate-900 text-white' : 'bg-stone-50 text-slate-800'} overflow-hidden`}>
+            <div className={`h-screen flex flex-col transition-colors duration-300 font-sans ${isDarkMode ? 'dark bg-slate-900 text-white' : 'bg-stone-50 text-slate-800'} overflow-hidden relative`}>
+                {authBanner && (
+                    <div className="absolute top-3 left-1/2 -translate-x-1/2 z-50 bg-slate-900/90 text-white border border-teal-500/50 px-4 py-2 rounded-full shadow-2xl backdrop-blur-md text-xs font-bold flex items-center gap-2 animate-bounce">
+                        <Sparkles size={14} className="text-teal-400" />
+                        <span>{authBanner}</span>
+                    </div>
+                )}
                 <header className="h-16 flex items-center justify-between px-6 border-b border-slate-200 dark:border-white/5 shrink-0">
                     <div className="flex items-center gap-2 font-black text-xl tracking-tighter italic">
                         <Ship className="text-blue-500" /> RAINBOW BOAT
                     </div>
                     <div className="flex items-center gap-3">
+                        {/* Super Admin Control Panel Entrance */}
+                        {currentUser.role === 'admin' && (
+                            <button
+                                onClick={() => setShowAdminDashboard(true)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-500/20 to-purple-500/20 border border-amber-500/50 text-amber-500 dark:text-amber-400 text-xs font-black transition hover:scale-105 shadow-sm"
+                                title="打开超级管理员控制台"
+                            >
+                                <Shield size={14} className="text-amber-500" />
+                                <span>管理大屏</span>
+                            </button>
+                        )}
+
                         {/* User Profile Badge (Connected to Cloudflare D1) */}
                         <button
                             onClick={() => setShowUserProfile(true)}
-                            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700/80 text-xs font-bold transition shadow-sm"
-                            title="查看船员档案"
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-bold transition shadow-sm ${currentUser.id.startsWith('web_') && !currentUser.primary_mbti ? 'bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/40 text-amber-600 dark:text-amber-300' : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border-slate-200 dark:border-slate-700/80'}`}
+                            title="查看船员档案 / 登录切换"
                         >
                             <div className="w-5 h-5 rounded-full bg-teal-500/20 text-teal-600 dark:text-teal-400 flex items-center justify-center font-black text-[10px]">
                                 {currentUser.nickname[0] || 'U'}
                             </div>
                             <span className="max-w-[100px] truncate">{currentUser.nickname}</span>
-                            {currentUser.primary_mbti && (
+                            {currentUser.primary_mbti ? (
                                 <span className="px-1.5 py-0.5 rounded bg-teal-500 text-white text-[9px] font-black uppercase">
                                     {currentUser.primary_mbti}
+                                </span>
+                            ) : (
+                                <span className="px-1.5 py-0.5 rounded bg-amber-500 text-white text-[9px] font-black">
+                                    登录/绑定
                                 </span>
                             )}
                         </button>
@@ -1752,6 +1814,10 @@ function App() {
                     onUpdateUser={(updated) => {
                         setCurrentUser(prev => ({ ...prev, ...updated }));
                     }}
+                />
+                <AdminDashboardModal
+                    isOpen={showAdminDashboard}
+                    onClose={() => setShowAdminDashboard(false)}
                 />
 
                 {/* Score Summary Modal */}
@@ -2348,6 +2414,10 @@ function App() {
                     onUpdateUser={(updated) => {
                         setCurrentUser(prev => ({ ...prev, ...updated }));
                     }}
+                />
+                <AdminDashboardModal
+                    isOpen={showAdminDashboard}
+                    onClose={() => setShowAdminDashboard(false)}
                 />
 
                 {/* Score Summary Modal - Now accessible in Game Loop */}

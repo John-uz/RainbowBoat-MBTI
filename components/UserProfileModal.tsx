@@ -21,10 +21,49 @@ export const UserProfileModal: React.FC<Props> = ({ isOpen, onClose, currentUser
     const [nickname, setNickname] = useState(currentUser.nickname || '潜意识船员');
     const [mbti, setMbti] = useState(currentUser.primary_mbti || '');
     const [bindCode, setBindCode] = useState<string>('');
-    const [inputCode, setInputCode] = useState<string>('');
+    const [inputPin, setInputPin] = useState<string>('');
+    const [pinLoading, setPinLoading] = useState(false);
+    const [pinError, setPinError] = useState('');
     const [saving, setSaving] = useState(false);
     const [bindStatus, setBindStatus] = useState<string>('');
     const [historyRecords, setHistoryRecords] = useState<any[]>([]);
+
+    const handlePinLogin = async () => {
+        if (inputPin.length !== 6) return;
+        setPinLoading(true);
+        setPinError('');
+        try {
+            const res = await fetch('/api/auth/pin_login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pin: inputPin })
+            });
+            const data = await res.json();
+            if (data.success && data.user) {
+                onUpdateUser(data.user);
+                setNickname(data.user.nickname);
+                if (data.user.primary_mbti) setMbti(data.user.primary_mbti);
+                setBindStatus(`🎉 成功登入为：${data.user.nickname}`);
+                setInputPin('');
+            } else {
+                setPinError(data.error || '登录失败');
+            }
+        } catch (e: any) {
+            setPinError('请求失败: ' + e.message);
+        } finally {
+            setPinLoading(false);
+        }
+    };
+
+    const handleLogout = () => {
+        const guestId = 'web_' + Math.random().toString(36).substring(2, 10);
+        const guestUser = { id: guestId, nickname: '潜意识船员', platform_source: 'web' };
+        localStorage.setItem('RAINBOW_BOAT_USER', JSON.stringify(guestUser));
+        onUpdateUser(guestUser);
+        setNickname('潜意识船员');
+        setMbti('');
+        setBindStatus('已切换回访客身份');
+    };
 
     useEffect(() => {
         if (!isOpen || !currentUser.id) return;
@@ -150,6 +189,34 @@ export const UserProfileModal: React.FC<Props> = ({ isOpen, onClose, currentUser
                     {bindStatus && <p className="text-xs text-center text-teal-500 font-bold">{bindStatus}</p>}
                 </div>
 
+                {/* PIN Code Quick Login from Telegram / Feishu */}
+                <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 mb-6">
+                    <div className="flex items-center gap-2 mb-1.5 text-amber-600 dark:text-amber-400 font-bold text-xs">
+                        <Key size={14} /> Telegram 快速免密登入 / 切换账号
+                    </div>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed mb-3">
+                        在 Telegram 给 <strong>@PsiMap_bot</strong> 发送 <code>/login</code> 或 <code>/admin</code> 获取 6 位登录 PIN 码：
+                    </p>
+                    <div className="flex gap-2">
+                        <input
+                            type="text"
+                            maxLength={6}
+                            value={inputPin}
+                            onChange={(e) => setInputPin(e.target.value.replace(/\D/g, ''))}
+                            placeholder="输入 6 位数字 PIN"
+                            className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-center font-mono font-bold text-sm tracking-widest text-slate-800 dark:text-white outline-none focus:border-amber-500 transition"
+                        />
+                        <button
+                            onClick={handlePinLogin}
+                            disabled={inputPin.length !== 6 || pinLoading}
+                            className="px-4 bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-white rounded-xl text-xs font-bold transition shadow-sm"
+                        >
+                            {pinLoading ? "验证中..." : "登入"}
+                        </button>
+                    </div>
+                    {pinError && <p className="text-[10px] text-red-500 mt-1 font-bold">{pinError}</p>}
+                </div>
+
                 {/* Cross-Platform Binding Card */}
                 <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 mb-6">
                     <div className="flex items-center gap-2 mb-2 text-indigo-600 dark:text-indigo-400 font-bold text-xs">
@@ -162,6 +229,17 @@ export const UserProfileModal: React.FC<Props> = ({ isOpen, onClose, currentUser
                         <span className="text-teal-600 dark:text-teal-400 font-bold">/bind {bindCode}</span>
                         <span className="text-[10px] text-slate-400">专属连接码</span>
                     </div>
+                </div>
+
+                {/* Logout Action */}
+                <div className="mb-6 flex justify-between items-center text-xs">
+                    <span className="text-slate-400">当前来源: {currentUser.platform_source || '网页'}</span>
+                    <button
+                        onClick={handleLogout}
+                        className="text-red-500 hover:text-red-600 font-bold underline transition"
+                    >
+                        退出当前身份 (切回新访客)
+                    </button>
                 </div>
 
                 {/* Recent History */}

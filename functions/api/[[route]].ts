@@ -4,6 +4,7 @@ import { aiRouter } from '../routes/ai';
 import { profileRouter } from '../routes/profile';
 import { telegramRouter } from '../routes/telegram';
 import { feishuRouter } from '../routes/feishu';
+import { authRouter } from '../routes/auth';
 import type { Env } from '../types';
 
 const app = new Hono<{ Bindings: Env }>().basePath('/api');
@@ -30,5 +31,6 @@ app.route('/ai', aiRouter);
 app.route('/profile', profileRouter);
 app.route('/telegram', telegramRouter);
 app.route('/feishu', feishuRouter);
+app.route('/auth', authRouter);
 
 export const onRequest = handle(app);
